@@ -15,10 +15,18 @@ penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
 - **Flutter** (Android utama, Web sekunder), offline-first.
 - **drift** (SQLite, jalan di Android & Web) — DB lokal.
 - **provider** (state), **fl_chart** (grafik), **pdf** + **printing** (laporan).
+- **firebase_core** + **cloud_firestore** — sinkronisasi cloud real-time.
 - Package name: `tumbang`. Target awal: Android (APK debug sukses dibuild).
+- **Web hosting:** GitHub Pages → `https://dimasdelonge-alt.github.io/Tumbuh-Kembang/`
+  - Build: `flutter build web --pwa-strategy none --base-href "/Tumbuh-Kembang/"`
+  - Deploy: init git di `build/web/`, force push ke branch `gh-pages`.
 - **Catatan build penting:** `path_provider_foundation` di-pin ke **2.4.4** di
   `dependency_overrides` (pubspec.yaml). Versi >=2.5.0 menarik `objective_c`
   yang punya native build hook & membuat `build_runner` gagal. Jangan naikkan.
+- **Catatan web penting:** `SharedPreferences` TIDAK boleh dipakai langsung di
+  web (plugin registration gagal → `MissingPluginException`). Gunakan
+  `ConfigStorage` (`lib/utils/config_storage.dart`) yang pakai conditional
+  import: `window.localStorage` di web, `SharedPreferences` di mobile.
 - Codegen drift: `dart run build_runner build`. Setelah ubah skema DB, regen.
 
 ## Lokasi materi dokter (sumber data)
@@ -42,6 +50,12 @@ penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
 - **Database pasien** (Modul 1): tambah/edit/cari; riwayat prematur, usia gestasi, Down syndrome, dll. (`patient_form_screen.dart`, `dashboard_screen.dart`). Mendukung pencatatan data awal lahir (BB/TB/LK Lahir) yang langsung ter-plot sebagai baseline 0-bulan pada grafik pertumbuhan.
 - **Sesi Skrining Cepat (Anonim)**: Tab "Skrining Cepat" di dashboard untuk melangsungkan skrining instan tanpa pendaftaran formal (disimpan sebagai pasien anonim dengan kode rekam medis `'ANONIM'`).
 - **Backup & Restore Manual (JSON)**: Menu pengaturan untuk mengekspor database lokal menjadi satu file cadangan `.json` (diunduh langsung di Web; dibagikan via sharing panel di Mobile) dan mengimpornya kembali dengan validasi format dan transaksi aman. (`backup_service.dart`, `file_helper.dart`, `settings_screen.dart`)
+- **Sinkronisasi Cloud Firebase (Modul Sync)**: Real-time bi-directional sync antara perangkat perawat & dokter via Firestore. (`services/sync_service.dart`, `settings_screen.dart`)
+  - **Outbound:** setiap insert/update/delete di `AppRepository` otomatis push ke Firestore (`patients`, `examinations`, `growthMeasurements`, `kpspResults`, `screeningResults`, `visionResults`, `carsResults`).
+  - **Inbound:** listener `.snapshots().listen(...)` per koleksi → tulis ke SQLite lokal via `insertOnConflictUpdate`. UI otomatis update karena Drift watchers.
+  - **Konfigurasi dinamis:** user masukkan API Key, Project ID, App ID di halaman Pengaturan. Disimpan di `ConfigStorage` (localStorage di web). Firebase di-init saat runtime, tanpa hardcode.
+  - **Firebase project:** `tumbuh-kembang-klinik` (Firestore aktif, rules: test mode).
+  - **Status:** ✅ Build & deploy selesai. **Belum ditest end-to-end oleh user.**
 - **Age engine** (Modul 2): usia kronologis + **usia koreksi prematur** otomatis (berhenti di 24 bulan; aterm >=37 mgg tak dikoreksi). (`core/age_calculator.dart`)
 - **Pemeriksaan/kunjungan** (Modul 14 dasar): hub per kunjungan (`examination_screen.dart`), riwayat di `patient_detail_screen.dart`.
 
@@ -163,10 +177,15 @@ Semua butuh file/data spesifik yang belum tersedia & TIDAK BOLEH dikarang.
   tiap fitur. Jujur soal keterbatasan data; jangan mengarang medis.
 - Setiap selesai fitur besar, tawarkan local code review.
 - File pertanyaan ke dokter: `PERTANYAAN_UNTUK_DOKTER.md` (selalu diperbarui).
+- **JANGAN buka browser sub-agent.** User yang test sendiri.
 
-## LANGKAH BERIKUTNYA YANG MUNGKIN
-1. Bila dokter kirim file Fenton → implementasi modul Fenton preterm.
-2. Bila dokter kirim data 125 item Denver II → implementasi Denver II.
-3. Bila dokter kirim M-CHAT-R/F Follow-Up → alur follow-up tahap 2.
-4. Bila dokter kirim kop klinik → header laporan PDF.
-5. Pematangan UI/UX & uji coba lapangan oleh dokter.
+## LANGKAH BERIKUTNYA
+1. ✅ ~~Sinkronisasi Cloud Firebase~~ → **sudah diimplementasi, tinggal test.**
+   - User buka https://dimasdelonge-alt.github.io/Tumbuh-Kembang/
+   - Pengaturan → isi 3 field Firebase → Aktifkan Sinkronisasi Cloud.
+   - Test: buat pasien di device 1, cek muncul di device 2.
+2. Bila dokter kirim file Fenton → implementasi modul Fenton preterm.
+3. Bila dokter kirim data 125 item Denver II → implementasi Denver II.
+4. Bila dokter kirim M-CHAT-R/F Follow-Up → alur follow-up tahap 2.
+5. Bila dokter kirim kop klinik → header laporan PDF.
+6. Pematangan UI/UX & uji coba lapangan oleh dokter.
