@@ -37,13 +37,58 @@ class PatientDetailScreen extends StatelessWidget {
   }
 }
 
-class _DetailView extends StatelessWidget {
+class _DetailView extends StatefulWidget {
   final Patient patient;
   const _DetailView({required this.patient});
 
   @override
+  State<_DetailView> createState() => _DetailViewState();
+}
+
+class _DetailViewState extends State<_DetailView> {
+  Future<void> _confirmDeleteExam(Examination exam) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Pemeriksaan?'),
+        content: Text(
+          'Pemeriksaan tanggal ${AgeCalculator.formatDate(exam.examDate)}'
+          '${exam.examinerNote != null ? " (${exam.examinerNote})" : ""}'
+          ' beserta seluruh data hasil (pertumbuhan, KPSP, skrining, dll) '
+          'akan dihapus permanen.\n\nLanjutkan?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final repo = context.read<AppRepository>();
+    await repo.deleteExamination(exam.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Pemeriksaan ${AgeCalculator.formatDate(exam.examDate)} dihapus.',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final repo = context.read<AppRepository>();
+    final patient = widget.patient;
     final age = AgeCalculator.calculate(
       birthDate: patient.birthDate,
       examDate: DateTime.now(),
@@ -120,6 +165,7 @@ class _DetailView extends StatelessWidget {
                                 ),
                               ),
                             ),
+                            onLongPress: () => _confirmDeleteExam(e),
                           ),
                         ))
                     .toList(),
