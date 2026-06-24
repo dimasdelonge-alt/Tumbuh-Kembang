@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database.dart';
+import '../utils/config_storage.dart';
 
 /// Service untuk sinkronisasi database lokal SQLite dengan Firebase Firestore
 /// secara real-time. Memungkinkan alur kerja Perawat-Dokter.
@@ -20,34 +20,31 @@ class SyncService {
 
   bool get isInitialized => _initialized;
 
-  /// Membaca konfigurasi Firebase dari SharedPreferences
+  /// Membaca konfigurasi Firebase dari storage lokal (localStorage di web, SharedPreferences di mobile)
   Future<Map<String, String>> loadConfig() async {
-    final prefs = await SharedPreferences.getInstance();
     return {
-      'apiKey': prefs.getString('fb_api_key') ?? '',
-      'projectId': prefs.getString('fb_project_id') ?? '',
-      'appId': prefs.getString('fb_app_id') ?? '',
+      'apiKey': await ConfigStorage.getString('fb_api_key') ?? '',
+      'projectId': await ConfigStorage.getString('fb_project_id') ?? '',
+      'appId': await ConfigStorage.getString('fb_app_id') ?? '',
     };
   }
 
-  /// Menyimpan konfigurasi Firebase ke SharedPreferences
+  /// Menyimpan konfigurasi Firebase ke storage lokal
   Future<void> saveConfig({
     required String apiKey,
     required String projectId,
     required String appId,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('fb_api_key', apiKey);
-    await prefs.setString('fb_project_id', projectId);
-    await prefs.setString('fb_app_id', appId);
+    await ConfigStorage.setString('fb_api_key', apiKey);
+    await ConfigStorage.setString('fb_project_id', projectId);
+    await ConfigStorage.setString('fb_app_id', appId);
   }
 
   /// Menghapus konfigurasi dan memutuskan koneksi
   Future<void> clearConfig() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('fb_api_key');
-    await prefs.remove('fb_project_id');
-    await prefs.remove('fb_app_id');
+    await ConfigStorage.remove('fb_api_key');
+    await ConfigStorage.remove('fb_project_id');
+    await ConfigStorage.remove('fb_app_id');
     await disconnect();
   }
 
