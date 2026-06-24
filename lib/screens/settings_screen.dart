@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../data/repository.dart';
 import '../services/backup_service.dart';
+import '../services/sync_service.dart';
 import '../utils/file_helper.dart';
 
-/// Halaman Pengaturan untuk mengelola data (Fase 1: Backup & Restore).
+/// Halaman Pengaturan untuk mengelola data (Backup/Restore & Sinkronisasi Cloud).
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -14,6 +15,35 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isProcessing = false;
+  late final SyncService _syncService;
+
+  final _apiKeyController = TextEditingController();
+  final _projectIdController = TextEditingController();
+  final _appIdController = TextEditingController();
+  bool _isConnected = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncService = Provider.of<SyncService>(context, listen: false);
+    _isConnected = _syncService.isInitialized;
+    _loadSyncConfig();
+  }
+
+  Future<void> _loadSyncConfig() async {
+    final config = await _syncService.loadConfig();
+    _apiKeyController.text = config['apiKey'] ?? '';
+    _projectIdController.text = config['projectId'] ?? '';
+    _appIdController.text = config['appId'] ?? '';
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    _projectIdController.dispose();
+    _appIdController.dispose();
+    super.dispose();
+  }
 
   Future<void> _exportBackup(BuildContext context) async {
     setState(() => _isProcessing = true);
@@ -56,7 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Pulihkan Data?'),
         content: const Text(
-          'Proses ini akan MENGAPUS seluruh data pasien saat ini di perangkat Anda dan menggantinya dengan data dari file cadangan. Tindakan ini tidak dapat dibatalkan.\n\nApakah Anda yakin ingin melanjutkan?',
+          'Proses ini akan MENGHAPUS seluruh data pasien saat ini di perangkat Anda dan menggantinya dengan data dari file cadangan. Tindakan ini tidak dapat dibatalkan.\n\nApakah Anda yakin ingin melanjutkan?',
         ),
         actions: [
           TextButton(
@@ -78,7 +108,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final jsonString = await FileHelper.pickJsonFile();
       if (jsonString == null) {
-        // Pengguna membatalkan pemilihan file
         setState(() => _isProcessing = false);
         return;
       }
@@ -111,6 +140,125 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _connectCloud() async {
+    final apiKey = _apiKeyController.text.trim();
+    final projectId = _projectIdController.text.trim();
+    final appId = _appIdController.text.trim();
+
+    if (apiKey.isEmpty || projectId.isEmpty || appId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Semua field konfigurasi Firebase harus diisi!'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+    try {
+      await _syncService.saveConfig(
+        apiKey: apiKey,
+        projectId: projectId,
+        appId: appId,
+      );
+
+      // Putuskan koneksi lama dan inisialisasi ulang
+      await _syncService.disconnect();
+      final success = await _syncService.initialize();
+
+      if (mounted) {
+        if (success) {
+          setState(() {
+            _isConnected = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Koneksi Cloud Firebase berhasil diaktifkan! Data tersinkronisasi secara real-time.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          setState(() {
+            _isConnected = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Gagal terhubung ke Firebase. Silakan periksa kembali konfigurasi Anda.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Terjadi kesalahan koneksi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _disconnectCloud() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Matikan Sinkronisasi Cloud?'),
+        content: const Text(
+          'Aplikasi akan berhenti menyinkronkan data secara otomatis ke Cloud. Data lokal Anda di perangkat ini tetap aman.\n\nApakah Anda yakin?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Ya, Matikan'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isProcessing = true);
+    try {
+      await _syncService.clearConfig();
+      if (mounted) {
+        setState(() {
+          _isConnected = false;
+          _apiKeyController.clear();
+          _projectIdController.clear();
+          _appIdController.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Koneksi Cloud dinonaktifkan. Aplikasi kembali ke mode offline lokal.'),
+            backgroundColor: Colors.blueGrey,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memutuskan koneksi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,10 +270,165 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
+              // --- SEKSI 1: LINK CLOUD SINKRONISASI ---
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
                 child: Text(
-                  'Manajemen Database',
+                  'Sinkronisasi Cloud (Perawat - Dokter)',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Status Card
+              Card(
+                color: _isConnected ? Colors.green.shade50 : Colors.grey.shade100,
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(
+                    color: _isConnected ? Colors.green.shade300 : Colors.grey.shade400,
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isConnected ? Icons.cloud_done : Icons.cloud_off,
+                        color: _isConnected ? Colors.green : Colors.grey,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isConnected ? 'Sinkronisasi Aktif (Online)' : 'Sinkronisasi Nonaktif (Lokal)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: _isConnected ? Colors.green.shade900 : Colors.grey.shade800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _isConnected
+                                  ? 'Data tersinkronisasi secara real-time antar perangkat perawat dan dokter.'
+                                  : 'Data hanya disimpan secara lokal di browser/perangkat ini.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: _isConnected ? Colors.green.shade700 : Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Form / Konfigurasi Firebase
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Konfigurasi Firebase Klinik',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _apiKeyController,
+                        enabled: !_isConnected,
+                        decoration: const InputDecoration(
+                          labelText: 'Firebase API Key',
+                          hintText: 'AIzaSy...',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _projectIdController,
+                        enabled: !_isConnected,
+                        decoration: const InputDecoration(
+                          labelText: 'Firebase Project ID',
+                          hintText: 'klinik-tumbang-123',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _appIdController,
+                        enabled: !_isConnected,
+                        decoration: const InputDecoration(
+                          labelText: 'Firebase App ID',
+                          hintText: '1:12345678:web:abcdef...',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _isProcessing
+                              ? null
+                              : (_isConnected ? _disconnectCloud : _connectCloud),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isConnected ? Colors.redAccent : Colors.blueAccent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            _isConnected ? 'Putuskan Sinkronisasi Cloud' : 'Aktifkan Sinkronisasi Cloud',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      if (!_isConnected) ...[
+                        const SizedBox(height: 16),
+                        const Divider(),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Cara Menghubungkan:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          '1. Buka Firebase Console (console.firebase.google.com) dan buat proyek baru.\n'
+                          '2. Daftarkan aplikasi baru jenis Web App (</>) pada pengaturan proyek.\n'
+                          '3. Salin nilai apiKey, projectId, dan appId dari konfigurasi web Firebase.\n'
+                          '4. Pastikan Cloud Firestore diaktifkan di konsol Firebase Anda dengan aturan rules: allow read, write: if true; (atau aturan otentikasi yang sesuai).',
+                          style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // --- SEKSI 2: BACKUP MANUAL ---
+              const Divider(),
+              const SizedBox(height: 8),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                child: Text(
+                  'Manajemen Database Lokal',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -185,7 +488,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               const Center(
                 child: Text(
-                  'Versi Aplikasi 1.0.0 (Fase 1 Migrasi Cloud)',
+                  'Versi Aplikasi 1.1.0 (Real-time Cloud Sync)',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ),

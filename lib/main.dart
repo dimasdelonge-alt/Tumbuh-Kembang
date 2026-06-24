@@ -10,6 +10,7 @@ import 'modules/growth/who_growth_data.dart';
 import 'modules/kpsp/kpsp_data.dart';
 import 'modules/stimulation/stimulation_data.dart';
 import 'screens/dashboard_screen.dart';
+import 'services/sync_service.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -23,36 +24,43 @@ Future<void> main() async {
 
   final db = AppDatabase();
   final repo = AppRepository(db);
+  final syncService = SyncService(db);
+  repo.syncService = syncService;
 
-  runApp(TumbangApp(repo: repo));
+  // Coba inisialisasi sinkronisasi cloud jika konfigurasi sudah tersimpan
+  await syncService.initialize();
+
+  runApp(TumbangApp(repo: repo, syncService: syncService));
 }
 
 class TumbangApp extends StatelessWidget {
   final AppRepository repo;
-  const TumbangApp({super.key, required this.repo});
+  final SyncService syncService;
+  const TumbangApp({super.key, required this.repo, required this.syncService});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppState(repo),
-      child: Provider.value(
-        value: repo,
-        child: MaterialApp(
-          title: 'Skrining Tumbuh Kembang',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: const [
-            Locale('id', 'ID'),
-            Locale('en', 'US'),
-          ],
-          locale: const Locale('id', 'ID'),
-          home: const DashboardScreen(),
-        ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppState(repo)),
+        Provider.value(value: repo),
+        Provider.value(value: syncService),
+      ],
+      child: MaterialApp(
+        title: 'Skrining Tumbuh Kembang',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('id', 'ID'),
+          Locale('en', 'US'),
+        ],
+        locale: const Locale('id', 'ID'),
+        home: const DashboardScreen(),
       ),
     );
   }

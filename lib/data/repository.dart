@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import 'database.dart';
+import '../services/sync_service.dart';
 
 /// Repository tunggal untuk akses data aplikasi.
 ///
@@ -9,6 +11,7 @@ import 'database.dart';
 class AppRepository {
   final AppDatabase db;
   final _uuid = const Uuid();
+  SyncService? syncService;
 
   AppRepository(this.db);
 
@@ -37,15 +40,27 @@ class AppRepository {
   Future<String> insertPatient(PatientsCompanion data) async {
     final id = data.id.present ? data.id.value : _uuid.v4();
     await db.into(db.patients).insert(data.copyWith(id: Value(id)));
+    if (syncService != null) {
+      final item = await getPatient(id);
+      if (item != null) {
+        unawaited(syncService!.uploadPatient(item));
+      }
+    }
     return id;
   }
 
-  Future<void> updatePatient(Patient patient) {
-    return db.update(db.patients).replace(patient);
+  Future<void> updatePatient(Patient patient) async {
+    await db.update(db.patients).replace(patient);
+    if (syncService != null) {
+      unawaited(syncService!.uploadPatient(patient));
+    }
   }
 
-  Future<void> deletePatient(String id) {
-    return (db.delete(db.patients)..where((p) => p.id.equals(id))).go();
+  Future<void> deletePatient(String id) async {
+    await (db.delete(db.patients)..where((p) => p.id.equals(id))).go();
+    if (syncService != null) {
+      unawaited(syncService!.deletePatientRemote(id));
+    }
   }
 
   // ---------------- Pemeriksaan ----------------
@@ -63,11 +78,20 @@ class AppRepository {
   Future<String> insertExamination(ExaminationsCompanion data) async {
     final id = data.id.present ? data.id.value : _uuid.v4();
     await db.into(db.examinations).insert(data.copyWith(id: Value(id)));
+    if (syncService != null) {
+      final item = await getExamination(id);
+      if (item != null) {
+        unawaited(syncService!.uploadExamination(item));
+      }
+    }
     return id;
   }
 
-  Future<void> deleteExamination(String id) {
-    return (db.delete(db.examinations)..where((e) => e.id.equals(id))).go();
+  Future<void> deleteExamination(String id) async {
+    await (db.delete(db.examinations)..where((e) => e.id.equals(id))).go();
+    if (syncService != null) {
+      unawaited(syncService!.deleteExaminationRemote(id));
+    }
   }
 
   Future<Examination?> getExamination(String id) {
@@ -82,6 +106,12 @@ class AppRepository {
     await db
         .into(db.growthMeasurements)
         .insertOnConflictUpdate(data.copyWith(id: Value(id)));
+    if (syncService != null) {
+      final item = await getGrowthForExam(data.examinationId.value);
+      if (item != null) {
+        unawaited(syncService!.uploadGrowthMeasurement(item));
+      }
+    }
     return id;
   }
 
@@ -96,6 +126,12 @@ class AppRepository {
   Future<String> insertKpsp(KpspResultsCompanion data) async {
     final id = data.id.present ? data.id.value : _uuid.v4();
     await db.into(db.kpspResults).insert(data.copyWith(id: Value(id)));
+    if (syncService != null) {
+      final item = await getKpspForExam(data.examinationId.value);
+      if (item != null) {
+        unawaited(syncService!.uploadKpspResult(item));
+      }
+    }
     return id;
   }
 
@@ -123,6 +159,12 @@ class AppRepository {
           .into(db.screeningResults)
           .insert(data.copyWith(id: Value(id)));
     });
+    if (syncService != null) {
+      final item = await getScreening(examId, instrId);
+      if (item != null) {
+        unawaited(syncService!.uploadScreeningResult(item));
+      }
+    }
     return id;
   }
 
@@ -153,6 +195,12 @@ class AppRepository {
           .go();
       await db.into(db.visionResults).insert(data.copyWith(id: Value(id)));
     });
+    if (syncService != null) {
+      final item = await getVisionForExam(examId);
+      if (item != null) {
+        unawaited(syncService!.uploadVisionResult(item));
+      }
+    }
     return id;
   }
 
@@ -174,6 +222,12 @@ class AppRepository {
           .go();
       await db.into(db.carsResults).insert(data.copyWith(id: Value(id)));
     });
+    if (syncService != null) {
+      final item = await getCarsForExam(examId);
+      if (item != null) {
+        unawaited(syncService!.uploadCarsResult(item));
+      }
+    }
     return id;
   }
 
