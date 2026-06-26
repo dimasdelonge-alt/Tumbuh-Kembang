@@ -112,6 +112,7 @@ class AppRepository {
           .into(db.growthMeasurements)
           .insert(data.copyWith(id: Value(id)));
     });
+    await _promoteIfAnonymous(examId);
     if (syncService != null) {
       final item = await getGrowthForExam(examId);
       if (item != null) {
@@ -139,6 +140,7 @@ class AppRepository {
           .go();
       await db.into(db.kpspResults).insert(data.copyWith(id: Value(id)));
     });
+    await _promoteIfAnonymous(examId);
     if (syncService != null) {
       final item = await getKpspForExam(examId);
       if (item != null) {
@@ -173,6 +175,7 @@ class AppRepository {
           .into(db.screeningResults)
           .insert(data.copyWith(id: Value(id)));
     });
+    await _promoteIfAnonymous(examId);
     if (syncService != null) {
       final item = await getScreening(examId, instrId);
       if (item != null) {
@@ -209,6 +212,7 @@ class AppRepository {
           .go();
       await db.into(db.visionResults).insert(data.copyWith(id: Value(id)));
     });
+    await _promoteIfAnonymous(examId);
     if (syncService != null) {
       final item = await getVisionForExam(examId);
       if (item != null) {
@@ -236,6 +240,7 @@ class AppRepository {
           .go();
       await db.into(db.carsResults).insert(data.copyWith(id: Value(id)));
     });
+    await _promoteIfAnonymous(examId);
     if (syncService != null) {
       final item = await getCarsForExam(examId);
       if (item != null) {
@@ -298,5 +303,20 @@ class AppRepository {
       return getGrowthForExam(exam.id);
     }
     return null;
+  }
+
+  /// Mempromosikan pasien anonim (Skrining Cepat) menjadi pasien terdaftar
+  /// jika salah satu modul pemeriksaan telah diisi.
+  Future<void> _promoteIfAnonymous(String examinationId) async {
+    final exam = await getExamination(examinationId);
+    if (exam == null) return;
+    final patient = await getPatient(exam.patientId);
+    if (patient != null && patient.medicalRecordNo == 'ANONIM') {
+      final updated = patient.copyWith(
+        medicalRecordNo: const Value(null),
+        notes: patient.notes == 'Skrining Cepat' ? const Value(null) : Value(patient.notes),
+      );
+      await updatePatient(updated);
+    }
   }
 }
