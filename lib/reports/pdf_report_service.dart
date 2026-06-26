@@ -49,7 +49,7 @@ class PdfReportService {
           ],
           if (data.growthOutOfRange)
             _note(
-                'Catatan: usia anak di luar rentang standar WHO 0–5 tahun; '
+                'Catatan: usia anak di luar rentang standar WHO 0-5 tahun; '
                 'sebagian indikator berbasis umur tidak ditampilkan. '
                 'Status gizi BB/TB memakai referensi CDC 2000 (Waterlow).'),
           if (data.kpsp != null) ...[
@@ -224,11 +224,11 @@ class PdfReportService {
                 pw.Text('Analisis Waterlow (CDC 2000):',
                     style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 2),
-                pw.Text('• Usia Tinggi (Height Age): ${data.waterlow!.heightAgeMonths.toStringAsFixed(1)} bulan',
+                pw.Text('- Usia Tinggi (Height Age): ${data.waterlow!.heightAgeMonths.toStringAsFixed(1)} bulan',
                     style: const pw.TextStyle(fontSize: 9)),
-                pw.Text('• Berat Badan Ideal (BBI): ${data.waterlow!.idealWeightKg.toStringAsFixed(1)} kg',
+                pw.Text('- Berat Badan Ideal (BBI): ${data.waterlow!.idealWeightKg.toStringAsFixed(1)} kg',
                     style: const pw.TextStyle(fontSize: 9)),
-                pw.Text('• BB Aktual / BBI: ${data.waterlow!.percentage.toStringAsFixed(1)}%',
+                pw.Text('- BB Aktual / BBI: ${data.waterlow!.percentage.toStringAsFixed(1)}%',
                     style: const pw.TextStyle(fontSize: 9)),
               ],
             ),
@@ -255,7 +255,7 @@ class PdfReportService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text('Form usia ${k.formAgeMonths} bulan • '
+        pw.Text('Form usia ${k.formAgeMonths} bulan | '
             'Skor: ${k.yesCount}/${k.total} "Ya"',
             style: const pw.TextStyle(fontSize: 10)),
         pw.SizedBox(height: 2),
@@ -268,7 +268,7 @@ class PdfReportService {
               style: pw.TextStyle(
                   fontSize: 9, fontWeight: pw.FontWeight.bold)),
           ...k.failedByDomain.entries.map((e) => pw.Text(
-              '• ${e.key.label}: no. ${e.value.join(', ')}',
+              '- ${e.key.label}: no. ${e.value.join(', ')}',
               style: const pw.TextStyle(fontSize: 9))),
         ],
         pw.SizedBox(height: 4),
@@ -284,7 +284,7 @@ class PdfReportService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text('${s.name} — skor ${s.score}/${s.total}',
+          pw.Text('${s.name} - skor ${s.score}/${s.total}',
               style: const pw.TextStyle(fontSize: 10)),
           pw.Text('Hasil: ${s.levelLabel.toUpperCase()}',
               style: pw.TextStyle(
@@ -295,7 +295,7 @@ class PdfReportService {
             pw.Text('Perilaku menonjol:',
                 style: pw.TextStyle(
                     fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            ...s.flaggedItemTexts.map((t) => pw.Text('• $t',
+            ...s.flaggedItemTexts.map((t) => pw.Text('- $t',
                 style: const pw.TextStyle(fontSize: 9))),
           ],
           pw.Text('Rekomendasi: ${s.recommendation}',
@@ -348,7 +348,7 @@ class PdfReportService {
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text(
-            '${s.domainLabel} — setara ${s.developmentalAgeMonths} bln '
+            '${s.domainLabel} - setara ${s.developmentalAgeMonths} bln '
             '(stimulasi ${s.bandLabel})',
             style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
           ),
@@ -357,7 +357,7 @@ class PdfReportService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('• ${a.title}',
+                    pw.Text('- ${a.title}',
                         style: const pw.TextStyle(fontSize: 9)),
                     pw.Padding(
                       padding: const pw.EdgeInsets.only(left: 8),
@@ -414,7 +414,7 @@ class PdfReportService {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: flags
-                  .map((f) => pw.Text('• $f',
+                  .map((f) => pw.Text('- $f',
                       style: const pw.TextStyle(fontSize: 10)))
                   .toList(),
             ),
