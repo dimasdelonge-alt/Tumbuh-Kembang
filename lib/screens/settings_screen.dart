@@ -32,9 +32,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSyncConfig() async {
     final config = await _syncService.loadConfig();
-    _apiKeyController.text = config['apiKey'] ?? '';
-    _projectIdController.text = config['projectId'] ?? '';
-    _appIdController.text = config['appId'] ?? '';
+    final apiKey = config['apiKey'] ?? '';
+    final projectId = config['projectId'] ?? '';
+    final appId = config['appId'] ?? '';
+
+    _apiKeyController.text = apiKey.isNotEmpty
+        ? apiKey
+        : 'AIzaSyBSAyIdaHIQxjYYGKxxmiYyLoAsqKxCBdo';
+    _projectIdController.text = projectId.isNotEmpty
+        ? projectId
+        : 'tumbuh-kembang-klinik';
+    _appIdController.text = appId.isNotEmpty
+        ? appId
+        : '1:728132917509:web:6b57eddad890cb960fbf6c';
   }
 
   @override
