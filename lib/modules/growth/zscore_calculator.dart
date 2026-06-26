@@ -33,11 +33,19 @@ class ZScoreResult {
   /// Median (M) pada titik acuan, berguna untuk grafik.
   final double median;
 
+  /// Nilai pengukuran pada -2 SD (batas bawah normal).
+  final double sd2neg;
+
+  /// Nilai pengukuran pada +2 SD (batas atas normal).
+  final double sd2pos;
+
   const ZScoreResult({
     required this.indicator,
     required this.zScore,
     required this.percentile,
     required this.median,
+    this.sd2neg = 0,
+    this.sd2pos = 0,
   });
 
   double get zRounded => (zScore * 100).round() / 100;
@@ -166,6 +174,8 @@ class ZScoreCalculator {
       zScore: z,
       percentile: _normalCdf(z) * 100,
       median: lms.m,
+      sd2neg: valueAtZ(lms, -2),
+      sd2pos: valueAtZ(lms, 2),
     );
   }
 }

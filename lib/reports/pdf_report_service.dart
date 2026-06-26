@@ -174,19 +174,20 @@ class PdfReportService {
 
   static pw.Widget _growthTable(ExamReportData data) {
     final hasWaterlow = data.growthRows.any((r) => r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60);
-    final headers = ['Indikator', 'Nilai', hasWaterlow ? 'Z-score / %' : 'Z-score', 'Persentil', 'Status'];
+    final headers = ['Indikator', 'Nilai', hasWaterlow ? 'Z / %' : 'Z-score', '-2SD', 'Median', '+2SD', 'Status'];
     final rows = data.growthRows.map((r) {
       final isWaterlow = r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60;
       final scoreStr = isWaterlow
           ? '${r.zScore.toStringAsFixed(1)}%'
           : ((r.zScore * 100).round() / 100).toStringAsFixed(2);
-      final pctStr = isWaterlow ? '-' : 'P${r.percentile.round()}';
 
       return [
         isWaterlow ? '${r.indicator.code} (Waterlow)' : r.indicator.code,
         _valueLabel(r.indicator, r.value),
         scoreStr,
-        pctStr,
+        isWaterlow ? '-' : r.sd2neg.toStringAsFixed(1),
+        r.median.toStringAsFixed(1),
+        isWaterlow ? '-' : r.sd2pos.toStringAsFixed(1),
         r.status.label,
       ];
     }).toList();
@@ -198,13 +199,13 @@ class PdfReportService {
           headers: headers,
           data: rows,
           headerStyle:
-              pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-          cellStyle: const pw.TextStyle(fontSize: 9),
+              pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold),
+          cellStyle: const pw.TextStyle(fontSize: 8),
           headerDecoration:
               const pw.BoxDecoration(color: PdfColors.teal50),
           cellAlignments: {
             0: pw.Alignment.centerLeft,
-            4: pw.Alignment.centerLeft,
+            6: pw.Alignment.centerLeft,
           },
           border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
         ),

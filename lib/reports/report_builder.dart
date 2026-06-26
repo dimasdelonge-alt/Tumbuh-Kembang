@@ -21,12 +21,18 @@ class ReportGrowthRow {
   final double zScore;
   final double percentile;
   final NutritionStatus status;
+  final double median;
+  final double sd2neg;
+  final double sd2pos;
   ReportGrowthRow({
     required this.indicator,
     required this.value,
     required this.zScore,
     required this.percentile,
     required this.status,
+    required this.median,
+    required this.sd2neg,
+    required this.sd2pos,
   });
 }
 
@@ -187,6 +193,9 @@ class ReportBuilder {
         zScore: r.z.zScore,
         percentile: r.z.percentile,
         status: r.status,
+        median: r.z.median,
+        sd2neg: r.z.sd2neg,
+        sd2pos: r.z.sd2pos,
       ));
     }
 

@@ -475,50 +475,55 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Table(
-                      columnWidths: const {
-                        0: FlexColumnWidth(2.5),
-                        1: FlexColumnWidth(1.5),
-                        2: FlexColumnWidth(1.2),
-                        3: FlexColumnWidth(2.5),
-                      },
-                      children: [
-                        TableRow(
-                          decoration: BoxDecoration(
-                            border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
-                          ),
-                          children: [
-                            const _TableHeader('Indikator'),
-                            const _TableHeader('Nilai'),
-                            _TableHeader(
-                              data.growthRows.any((r) => r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60)
-                                  ? 'Z-score / %'
-                                  : 'Z-score',
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Table(
+                        defaultColumnWidth: const IntrinsicColumnWidth(),
+                        children: [
+                          TableRow(
+                            decoration: BoxDecoration(
+                              border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
                             ),
-                            const _TableHeader('Status'),
-                          ],
-                        ),
-                        ...data.growthRows.map((r) {
-                          final isWaterlow = r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60;
-                          final color = r.status.isAlert
-                              ? (isWaterlow
-                                  ? (r.zScore < 70 || r.zScore > 120 ? Colors.red : Colors.orange)
-                                  : (r.zScore.abs() > 3 ? Colors.red : Colors.orange))
-                              : Colors.green;
-                          final scoreText = isWaterlow
-                              ? '${r.zScore.toStringAsFixed(1)}%'
-                              : r.zScore.toStringAsFixed(2);
-                          return TableRow(
                             children: [
-                              _TableCell(r.indicator.label),
-                              _TableCell('${r.value.toStringAsFixed(1)}'),
-                              _TableCell(scoreText,
-                                  color: color, bold: true),
-                              _TableCell(r.status.label, color: color),
+                              const _TableHeader('Indikator  '),
+                              const _TableHeader('Nilai  '),
+                              _TableHeader(
+                                data.growthRows.any((r) => r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60)
+                                    ? 'Z / %  '
+                                    : 'Z-score  ',
+                              ),
+                              const _TableHeader('-2SD  '),
+                              const _TableHeader('Median  '),
+                              const _TableHeader('+2SD  '),
+                              const _TableHeader('Status'),
                             ],
-                          );
-                        }),
-                      ],
+                          ),
+                          ...data.growthRows.map((r) {
+                            final isWaterlow = r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60;
+                            final color = r.status.isAlert
+                                ? (isWaterlow
+                                    ? (r.zScore < 70 || r.zScore > 120 ? Colors.red : Colors.orange)
+                                    : (r.zScore.abs() > 3 ? Colors.red : Colors.orange))
+                                : Colors.green;
+                            final scoreText = isWaterlow
+                                ? '${r.zScore.toStringAsFixed(1)}%'
+                                : r.zScore.toStringAsFixed(2);
+                            final unit = _unitForIndicator(r.indicator);
+                            return TableRow(
+                              children: [
+                                _TableCell(r.indicator.label),
+                                _TableCell('${r.value.toStringAsFixed(1)} $unit'),
+                                _TableCell(scoreText,
+                                    color: color, bold: true),
+                                _TableCell(isWaterlow ? '-' : '${r.sd2neg.toStringAsFixed(1)}'),
+                                _TableCell(isWaterlow ? '${r.median.toStringAsFixed(1)}' : '${r.median.toStringAsFixed(1)}'),
+                                _TableCell(isWaterlow ? '-' : '${r.sd2pos.toStringAsFixed(1)}'),
+                                _TableCell(r.status.label, color: color),
+                              ],
+                            );
+                          }),
+                        ],
+                      ),
                     ),
                     if (data.waterlow != null) ...[
                       const Divider(),
@@ -710,6 +715,19 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
         return Colors.orange;
       case KpspResultCategory.penyimpangan:
         return Colors.red;
+    }
+  }
+
+  String _unitForIndicator(GrowthIndicator ind) {
+    switch (ind) {
+      case GrowthIndicator.weightForAge:
+      case GrowthIndicator.weightForLengthHeight:
+        return 'kg';
+      case GrowthIndicator.lengthHeightForAge:
+      case GrowthIndicator.headCircumferenceForAge:
+        return 'cm';
+      case GrowthIndicator.bmiForAge:
+        return '';
     }
   }
 }

@@ -298,6 +298,25 @@ class _ResultCard extends StatelessWidget {
                 ),
               ],
             ),
+            // --- Nilai referensi -2SD, Median, +2SD ---
+            if (!isWaterlow) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _refValue('-2SD', z.sd2neg, result.indicator),
+                    _refValue('Median', z.median, result.indicator),
+                    _refValue('+2SD', z.sd2pos, result.indicator),
+                  ],
+                ),
+              ),
+            ],
             if (!isWaterlow) ...[
               const SizedBox(height: 8),
               TextButton.icon(
@@ -320,5 +339,31 @@ class _ResultCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _refValue(String label, double value, GrowthIndicator indicator) {
+    final unit = _unitFor(indicator);
+    return Column(
+      children: [
+        Text(label,
+            style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+        const SizedBox(height: 2),
+        Text('${value.toStringAsFixed(1)} $unit',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  String _unitFor(GrowthIndicator ind) {
+    switch (ind) {
+      case GrowthIndicator.weightForAge:
+      case GrowthIndicator.weightForLengthHeight:
+        return 'kg';
+      case GrowthIndicator.lengthHeightForAge:
+      case GrowthIndicator.headCircumferenceForAge:
+        return 'cm';
+      case GrowthIndicator.bmiForAge:
+        return '';
+    }
   }
 }
