@@ -195,7 +195,7 @@ class _KpspScreenState extends State<KpspScreen> {
     final form = _form!;
     final interp = KpspScorer.interpret(form, _answers);
     final repo = context.read<AppRepository>();
-    await repo.insertKpsp(KpspResultsCompanion.insert(
+    await repo.upsertKpsp(KpspResultsCompanion.insert(
       examinationId: widget.examinationId,
       formAgeMonths: _formAge,
       yesCount: interp.yesCount,

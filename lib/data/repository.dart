@@ -103,11 +103,17 @@ class AppRepository {
 
   Future<String> upsertGrowth(GrowthMeasurementsCompanion data) async {
     final id = data.id.present ? data.id.value : _uuid.v4();
-    await db
-        .into(db.growthMeasurements)
-        .insertOnConflictUpdate(data.copyWith(id: Value(id)));
+    final examId = data.examinationId.value;
+    await db.transaction(() async {
+      await (db.delete(db.growthMeasurements)
+            ..where((g) => g.examinationId.equals(examId)))
+          .go();
+      await db
+          .into(db.growthMeasurements)
+          .insert(data.copyWith(id: Value(id)));
+    });
     if (syncService != null) {
-      final item = await getGrowthForExam(data.examinationId.value);
+      final item = await getGrowthForExam(examId);
       if (item != null) {
         unawaited(syncService!.uploadGrowthMeasurement(item));
       }
@@ -115,19 +121,26 @@ class AppRepository {
     return id;
   }
 
-  Future<GrowthMeasurement?> getGrowthForExam(String examinationId) {
-    return (db.select(db.growthMeasurements)
+  Future<GrowthMeasurement?> getGrowthForExam(String examinationId) async {
+    final list = await (db.select(db.growthMeasurements)
           ..where((g) => g.examinationId.equals(examinationId)))
-        .getSingleOrNull();
+        .get();
+    return list.isEmpty ? null : list.first;
   }
 
   // ---------------- KPSP ----------------
 
-  Future<String> insertKpsp(KpspResultsCompanion data) async {
+  Future<String> upsertKpsp(KpspResultsCompanion data) async {
     final id = data.id.present ? data.id.value : _uuid.v4();
-    await db.into(db.kpspResults).insert(data.copyWith(id: Value(id)));
+    final examId = data.examinationId.value;
+    await db.transaction(() async {
+      await (db.delete(db.kpspResults)
+            ..where((k) => k.examinationId.equals(examId)))
+          .go();
+      await db.into(db.kpspResults).insert(data.copyWith(id: Value(id)));
+    });
     if (syncService != null) {
-      final item = await getKpspForExam(data.examinationId.value);
+      final item = await getKpspForExam(examId);
       if (item != null) {
         unawaited(syncService!.uploadKpspResult(item));
       }
@@ -135,10 +148,11 @@ class AppRepository {
     return id;
   }
 
-  Future<KpspResult?> getKpspForExam(String examinationId) {
-    return (db.select(db.kpspResults)
+  Future<KpspResult?> getKpspForExam(String examinationId) async {
+    final list = await (db.select(db.kpspResults)
           ..where((k) => k.examinationId.equals(examinationId)))
-        .getSingleOrNull();
+        .get();
+    return list.isEmpty ? null : list.first;
   }
 
   // ---------------- Instrumen skrining generik (KMME, M-CHAT, dll) ----------
