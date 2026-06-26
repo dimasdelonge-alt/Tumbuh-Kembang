@@ -7,6 +7,7 @@ import '../modules/autism/cars.dart';
 import '../modules/growth/growth_assessment.dart';
 import '../modules/growth/nutrition_classifier.dart';
 import '../modules/growth/zscore_calculator.dart';
+import '../modules/growth/waterlow_calculator.dart';
 import '../modules/kpsp/kpsp_model.dart';
 import '../modules/screening/instrument.dart';
 import '../modules/screening/registry.dart';
@@ -133,6 +134,7 @@ class ExamReportData {
   final List<ReportScreening> screenings;
   final ReportVision? vision;
   final ReportCars? cars;
+  final WaterlowResult? waterlow;
 
   /// Program stimulasi sesuai usia perkembangan (kosong bila belum ada KPSP).
   final List<ReportStimulationItem> stimulation;
@@ -151,6 +153,7 @@ class ExamReportData {
     required this.cars,
     required this.stimulation,
     required this.growthOutOfRange,
+    required this.waterlow,
   });
 }
 
@@ -359,6 +362,7 @@ class ReportBuilder {
       cars: cars,
       stimulation: stimulation,
       growthOutOfRange: age.chronologicalMonths > 60,
+      waterlow: assessment.waterlow,
     );
   }
 

@@ -471,39 +471,70 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Table(
-                  columnWidths: const {
-                    0: FlexColumnWidth(2.5),
-                    1: FlexColumnWidth(1.5),
-                    2: FlexColumnWidth(1.2),
-                    3: FlexColumnWidth(2.5),
-                  },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TableRow(
-                      decoration: BoxDecoration(
-                        border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
-                      ),
-                      children: const [
-                        _TableHeader('Indikator'),
-                        _TableHeader('Nilai'),
-                        _TableHeader('Z-score'),
-                        _TableHeader('Status'),
+                    Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(2.5),
+                        1: FlexColumnWidth(1.5),
+                        2: FlexColumnWidth(1.2),
+                        3: FlexColumnWidth(2.5),
+                      },
+                      children: [
+                        TableRow(
+                          decoration: BoxDecoration(
+                            border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                          ),
+                          children: [
+                            const _TableHeader('Indikator'),
+                            const _TableHeader('Nilai'),
+                            _TableHeader(
+                              data.growthRows.any((r) => r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60)
+                                  ? 'Z-score / %'
+                                  : 'Z-score',
+                            ),
+                            const _TableHeader('Status'),
+                          ],
+                        ),
+                        ...data.growthRows.map((r) {
+                          final isWaterlow = r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60;
+                          final color = r.status.isAlert
+                              ? (isWaterlow
+                                  ? (r.zScore < 70 || r.zScore > 120 ? Colors.red : Colors.orange)
+                                  : (r.zScore.abs() > 3 ? Colors.red : Colors.orange))
+                              : Colors.green;
+                          final scoreText = isWaterlow
+                              ? '${r.zScore.toStringAsFixed(1)}%'
+                              : r.zScore.toStringAsFixed(2);
+                          return TableRow(
+                            children: [
+                              _TableCell(r.indicator.label),
+                              _TableCell('${r.value.toStringAsFixed(1)}'),
+                              _TableCell(scoreText,
+                                  color: color, bold: true),
+                              _TableCell(r.status.label, color: color),
+                            ],
+                          );
+                        }),
                       ],
                     ),
-                    ...data.growthRows.map((r) {
-                      final color = r.status.isAlert
-                          ? (r.zScore.abs() > 3 ? Colors.red : Colors.orange)
-                          : Colors.green;
-                      return TableRow(
-                        children: [
-                          _TableCell(r.indicator.label),
-                          _TableCell('${r.value.toStringAsFixed(1)}'),
-                          _TableCell(r.zScore.toStringAsFixed(2),
-                              color: color, bold: true),
-                          _TableCell(r.status.label, color: color),
-                        ],
-                      );
-                    }),
+                    if (data.waterlow != null) ...[
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Analisis Waterlow (CDC 2000):',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo.shade800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _kvRow('Usia Tinggi (Height Age)', '${data.waterlow!.heightAgeMonths.toStringAsFixed(1)} bulan'),
+                      _kvRow('Berat Badan Ideal (BBI)', '${data.waterlow!.idealWeightKg.toStringAsFixed(1)} kg'),
+                      _kvRow('BB Aktual / BBI', '${data.waterlow!.percentage.toStringAsFixed(1)}%'),
+                    ],
                   ],
                 ),
               ),

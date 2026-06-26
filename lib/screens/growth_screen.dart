@@ -157,21 +157,22 @@ class _GrowthScreenState extends State<GrowthScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.shade100,
+                color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.amber.shade700),
+                border: Border.all(color: Colors.blue.shade300),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.warning_amber, color: Colors.amber.shade900),
+                  Icon(Icons.info_outline, color: Colors.blue.shade900),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Usia anak di atas 5 tahun. Indikator BB/U, BB/TB, dan '
-                      'LK/U (standar WHO 0–5 tahun) tidak ditampilkan. '
-                      'TB/U & IMT/U memakai referensi WHO 5–19 tahun.',
+                      'Usia anak di atas 5 tahun. Indikator BB/U dan LK/U '
+                      '(standar WHO 0–5 tahun) tidak ditampilkan. '
+                      'TB/U & IMT/U memakai referensi WHO 5–19 tahun. '
+                      'BB/TB memakai rumus Waterlow (CDC 2000).',
                       style: TextStyle(
-                          fontSize: 12.5, color: Colors.amber.shade900),
+                          fontSize: 12.5, color: Colors.blue.shade900),
                     ),
                   ),
                 ],
@@ -184,6 +185,7 @@ class _GrowthScreenState extends State<GrowthScreen> {
                 result: r,
                 patient: widget.patient,
                 measuredLying: _lying,
+                ageMonths: _age.chronologicalMonths,
               )),
           if (_results.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -221,17 +223,23 @@ class _ResultCard extends StatelessWidget {
   final GrowthIndicatorResult result;
   final Patient patient;
   final bool measuredLying;
+  final int ageMonths;
+
   const _ResultCard({
     required this.result,
     required this.patient,
     required this.measuredLying,
+    required this.ageMonths,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isWaterlow = result.indicator == GrowthIndicator.weightForLengthHeight && ageMonths > 60;
     final z = result.z;
     final color = result.status.isAlert
-        ? (z.zScore.abs() > 3 ? Colors.red.shade600 : Colors.orange.shade700)
+        ? (isWaterlow
+            ? (z.zScore < 70 || z.zScore > 120 ? Colors.red.shade600 : Colors.orange.shade700)
+            : (z.zScore.abs() > 3 ? Colors.red.shade600 : Colors.orange.shade700))
         : Colors.green.shade600;
     return Card(
       child: Padding(
@@ -254,7 +262,10 @@ class _ResultCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(z.indicator.label,
+                  child: Text(
+                      isWaterlow
+                          ? '${z.indicator.label} (Waterlow)'
+                          : z.indicator.label,
                       style: const TextStyle(fontSize: 12)),
                 ),
               ],
@@ -262,14 +273,19 @@ class _ResultCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                Text('Z = ${z.zRounded}',
+                Text(
+                    isWaterlow
+                        ? 'BBI = ${z.median.toStringAsFixed(1)} kg\nPersentase = ${z.zScore.toStringAsFixed(1)}%'
+                        : 'Z = ${z.zRounded}',
                     style: TextStyle(
-                        fontSize: 18,
+                        fontSize: isWaterlow ? 15 : 18,
                         fontWeight: FontWeight.bold,
                         color: color)),
-                const SizedBox(width: 12),
-                Text('P${z.percentile.round()}',
-                    style: const TextStyle(color: Colors.grey)),
+                if (!isWaterlow) ...[
+                  const SizedBox(width: 12),
+                  Text('P${z.percentile.round()}',
+                      style: const TextStyle(color: Colors.grey)),
+                ],
                 const Spacer(),
                 Flexible(
                   child: Text(
@@ -281,22 +297,24 @@ class _ResultCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              icon: const Icon(Icons.show_chart, size: 18),
-              label: const Text('Lihat kurva'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => GrowthChartScreen(
-                    indicator: z.indicator,
-                    sex: patient.sex,
-                    measuredLying: measuredLying,
-                    pointX: result.chartX,
-                    pointValue: result.value,
+            if (!isWaterlow) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.show_chart, size: 18),
+                label: const Text('Lihat kurva'),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => GrowthChartScreen(
+                      indicator: z.indicator,
+                      sex: patient.sex,
+                      measuredLying: measuredLying,
+                      pointX: result.chartX,
+                      pointValue: result.value,
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),

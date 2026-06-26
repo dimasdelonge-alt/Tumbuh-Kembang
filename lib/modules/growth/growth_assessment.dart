@@ -3,6 +3,7 @@ import '../../data/database.dart';
 import 'nutrition_classifier.dart';
 import 'who_growth_data.dart';
 import 'zscore_calculator.dart';
+import 'waterlow_calculator.dart';
 
 /// Satu hasil indikator pertumbuhan: nilai terukur + Z-score + status.
 class GrowthIndicatorResult {
@@ -38,10 +39,14 @@ class GrowthAssessment {
   /// true bila usia kronologis melewati rentang WHO 0-5 tahun (60 bulan).
   final bool outOfRange;
 
+  /// Detail perhitungan Waterlow untuk anak > 5 tahun.
+  final WaterlowResult? waterlow;
+
   GrowthAssessment({
     required this.age,
     required this.results,
     required this.outOfRange,
+    this.waterlow,
   });
 
   GrowthIndicatorResult? byIndicator(GrowthIndicator indicator) {
@@ -75,6 +80,7 @@ class GrowthAssessment {
     final ageDays = ageDaysFor(age);
     final who = WhoGrowthData.instance;
     final results = <GrowthIndicatorResult>[];
+    WaterlowResult? waterlowResult;
 
     void addAge(GrowthIndicator ind, double? value) {
       if (value == null) return;
@@ -95,23 +101,45 @@ class GrowthAssessment {
     addAge(GrowthIndicator.lengthHeightForAge, heightCm);
 
     if (weightKg != null && heightCm != null) {
-      final z = who.zscoreWeightForLength(
-        sex: sex,
-        weightKg: weightKg,
-        lengthHeightCm: heightCm,
-        measuredLying: measuredLying,
-      );
-      if (z != null) {
+      if (age.chronologicalMonths > 60) {
+        // Hitung status gizi BB/TB menggunakan Waterlow CDC 2000
+        waterlowResult = WaterlowCalculator.calculate(
+          weightKg: weightKg,
+          heightCm: heightCm,
+          sex: sex,
+        );
         results.add(GrowthIndicatorResult(
           indicator: GrowthIndicator.weightForLengthHeight,
           value: weightKg,
-          z: z,
-          status: NutritionClassifier.classify(
-              GrowthIndicator.weightForLengthHeight, z.zScore,
-              ageMonths: age.chronologicalMonths),
-          chartX: heightCm, // sumbu-x BB/TB adalah panjang/tinggi
+          z: ZScoreResult(
+            indicator: GrowthIndicator.weightForLengthHeight,
+            zScore: waterlowResult.percentage,
+            percentile: 50.0,
+            median: waterlowResult.idealWeightKg,
+          ),
+          status: waterlowResult.status,
+          chartX: heightCm,
         ));
+      } else {
+        final z = who.zscoreWeightForLength(
+          sex: sex,
+          weightKg: weightKg,
+          lengthHeightCm: heightCm,
+          measuredLying: measuredLying,
+        );
+        if (z != null) {
+          results.add(GrowthIndicatorResult(
+            indicator: GrowthIndicator.weightForLengthHeight,
+            value: weightKg,
+            z: z,
+            status: NutritionClassifier.classify(
+                GrowthIndicator.weightForLengthHeight, z.zScore,
+                ageMonths: age.chronologicalMonths),
+            chartX: heightCm,
+          ));
+        }
       }
+
       final bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
       addAge(GrowthIndicator.bmiForAge, bmi);
     }
@@ -122,6 +150,7 @@ class GrowthAssessment {
       age: age,
       results: results,
       outOfRange: age.chronologicalMonths > 60,
+      waterlow: waterlowResult,
     );
   }
 

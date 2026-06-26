@@ -50,7 +50,8 @@ class PdfReportService {
           if (data.growthOutOfRange)
             _note(
                 'Catatan: usia anak di luar rentang standar WHO 0–5 tahun; '
-                'sebagian indikator berbasis umur tidak ditampilkan.'),
+                'sebagian indikator berbasis umur tidak ditampilkan. '
+                'Status gizi BB/TB memakai referensi CDC 2000 (Waterlow).'),
           if (data.kpsp != null) ...[
             pw.SizedBox(height: 4),
             _sectionTitle('Skrining Perkembangan (KPSP)'),
@@ -172,30 +173,67 @@ class PdfReportService {
       );
 
   static pw.Widget _growthTable(ExamReportData data) {
-    final headers = ['Indikator', 'Nilai', 'Z-score', 'Persentil', 'Status'];
+    final hasWaterlow = data.growthRows.any((r) => r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60);
+    final headers = ['Indikator', 'Nilai', hasWaterlow ? 'Z-score / %' : 'Z-score', 'Persentil', 'Status'];
     final rows = data.growthRows.map((r) {
+      final isWaterlow = r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60;
+      final scoreStr = isWaterlow
+          ? '${r.zScore.toStringAsFixed(1)}%'
+          : ((r.zScore * 100).round() / 100).toStringAsFixed(2);
+      final pctStr = isWaterlow ? '-' : 'P${r.percentile.round()}';
+
       return [
-        r.indicator.code,
+        isWaterlow ? '${r.indicator.code} (Waterlow)' : r.indicator.code,
         _valueLabel(r.indicator, r.value),
-        ((r.zScore * 100).round() / 100).toStringAsFixed(2),
-        'P${r.percentile.round()}',
+        scoreStr,
+        pctStr,
         r.status.label,
       ];
     }).toList();
 
-    return pw.TableHelper.fromTextArray(
-      headers: headers,
-      data: rows,
-      headerStyle:
-          pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-      cellStyle: const pw.TextStyle(fontSize: 9),
-      headerDecoration:
-          const pw.BoxDecoration(color: PdfColors.teal50),
-      cellAlignments: {
-        0: pw.Alignment.centerLeft,
-        4: pw.Alignment.centerLeft,
-      },
-      border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.TableHelper.fromTextArray(
+          headers: headers,
+          data: rows,
+          headerStyle:
+              pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+          cellStyle: const pw.TextStyle(fontSize: 9),
+          headerDecoration:
+              const pw.BoxDecoration(color: PdfColors.teal50),
+          cellAlignments: {
+            0: pw.Alignment.centerLeft,
+            4: pw.Alignment.centerLeft,
+          },
+          border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+        ),
+        if (data.waterlow != null) ...[
+          pw.SizedBox(height: 6),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(6),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+              borderRadius: pw.BorderRadius.circular(4),
+              color: PdfColors.grey50,
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Analisis Waterlow (CDC 2000):',
+                    style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 2),
+                pw.Text('• Usia Tinggi (Height Age): ${data.waterlow!.heightAgeMonths.toStringAsFixed(1)} bulan',
+                    style: const pw.TextStyle(fontSize: 9)),
+                pw.Text('• Berat Badan Ideal (BBI): ${data.waterlow!.idealWeightKg.toStringAsFixed(1)} kg',
+                    style: const pw.TextStyle(fontSize: 9)),
+                pw.Text('• BB Aktual / BBI: ${data.waterlow!.percentage.toStringAsFixed(1)}%',
+                    style: const pw.TextStyle(fontSize: 9)),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
