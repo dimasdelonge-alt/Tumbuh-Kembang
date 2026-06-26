@@ -187,6 +187,7 @@ class _GrowthScreenState extends State<GrowthScreen> {
                 patient: widget.patient,
                 measuredLying: _lying,
                 ageMonths: _age.chronologicalMonths,
+                heightCm: double.tryParse(_height.text.replaceAll(',', '.')),
               )),
           if (_results.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -225,12 +226,14 @@ class _ResultCard extends StatelessWidget {
   final Patient patient;
   final bool measuredLying;
   final int ageMonths;
+  final double? heightCm;
 
   const _ResultCard({
     required this.result,
     required this.patient,
     required this.measuredLying,
     required this.ageMonths,
+    this.heightCm,
   });
 
   @override
@@ -311,7 +314,7 @@ class _ResultCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _refValue('-2SD', z.sd2neg, result.indicator),
-                    _refValue('Median', z.median, result.indicator),
+                    _refValue('Median', z.median, result.indicator, heightCm: heightCm),
                     _refValue('+2SD', z.sd2pos, result.indicator),
                   ],
                 ),
@@ -341,15 +344,36 @@ class _ResultCard extends StatelessWidget {
     );
   }
 
-  Widget _refValue(String label, double value, GrowthIndicator indicator) {
+  Widget _refValue(String label, double value, GrowthIndicator indicator, {double? heightCm}) {
     final unit = _unitFor(indicator);
+    final isBmiMedian = indicator == GrowthIndicator.bmiForAge && label == 'Median' && heightCm != null;
+    final bbiStr = isBmiMedian ? '\n(BBI: ${(value * (heightCm / 100) * (heightCm / 100)).toStringAsFixed(1)} kg)' : '';
     return Column(
       children: [
         Text(label,
             style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
         const SizedBox(height: 2),
-        Text('${value.toStringAsFixed(1)} $unit',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: '${value.toStringAsFixed(1)}${unit.isEmpty ? "" : " $unit"}',
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black)),
+              if (isBmiMedian)
+                TextSpan(
+                  text: bbiStr,
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.indigo.shade700),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }

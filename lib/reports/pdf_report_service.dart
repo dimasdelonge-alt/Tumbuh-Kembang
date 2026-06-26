@@ -175,18 +175,30 @@ class PdfReportService {
   static pw.Widget _growthTable(ExamReportData data) {
     final hasWaterlow = data.growthRows.any((r) => r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60);
     final headers = ['Indikator', 'Nilai', hasWaterlow ? 'Z / %' : 'Z-score', '-2SD', 'Median', '+2SD', 'Status'];
+    double? heightCm;
+    for (final row in data.growthRows) {
+      if (row.indicator == GrowthIndicator.lengthHeightForAge) {
+        heightCm = row.value;
+        break;
+      }
+    }
     final rows = data.growthRows.map((r) {
       final isWaterlow = r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60;
       final scoreStr = isWaterlow
           ? '${r.zScore.toStringAsFixed(1)}%'
           : ((r.zScore * 100).round() / 100).toStringAsFixed(2);
 
+      final isBmi = r.indicator == GrowthIndicator.bmiForAge;
+      final medianStr = (isBmi && heightCm != null)
+          ? '${r.median.toStringAsFixed(1)} (BBI: ${(r.median * (heightCm / 100) * (heightCm / 100)).toStringAsFixed(1)} kg)'
+          : r.median.toStringAsFixed(1);
+
       return [
         isWaterlow ? '${r.indicator.code} (Waterlow)' : r.indicator.code,
         _valueLabel(r.indicator, r.value),
         scoreStr,
         isWaterlow ? '-' : r.sd2neg.toStringAsFixed(1),
-        r.median.toStringAsFixed(1),
+        isWaterlow ? r.median.toStringAsFixed(1) : medianStr,
         isWaterlow ? '-' : r.sd2pos.toStringAsFixed(1),
         r.status.label,
       ];

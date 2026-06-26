@@ -499,30 +499,43 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                               const _TableHeader('Status'),
                             ],
                           ),
-                          ...data.growthRows.map((r) {
-                            final isWaterlow = r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60;
-                            final color = r.status.isAlert
-                                ? (isWaterlow
-                                    ? (r.zScore < 70 || r.zScore > 120 ? Colors.red : Colors.orange)
-                                    : (r.zScore.abs() > 3 ? Colors.red : Colors.orange))
-                                : Colors.green;
-                            final scoreText = isWaterlow
-                                ? '${r.zScore.toStringAsFixed(1)}%'
-                                : r.zScore.toStringAsFixed(2);
-                            final unit = _unitForIndicator(r.indicator);
-                            return TableRow(
-                              children: [
-                                _TableCell(r.indicator.label),
-                                _TableCell('${r.value.toStringAsFixed(1)} $unit'),
-                                _TableCell(scoreText,
-                                    color: color, bold: true),
-                                _TableCell(isWaterlow ? '-' : '${r.sd2neg.toStringAsFixed(1)}'),
-                                _TableCell(isWaterlow ? '${r.median.toStringAsFixed(1)}' : '${r.median.toStringAsFixed(1)}'),
-                                _TableCell(isWaterlow ? '-' : '${r.sd2pos.toStringAsFixed(1)}'),
-                                _TableCell(r.status.label, color: color),
-                              ],
-                            );
-                          }),
+                          ...() {
+                            double? heightCm;
+                            for (final row in data.growthRows) {
+                              if (row.indicator == GrowthIndicator.lengthHeightForAge) {
+                                heightCm = row.value;
+                                break;
+                              }
+                            }
+                            return data.growthRows.map((r) {
+                              final isWaterlow = r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60;
+                              final color = r.status.isAlert
+                                  ? (isWaterlow
+                                      ? (r.zScore < 70 || r.zScore > 120 ? Colors.red : Colors.orange)
+                                      : (r.zScore.abs() > 3 ? Colors.red : Colors.orange))
+                                  : Colors.green;
+                              final scoreText = isWaterlow
+                                  ? '${r.zScore.toStringAsFixed(1)}%'
+                                  : r.zScore.toStringAsFixed(2);
+                              final unit = _unitForIndicator(r.indicator);
+                              final isBmi = r.indicator == GrowthIndicator.bmiForAge;
+                              final medianStr = (isBmi && heightCm != null)
+                                  ? '${r.median.toStringAsFixed(1)} (BBI: ${(r.median * (heightCm / 100) * (heightCm / 100)).toStringAsFixed(1)} kg)'
+                                  : r.median.toStringAsFixed(1);
+                              return TableRow(
+                                children: [
+                                  _TableCell(r.indicator.label),
+                                  _TableCell('${r.value.toStringAsFixed(1)} $unit'),
+                                  _TableCell(scoreText,
+                                      color: color, bold: true),
+                                  _TableCell(isWaterlow ? '-' : '${r.sd2neg.toStringAsFixed(1)}'),
+                                  _TableCell(isWaterlow ? '${r.median.toStringAsFixed(1)}' : medianStr),
+                                  _TableCell(isWaterlow ? '-' : '${r.sd2pos.toStringAsFixed(1)}'),
+                                  _TableCell(r.status.label, color: color),
+                                ],
+                              );
+                            });
+                          }(),
                         ],
                       ),
                     ),
