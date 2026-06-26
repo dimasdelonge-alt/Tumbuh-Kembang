@@ -15,6 +15,7 @@ import '../reports/pdf_report_service.dart';
 import '../reports/report_builder.dart';
 import '../modules/growth/zscore_calculator.dart';
 import 'growth_screen.dart';
+import 'growth_chart.dart';
 import 'kpsp_screen.dart';
 import 'screening_screen.dart';
 import 'tdl_screen.dart';
@@ -540,6 +541,33 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                       _kvRow('Usia Tinggi (Height Age)', '${data.waterlow!.heightAgeMonths.toStringAsFixed(1)} bulan'),
                       _kvRow('Berat Badan Ideal (BBI)', '${data.waterlow!.idealWeightKg.toStringAsFixed(1)} kg'),
                       _kvRow('BB Aktual / BBI', '${data.waterlow!.percentage.toStringAsFixed(1)}%'),
+                    ],
+                    // --- Tombol lihat kurva per indikator ---
+                    if (data.growthRows.any((r) =>
+                        !(r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60))) ...[
+                      const Divider(),
+                      Wrap(
+                        spacing: 8,
+                        children: data.growthRows
+                            .where((r) => !(r.indicator == GrowthIndicator.weightForLengthHeight && data.age.chronologicalMonths > 60))
+                            .map((r) => TextButton.icon(
+                                  icon: const Icon(Icons.show_chart, size: 16),
+                                  label: Text('Kurva ${r.indicator.code}',
+                                      style: const TextStyle(fontSize: 12)),
+                                  onPressed: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => GrowthChartScreen(
+                                        indicator: r.indicator,
+                                        sex: data.patient.sex,
+                                        measuredLying: data.measuredLying,
+                                        pointX: r.chartX,
+                                        pointValue: r.value,
+                                      ),
+                                    ),
+                                  ),
+                                ))
+                            .toList(),
+                      ),
                     ],
                   ],
                 ),

@@ -24,6 +24,8 @@ class ReportGrowthRow {
   final double median;
   final double sd2neg;
   final double sd2pos;
+  /// Posisi sumbu-x kurva: hari (umur) atau cm (BB/TB).
+  final double chartX;
   ReportGrowthRow({
     required this.indicator,
     required this.value,
@@ -33,6 +35,7 @@ class ReportGrowthRow {
     required this.median,
     required this.sd2neg,
     required this.sd2pos,
+    required this.chartX,
   });
 }
 
@@ -142,6 +145,9 @@ class ExamReportData {
   final ReportCars? cars;
   final WaterlowResult? waterlow;
 
+  /// Cara pengukuran tinggi: true=berbaring (PB), false=berdiri (TB).
+  final bool measuredLying;
+
   /// Program stimulasi sesuai usia perkembangan (kosong bila belum ada KPSP).
   final List<ReportStimulationItem> stimulation;
 
@@ -160,6 +166,7 @@ class ExamReportData {
     required this.stimulation,
     required this.growthOutOfRange,
     required this.waterlow,
+    required this.measuredLying,
   });
 }
 
@@ -196,6 +203,7 @@ class ReportBuilder {
         median: r.z.median,
         sd2neg: r.z.sd2neg,
         sd2pos: r.z.sd2pos,
+        chartX: r.chartX,
       ));
     }
 
@@ -372,6 +380,7 @@ class ReportBuilder {
       stimulation: stimulation,
       growthOutOfRange: age.chronologicalMonths > 60,
       waterlow: assessment.waterlow,
+      measuredLying: g?.measuredLying ?? false,
     );
   }
 
