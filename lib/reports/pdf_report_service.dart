@@ -189,7 +189,7 @@ class PdfReportService {
                           child: pw.Column(
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
-                              pw.Text('• ${act.title}',
+                              pw.Text('- ${act.title}',
                                   style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                               pw.Padding(
                                 padding: const pw.EdgeInsets.only(left: 10, top: 2),
