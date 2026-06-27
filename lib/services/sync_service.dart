@@ -123,6 +123,13 @@ class SyncService {
           if (doc.type == DocumentChangeType.added || doc.type == DocumentChangeType.modified) {
             try {
               final item = fromJson(data);
+              if (table == db.patients) {
+                final p = item as Patient;
+                final localPatient = await (db.select(db.patients)..where((x) => x.id.equals(p.id))).getSingleOrNull();
+                if (localPatient != null && localPatient.medicalRecordNo != 'ANONIM' && p.medicalRecordNo == 'ANONIM') {
+                  continue;
+                }
+              }
               await db.into(table).insertOnConflictUpdate(toCompanion(item));
             } catch (e) {
               print('Error syncing document to local SQLite ($collectionName): $e');
@@ -199,6 +206,19 @@ class SyncService {
   Future<void> uploadPatient(Patient item) async {
     if (!_initialized || _firestore == null) return;
     try {
+      if (item.medicalRecordNo == 'ANONIM') {
+        final doc = await _firestore!.collection('patients').doc(item.id).get();
+        if (doc.exists) {
+          final remoteData = doc.data();
+          if (remoteData != null) {
+            final remoteMrn = remoteData['medicalRecordNo'];
+            if (remoteMrn != 'ANONIM') {
+              print('Skipping upload for patient ${item.id}: remote is already promoted ($remoteMrn)');
+              return;
+            }
+          }
+        }
+      }
       await _firestore!.collection('patients').doc(item.id).set(item.toJson());
     } catch (e) {
       print('Failed to upload patient to Firestore: $e');
