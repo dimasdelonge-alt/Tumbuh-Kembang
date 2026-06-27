@@ -115,7 +115,100 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
     }
   }
 
-  void _calculateAtPoint(double dx, double dy) {
+  void _calculateAtPoint(LineTouchResponse? response) {
+    if (response == null) return;
+    final spots = response.lineBarSpots;
+    if (spots == null || spots.length < 2) return;
+
+    // Filter out spots that are not part of the reference lines (barIndex < 5)
+    final refSpots = spots.where((s) => s.barIndex < 5).toList();
+    if (refSpots.length < 2) return;
+
+    // Sort by chart Y coordinate ascending
+    refSpots.sort((a, b) => a.y.compareTo(b.y));
+
+    // Find the index of the spot with the minimum distance
+    int minIndex = 0;
+    double minDistance = refSpots[0].distance;
+    for (int i = 1; i < refSpots.length; i++) {
+      if (refSpots[i].distance < minDistance) {
+        minDistance = refSpots[i].distance;
+        minIndex = i;
+      }
+    }
+
+    double dx = refSpots[0].x;
+    double dy;
+
+    if (minIndex == 0 && refSpots[1].distance > refSpots[0].distance) {
+      final y0 = refSpots[0].y;
+      final y1 = refSpots[1].y;
+      final d0 = refSpots[0].distance;
+      final d1 = refSpots[1].distance;
+      
+      bool isBelow = false;
+      if (refSpots.length > 2) {
+        final y2 = refSpots[2].y;
+        final d2 = refSpots[2].distance;
+        final s1 = (d1 - d0) / (y1 - y0);
+        final s2 = (d2 - d1) / (y2 - y1);
+        if (s1 > 0 && s2 > 0 && (s1 - s2).abs() < s1 * 0.5) {
+          isBelow = true;
+        }
+      }
+      
+      if (isBelow) {
+        final s = (d1 - d0) / (y1 - y0);
+        dy = y0 - (s > 0 ? d0 / s : 0);
+      } else {
+        final s = (d0 + d1) / (y1 - y0);
+        dy = y0 + (s > 0 ? d0 / s : 0);
+      }
+    } else if (minIndex == refSpots.length - 1) {
+      final n = refSpots.length;
+      final yN1 = refSpots[n-1].y;
+      final yN2 = refSpots[n-2].y;
+      final dN1 = refSpots[n-1].distance;
+      final dN2 = refSpots[n-2].distance;
+      
+      bool isAbove = false;
+      if (n > 2) {
+        final yN3 = refSpots[n-3].y;
+        final dN3 = refSpots[n-3].distance;
+        final s1 = (dN2 - dN1) / (yN1 - yN2);
+        final s2 = (dN3 - dN2) / (yN2 - yN3);
+        if (s1 > 0 && s2 > 0 && (s1 - s2).abs() < s1 * 0.5) {
+          isAbove = true;
+        }
+      }
+      
+      if (isAbove) {
+        final s = (dN2 - dN1) / (yN1 - yN2);
+        dy = yN1 + (s > 0 ? dN1 / s : 0);
+      } else {
+        final s = (dN1 + dN2) / (yN1 - yN2);
+        dy = yN2 + (s > 0 ? dN2 / s : 0);
+      }
+    } else {
+      final y0 = refSpots[minIndex].y;
+      final d0 = refSpots[minIndex].distance;
+      
+      final yPrev = refSpots[minIndex - 1].y;
+      final dPrev = refSpots[minIndex - 1].distance;
+      
+      final yNext = refSpots[minIndex + 1].y;
+      final dNext = refSpots[minIndex + 1].distance;
+      
+      final sPrev = (d0 + dPrev) / (y0 - yPrev);
+      final sNext = (d0 + dNext) / (yNext - y0);
+      
+      if (dPrev < dNext) {
+        dy = yPrev + (sPrev > 0 ? dPrev / sPrev : 0);
+      } else {
+        dy = y0 + (sNext > 0 ? d0 / sNext : 0);
+      }
+    }
+
     final table = WhoGrowthData.instance.tableFor(
       indicator: widget.indicator,
       sex: widget.sex,
@@ -123,7 +216,6 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
     );
     if (table == null || table.isEmpty) return;
 
-    // Convert display X coordinate back to actual value for calculations
     final minX = _isAgeBased ? table.first.x / 30.4375 : table.first.x;
     final maxX = _isAgeBased ? table.last.x / 30.4375 : table.last.x;
 
@@ -140,7 +232,7 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
           indicator: widget.indicator,
           sex: widget.sex,
           value: actualY,
-          ageDays: actualX.round(),
+          ageDays: actualX,
         );
         if (z != null) {
           final ageMonths = dx;
@@ -417,10 +509,7 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
                   handleBuiltInTouches: true,
                   touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
                     if (event is FlTapUpEvent) {
-                      final touchCoord = response?.touchChartCoordinate;
-                      if (touchCoord != null) {
-                        _calculateAtPoint(touchCoord.dx, touchCoord.dy);
-                      }
+                      _calculateAtPoint(response);
                     }
                   },
                 ),
