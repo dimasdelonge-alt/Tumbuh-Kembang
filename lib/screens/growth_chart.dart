@@ -17,7 +17,7 @@ class _ChartPatientData {
 
 /// Menampilkan kurva pertumbuhan WHO untuk satu indikator, lengkap dengan
 /// garis Z-score referensi (-3, -2, 0, +1/+2/+3) dan garis tren pertumbuhan pasien.
-class GrowthChartScreen extends StatelessWidget {
+class GrowthChartScreen extends StatefulWidget {
   final GrowthIndicator indicator;
   final String sex;
   final bool measuredLying;
@@ -41,63 +41,224 @@ class GrowthChartScreen extends StatelessWidget {
     this.patientId,
   });
 
-  bool get _isAgeBased =>
-      indicator != GrowthIndicator.weightForLengthHeight;
+  @override
+  State<GrowthChartScreen> createState() => _GrowthChartScreenState();
+}
 
-  Future<_ChartPatientData?> _loadData(BuildContext context) async {
-    if (patientId == null) return null;
-    final repo = Provider.of<AppRepository>(context, listen: false);
-    final patient = await repo.getPatient(patientId!);
-    if (patient == null) return null;
-    final history = await repo.growthHistory(patientId!);
-    return _ChartPatientData(patient: patient, history: history);
+class _GrowthChartScreenState extends State<GrowthChartScreen> {
+  final _transformationController = TransformationController();
+  _ChartPatientData? _patientData;
+  bool _loading = true;
+  FlSpot? _tappedSpot;
+  String? _tappedCalculationResult;
+
+  bool get _isAgeBased =>
+      widget.indicator != GrowthIndicator.weightForLengthHeight;
+
+  @override
+  void initState() {
+    super.initState();
+    _transformationController.addListener(_onZoomChanged);
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _transformationController.removeListener(_onZoomChanged);
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _onZoomChanged() {
+    setState(() {}); // Redraw to update floating zoom-reset button visibility
+  }
+
+  void _resetZoom() {
+    setState(() {
+      _transformationController.value = Matrix4.identity();
+    });
+  }
+
+  Future<void> _loadData() async {
+    if (widget.patientId == null) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+      return;
+    }
+    try {
+      final repo = Provider.of<AppRepository>(context, listen: false);
+      final patient = await repo.getPatient(widget.patientId!);
+      if (patient != null) {
+        final history = await repo.growthHistory(widget.patientId!);
+        if (mounted) {
+          setState(() {
+            _patientData = _ChartPatientData(patient: patient, history: history);
+            _loading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  void _calculateAtPoint(double dx, double dy) {
+    final table = WhoGrowthData.instance.tableFor(
+      indicator: widget.indicator,
+      sex: widget.sex,
+      measuredLying: widget.measuredLying,
+    );
+    if (table == null || table.isEmpty) return;
+
+    // Convert display X coordinate back to actual value for calculations
+    final minX = _isAgeBased ? table.first.x / 30.4375 : table.first.x;
+    final maxX = _isAgeBased ? table.last.x / 30.4375 : table.last.x;
+
+    if (dx < minX || dx > maxX) return;
+
+    final double actualX = _isAgeBased ? dx * 30.4375 : dx;
+    final double actualY = dy;
+
+    String resultText = '';
+    try {
+      final who = WhoGrowthData.instance;
+      if (_isAgeBased) {
+        final z = who.zscoreForAge(
+          indicator: widget.indicator,
+          sex: widget.sex,
+          value: actualY,
+          ageDays: actualX.round(),
+        );
+        if (z != null) {
+          final ageMonths = dx;
+          final status = NutritionClassifier.classify(
+            widget.indicator,
+            z.zScore,
+            ageMonths: ageMonths.round(),
+          );
+          
+          final xLabel = 'Umur: ${ageMonths.toStringAsFixed(1)} bln';
+          final yLabel = '${widget.indicator.code}: ${actualY.toStringAsFixed(1)}';
+          resultText = '$xLabel, $yLabel\nZ-Score: ${z.zScore.toStringAsFixed(2)} (${status.label})';
+        }
+      } else {
+        final z = who.zscoreWeightForLength(
+          sex: widget.sex,
+          weightKg: actualY,
+          lengthHeightCm: actualX,
+          measuredLying: widget.measuredLying,
+        );
+        if (z != null) {
+          final status = NutritionClassifier.classify(
+            widget.indicator,
+            z.zScore,
+            ageMonths: 12,
+          );
+          final xLabel = 'Tinggi/Panjang: ${actualX.toStringAsFixed(1)} cm';
+          final yLabel = 'BB: ${actualY.toStringAsFixed(1)} kg';
+          resultText = '$xLabel, $yLabel\nZ-Score: ${z.zScore.toStringAsFixed(2)} (${status.label})';
+        }
+      }
+    } catch (e) {
+      resultText = 'Gagal menghitung hasil pada titik ini';
+    }
+
+    if (resultText.isNotEmpty) {
+      setState(() {
+        _tappedSpot = FlSpot(dx, dy);
+        _tappedCalculationResult = resultText;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final table = WhoGrowthData.instance.tableFor(
-      indicator: indicator,
-      sex: sex,
-      measuredLying: measuredLying,
+      indicator: widget.indicator,
+      sex: widget.sex,
+      measuredLying: widget.measuredLying,
     );
 
     if (table == null || table.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: Text('Kurva ${indicator.code}')),
+        appBar: AppBar(title: Text('Kurva ${widget.indicator.code}')),
         body: const Center(child: Text('Data kurva tidak tersedia')),
       );
     }
 
-    if (patientId == null) {
+    if (widget.patientId != null && _loading) {
       return Scaffold(
-        appBar: AppBar(title: Text('Kurva ${indicator.code}')),
-        body: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 24, 24, 16),
-          child: _buildChart(context, table, null),
-        ),
+        appBar: AppBar(title: Text('Kurva ${widget.indicator.code}')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
+    final isZoomed = _transformationController.value != Matrix4.identity();
+
     return Scaffold(
-      appBar: AppBar(title: Text('Kurva ${indicator.code}')),
-      body: FutureBuilder<_ChartPatientData?>(
-        future: _loadData(context),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final data = snapshot.data;
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(8, 24, 24, 16),
-            child: _buildChart(context, table, data),
-          );
-        },
+      appBar: AppBar(title: Text('Kurva ${widget.indicator.code}')),
+      floatingActionButton: isZoomed
+          ? FloatingActionButton.small(
+              onPressed: _resetZoom,
+              tooltip: 'Reset Zoom',
+              child: const Icon(Icons.zoom_out),
+            )
+          : null,
+      bottomNavigationBar: _tappedCalculationResult != null
+          ? Container(
+              padding: const EdgeInsets.all(12),
+              color: Colors.teal.shade50,
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.teal),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _tappedCalculationResult!,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        setState(() {
+                          _tappedSpot = null;
+                          _tappedCalculationResult = null;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 24, 24, 16),
+        child: _buildChart(context, table, _patientData),
       ),
     );
   }
 
   Widget _buildChart(BuildContext context, List<LmsPoint> table, _ChartPatientData? patientData) {
-    final zLines = NutritionClassifier.referenceLines(indicator);
+    final zLines = NutritionClassifier.referenceLines(widget.indicator);
 
     // Konversi sumbu-x ke satuan tampilan: bulan (umur) atau cm.
     double toDisplayX(double x) => _isAgeBased ? x / 30.4375 : x;
@@ -130,14 +291,14 @@ class GrowthChartScreen extends StatelessWidget {
           sex: patientData.patient.sex,
           m: r.growth,
         );
-        final res = assessment.byIndicator(indicator);
+        final res = assessment.byIndicator(widget.indicator);
         if (res != null) {
           spots.add(FlSpot(toDisplayX(res.chartX), res.value));
         }
       }
 
       // Tambahkan titik saat ini jika belum terdaftar
-      final currentSpot = FlSpot(toDisplayX(pointX), pointValue);
+      final currentSpot = FlSpot(toDisplayX(widget.pointX), widget.pointValue);
       final exists = spots.any((s) => (s.x - currentSpot.x).abs() < 0.01);
       if (!exists) {
         spots.add(currentSpot);
@@ -157,7 +318,7 @@ class GrowthChartScreen extends StatelessWidget {
           dotData: FlDotData(
             show: true,
             getDotPainter: (spot, percent, barData, index) {
-              final isCurrentPoint = (spot.x - toDisplayX(pointX)).abs() < 0.01;
+              final isCurrentPoint = (spot.x - toDisplayX(widget.pointX)).abs() < 0.01;
               return FlDotCirclePainter(
                 radius: isCurrentPoint ? 5 : 3.5,
                 color: isCurrentPoint ? Colors.red : Colors.red.shade700,
@@ -170,9 +331,9 @@ class GrowthChartScreen extends StatelessWidget {
       }
     } else {
       // Titik pasien tunggal.
-      final px = toDisplayX(pointX);
+      final px = toDisplayX(widget.pointX);
       lineBars.add(LineChartBarData(
-        spots: [FlSpot(px, pointValue)],
+        spots: [FlSpot(px, widget.pointValue)],
         barWidth: 0,
         color: Colors.black,
         dotData: FlDotData(
@@ -187,6 +348,24 @@ class GrowthChartScreen extends StatelessWidget {
       ));
     }
 
+    // Titik kalkulasi interaktif ketika kotak diklik.
+    if (_tappedSpot != null) {
+      lineBars.add(LineChartBarData(
+        spots: [_tappedSpot!],
+        barWidth: 0,
+        color: Colors.transparent,
+        dotData: FlDotData(
+          show: true,
+          getDotPainter: (s, _, __, ___) => FlDotCirclePainter(
+            radius: 6,
+            color: Colors.teal,
+            strokeWidth: 2,
+            strokeColor: Colors.white,
+          ),
+        ),
+      ));
+    }
+
     final xAxisLabel = _isAgeBased ? 'Umur (bulan)' : 'Panjang/Tinggi (cm)';
 
     return Column(
@@ -194,54 +373,73 @@ class GrowthChartScreen extends StatelessWidget {
         _legend(),
         const SizedBox(height: 12),
         Expanded(
-          child: LineChart(
-            LineChartData(
-              lineBarsData: lineBars,
-              titlesData: FlTitlesData(
-                topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(
-                  axisNameWidget: Text(xAxisLabel),
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 28,
-                    getTitlesWidget: (v, meta) => Text(
-                      v.toStringAsFixed(0),
-                      style: const TextStyle(fontSize: 10),
+          child: InteractiveViewer(
+            transformationController: _transformationController,
+            panEnabled: true,
+            scaleEnabled: true,
+            minScale: 1.0,
+            maxScale: 5.0,
+            child: LineChart(
+              LineChartData(
+                lineBarsData: lineBars,
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    axisNameWidget: Text(xAxisLabel),
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 28,
+                      getTitlesWidget: (v, meta) => Text(
+                        v.toStringAsFixed(0),
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    axisNameWidget: Text(widget.indicator.code),
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 36,
+                      getTitlesWidget: (v, meta) => Text(
+                        v.toStringAsFixed(0),
+                        style: const TextStyle(fontSize: 10),
+                      ),
                     ),
                   ),
                 ),
-                leftTitles: AxisTitles(
-                  axisNameWidget: Text(indicator.code),
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 36,
-                    getTitlesWidget: (v, meta) => Text(
-                      v.toStringAsFixed(0),
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  ),
+                gridData: const FlGridData(show: true),
+                borderData: FlBorderData(show: true),
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  handleBuiltInTouches: true,
+                  touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+                    if (event is FlTapUpEvent) {
+                      final touchCoord = response?.touchChartCoordinate;
+                      if (touchCoord != null) {
+                        _calculateAtPoint(touchCoord.dx, touchCoord.dy);
+                      }
+                    }
+                  },
                 ),
               ),
-              gridData: const FlGridData(show: true),
-              borderData: FlBorderData(show: true),
-              lineTouchData: const LineTouchData(enabled: false),
             ),
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          'Garis putus-putus merah = tren pertumbuhan pasien',
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          'Garis putus-putus merah = tren pertumbuhan pasien • Klik kotak/grid untuk menghitung Z-score titik tersebut',
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          textAlign: TextAlign.center,
         ),
       ],
     );
   }
 
   Widget _legend() {
-    final zLines = NutritionClassifier.referenceLines(indicator);
+    final zLines = NutritionClassifier.referenceLines(widget.indicator);
     return Wrap(
       spacing: 12,
       children: zLines
