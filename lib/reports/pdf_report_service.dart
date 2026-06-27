@@ -6,8 +6,11 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../core/age_calculator.dart';
+import '../data/database.dart';
 import '../modules/growth/zscore_calculator.dart';
 import '../modules/kpsp/kpsp_model.dart';
+import '../modules/stimulation/stimulation.dart';
+import '../modules/stimulation/stimulation_data.dart';
 import 'report_builder.dart';
 
 /// Membuat laporan PDF hasil pemeriksaan (Modul 16) dan menampilkan dialog
@@ -23,6 +26,241 @@ class PdfReportService {
       name: 'Laporan_${_safe(data.patient.name)}_'
           '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
     );
+  }
+
+  /// Cetak panduan stimulasi khusus untuk orang tua berdasarkan domain KPSP yang kurang.
+  static Future<void> generateAndPrintStimulation({
+    required Patient patient,
+    required int ageMonths,
+    required KpspInterpretation interp,
+    KpspDomain? filterDomain,
+  }) async {
+    final bytes = await _buildStimulationPdf(patient, ageMonths, interp, filterDomain);
+    final domainSuffix = filterDomain != null ? '_${filterDomain.label}' : '_Semua_Stimulasi';
+    await Printing.layoutPdf(
+      onLayout: (_) async => bytes,
+      name: 'Panduan_Stimulasi_${_safe(patient.name)}$domainSuffix.pdf',
+    );
+  }
+
+  static Future<Uint8List> _buildStimulationPdf(
+    Patient patient,
+    int ageMonths,
+    KpspInterpretation interp,
+    KpspDomain? filterDomain,
+  ) async {
+    final doc = pw.Document();
+    
+    // Pastikan data stimulasi terdaftar
+    registerStimulationData();
+    
+    final band = StimulationLibrary.bandFor(ageMonths);
+    final domainsToPrint = filterDomain != null 
+        ? [filterDomain] 
+        : (interp.failedByDomain.isNotEmpty 
+            ? interp.failedByDomain.keys.toList() 
+            : KpspDomain.values.toList());
+
+    doc.addPage(
+      pw.MultiPage(
+        pageTheme: pw.PageTheme(
+          margin: const pw.EdgeInsets.all(32),
+          theme: pw.ThemeData.withFont(),
+        ),
+        build: (context) => [
+          // Header Klinik Premium
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('PANDUAN STIMULASI TUMBUH KEMBANG',
+                      style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.teal800)),
+                  pw.Text('Berdasarkan Buku Pedoman SDIDTK Kemenkes RI',
+                      style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                ],
+              ),
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.teal50,
+                  borderRadius: pw.BorderRadius.circular(4),
+                ),
+                child: pw.Text('Tumbuh Kembang',
+                    style: pw.TextStyle(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.teal800)),
+              ),
+            ],
+          ),
+          pw.Divider(thickness: 1, color: PdfColors.teal800),
+          pw.SizedBox(height: 12),
+
+          // Identitas Pasien
+          pw.Container(
+            padding: const pw.EdgeInsets.all(8),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300, width: 0.8),
+              borderRadius: pw.BorderRadius.circular(6),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  children: [
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Nama Anak: ${patient.name}',
+                              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Tanggal Lahir: ${_dateFmt.format(patient.birthDate)}',
+                              style: const pw.TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Usia Skrining: $ageMonths bulan',
+                              style: const pw.TextStyle(fontSize: 9)),
+                          pw.Text('Tanggal Evaluasi: ${_dateFmt.format(DateTime.now())}',
+                              style: const pw.TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 6),
+                pw.Divider(thickness: 0.5, color: PdfColors.grey300),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'Hasil KPSP: ${interp.yesCount} dari ${interp.total} "Ya" (${interp.category.label.toUpperCase()})',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                    color: interp.category == KpspResultCategory.sesuai 
+                        ? PdfColors.green800 
+                        : (interp.category == KpspResultCategory.meragukan ? PdfColors.orange800 : PdfColors.red800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 16),
+
+          // Judul bagian stimulasi
+          pw.Text(
+            filterDomain != null 
+                ? 'Fokus Stimulasi Sektor: ${filterDomain.label} (Kelompok Usia ${band?.label ?? "$ageMonths bln"})'
+                : 'Program Stimulasi yang Dianjurkan (Kelompok Usia ${band?.label ?? "$ageMonths bln"})',
+            style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+          ),
+          pw.SizedBox(height: 8),
+
+          // List stimulasi per domain
+          if (band != null) ...[
+            ...domainsToPrint.map((dom) {
+              final acts = band.forDomain(dom);
+              if (acts.isEmpty) return pw.SizedBox();
+              return pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 12),
+                padding: const pw.EdgeInsets.all(8),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.grey50,
+                  border: pw.Border(left: pw.BorderSide(color: PdfColors.teal700, width: 3)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Sektor Perkembangan: ${dom.label}',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+                    ),
+                    pw.SizedBox(height: 6),
+                    ...acts.map((act) => pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text('• ${act.title}',
+                                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                              pw.Padding(
+                                padding: const pw.EdgeInsets.only(left: 10, top: 2),
+                                child: pw.Text(
+                                  act.howTo,
+                                  style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey800),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                  ],
+                ),
+              );
+            }),
+          ] else ...[
+            pw.Text('Data stimulasi untuk kelompok usia ini tidak ditemukan.',
+                style: const pw.TextStyle(fontSize: 10, color: PdfColors.red800)),
+          ],
+
+          pw.SizedBox(height: 12),
+          // Ringkasan rekomendasi dokter/pedoman
+          pw.Container(
+            padding: const pw.EdgeInsets.all(8),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.teal50,
+              borderRadius: pw.BorderRadius.circular(6),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Rekomendasi Tindak Lanjut:',
+                    style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  interp.recommendation,
+                  style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900),
+                ),
+              ],
+            ),
+          ),
+          
+          pw.SizedBox(height: 32),
+          // Tanda tangan dokter
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.end,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text('Dokter Pemeriksa,', style: const pw.TextStyle(fontSize: 9)),
+                  pw.SizedBox(height: 40),
+                  pw.Container(width: 120, child: pw.Divider(thickness: 0.8)),
+                  pw.Text('Tanda Tangan & Stempel', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                ],
+              ),
+            ],
+          ),
+        ],
+        footer: (context) => pw.Container(
+          alignment: pw.Alignment.centerRight,
+          margin: const pw.EdgeInsets.only(top: 8),
+          child: pw.Text(
+            'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+          ),
+        ),
+      ),
+    );
+
+    return doc.save();
   }
 
   static String _safe(String s) =>

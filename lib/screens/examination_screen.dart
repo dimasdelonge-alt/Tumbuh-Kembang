@@ -600,6 +600,85 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                 _kvRow('Skor', '${data.kpsp!.yesCount} / ${data.kpsp!.total} Ya'),
                 _kvRow('Hasil', data.kpsp!.category.label,
                     valueColor: _kpspColor(data.kpsp!.category), bold: true),
+                if (data.kpsp!.failedByDomain.isNotEmpty) ...[
+                  const Divider(),
+                  const Text('Item belum tercapai per domain:',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  ...data.kpsp!.failedByDomain.entries.map((e) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '• ${e.key.label}: no. ${e.value.join(', ')}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        TextButton.icon(
+                          icon: const Icon(Icons.picture_as_pdf, size: 16, color: Colors.teal),
+                          label: const Text('Cetak Stimulasi', style: TextStyle(fontSize: 12)),
+                          onPressed: () {
+                            PdfReportService.generateAndPrintStimulation(
+                              patient: widget.patient,
+                              ageMonths: data.kpsp!.formAgeMonths,
+                              interp: KpspInterpretation(
+                                yesCount: data.kpsp!.yesCount,
+                                total: data.kpsp!.total,
+                                category: data.kpsp!.category,
+                                recommendation: data.kpsp!.recommendation,
+                                failedByDomain: data.kpsp!.failedByDomain,
+                              ),
+                              filterDomain: e.key,
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.picture_as_pdf, size: 16),
+                      label: const Text('Cetak Semua Stimulasi Kurang'),
+                      onPressed: () {
+                        PdfReportService.generateAndPrintStimulation(
+                          patient: widget.patient,
+                          ageMonths: data.kpsp!.formAgeMonths,
+                          interp: KpspInterpretation(
+                            yesCount: data.kpsp!.yesCount,
+                            total: data.kpsp!.total,
+                            category: data.kpsp!.category,
+                            recommendation: data.kpsp!.recommendation,
+                            failedByDomain: data.kpsp!.failedByDomain,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ] else ...[
+                  const Divider(),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.picture_as_pdf, size: 16),
+                      label: const Text('Cetak Panduan Stimulasi Usia'),
+                      onPressed: () {
+                        PdfReportService.generateAndPrintStimulation(
+                          patient: widget.patient,
+                          ageMonths: data.kpsp!.formAgeMonths,
+                          interp: KpspInterpretation(
+                            yesCount: data.kpsp!.yesCount,
+                            total: data.kpsp!.total,
+                            category: data.kpsp!.category,
+                            recommendation: data.kpsp!.recommendation,
+                            failedByDomain: data.kpsp!.failedByDomain,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
                 const Divider(),
                 Text(data.kpsp!.recommendation,
                     style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),

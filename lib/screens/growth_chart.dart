@@ -512,6 +512,62 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
                       _calculateAtPoint(response);
                     }
                   },
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (touchedSpot) => Colors.blueGrey.shade900.withOpacity(0.95),
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    maxContentWidth: 150,
+                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                      return touchedSpots.map((LineBarSpot touchedSpot) {
+                        final barIndex = touchedSpot.barIndex;
+                        final yValue = touchedSpot.y;
+                        
+                        String label = '';
+                        TextStyle textStyle;
+                        
+                        if (barIndex < zLines.length) {
+                          final z = zLines[barIndex];
+                          label = z == 0 ? 'Median' : 'SD ${z > 0 ? '+$z' : z}';
+                          textStyle = TextStyle(
+                            color: _zColorLight(z),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          );
+                        } else if (_tappedSpot != null && barIndex == lineBars.length - 1) {
+                          label = 'Titik Klik';
+                          textStyle = const TextStyle(
+                            color: Colors.tealAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          );
+                        } else {
+                          label = 'Pasien';
+                          textStyle = TextStyle(
+                            color: Colors.red.shade300,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          );
+                        }
+                        
+                        final unit = _getYUnit(widget.indicator);
+                        final valStr = '${yValue.toStringAsFixed(1)} $unit';
+                        
+                        // Let's find the first spot to prepend the X value
+                        if (touchedSpots.indexOf(touchedSpot) == 0) {
+                          final xText = _getXText(touchedSpot.x);
+                          return LineTooltipItem(
+                            '$xText\n$label: $valStr',
+                            textStyle,
+                          );
+                        }
+                        
+                        return LineTooltipItem(
+                          '$label: $valStr',
+                          textStyle,
+                        );
+                      }).toList();
+                    },
+                  ),
                 ),
               ),
             ),
@@ -550,5 +606,33 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
     if (z.abs() == 1) return Colors.lightGreen;
     if (z.abs() == 2) return Colors.orange;
     return Colors.red;
+  }
+
+  Color _zColorLight(double z) {
+    if (z == 0) return Colors.greenAccent;
+    if (z.abs() == 1) return Colors.lightGreenAccent;
+    if (z.abs() == 2) return Colors.orangeAccent;
+    return Colors.redAccent;
+  }
+
+  String _getXText(double x) {
+    if (widget.indicator == GrowthIndicator.weightForLengthHeight) {
+      return 'Tinggi/Panjang: ${x.toStringAsFixed(1)} cm';
+    } else {
+      return 'Umur: ${x.toStringAsFixed(1)} bln';
+    }
+  }
+
+  String _getYUnit(GrowthIndicator indicator) {
+    switch (indicator) {
+      case GrowthIndicator.weightForAge:
+      case GrowthIndicator.weightForLengthHeight:
+        return 'kg';
+      case GrowthIndicator.lengthHeightForAge:
+      case GrowthIndicator.headCircumferenceForAge:
+        return 'cm';
+      case GrowthIndicator.bmiForAge:
+        return 'kg/m²';
+    }
   }
 }

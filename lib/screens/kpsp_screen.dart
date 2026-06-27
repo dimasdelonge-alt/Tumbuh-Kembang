@@ -7,6 +7,7 @@ import '../core/age_calculator.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import '../modules/kpsp/kpsp_model.dart';
+import '../reports/pdf_report_service.dart';
 
 /// Layar pemeriksaan KPSP (Modul 4).
 class KpspScreen extends StatefulWidget {
@@ -207,15 +208,26 @@ class _KpspScreenState extends State<KpspScreen> {
     if (!mounted) return;
     await showDialog(
       context: context,
-      builder: (_) => _ResultDialog(interp: interp),
+      builder: (_) => _ResultDialog(
+        patient: widget.patient,
+        screeningMonths: _screeningMonths,
+        interp: interp,
+      ),
     );
     if (mounted) Navigator.of(context).pop();
   }
 }
 
 class _ResultDialog extends StatelessWidget {
+  final Patient patient;
+  final int screeningMonths;
   final KpspInterpretation interp;
-  const _ResultDialog({required this.interp});
+  const _ResultDialog({
+    super.key,
+    required this.patient,
+    required this.screeningMonths,
+    required this.interp,
+  });
 
   Color get _color {
     switch (interp.category) {
@@ -228,6 +240,15 @@ class _ResultDialog extends StatelessWidget {
     }
   }
 
+  void _printStimulationPdf(BuildContext context, [KpspDomain? domain]) {
+    PdfReportService.generateAndPrintStimulation(
+      patient: patient,
+      ageMonths: screeningMonths,
+      interp: interp,
+      filterDomain: domain,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -238,46 +259,81 @@ class _ResultDialog extends StatelessWidget {
           const Text('Hasil KPSP'),
         ],
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Skor: ${interp.yesCount} dari ${interp.total} "Ya"'),
+                  Text(
+                    interp.category.label.toUpperCase(),
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: _color),
+                  ),
+                ],
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Skor: ${interp.yesCount} dari ${interp.total} "Ya"'),
-                Text(
-                  interp.category.label.toUpperCase(),
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: _color),
+            if (interp.failedByDomain.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('Item belum tercapai per domain:',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              ...interp.failedByDomain.entries.map((e) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '• ${e.key.label}: no. ${e.value.join(', ')}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.picture_as_pdf, size: 20, color: Colors.teal),
+                      tooltip: 'Cetak Stimulasi ${e.key.label}',
+                      onPressed: () => _printStimulationPdf(context, e.key),
+                    ),
+                  ],
+                );
+              }),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.picture_as_pdf, size: 16),
+                  label: const Text('Cetak Semua Stimulasi Kurang'),
+                  onPressed: () => _printStimulationPdf(context),
                 ),
-              ],
-            ),
-          ),
-          if (interp.failedByDomain.isNotEmpty) ...[
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.picture_as_pdf, size: 16),
+                  label: const Text('Cetak Panduan Stimulasi Usia'),
+                  onPressed: () => _printStimulationPdf(context),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
-            const Text('Item belum tercapai per domain:',
+            const Text('Rekomendasi:',
                 style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
-            ...interp.failedByDomain.entries.map((e) => Text(
-                '• ${e.key.label}: no. ${e.value.join(', ')}',
-                style: const TextStyle(fontSize: 13))),
+            Text(interp.recommendation, style: const TextStyle(fontSize: 13)),
           ],
-          const SizedBox(height: 12),
-          const Text('Rekomendasi:',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
-          Text(interp.recommendation, style: const TextStyle(fontSize: 13)),
-        ],
+        ),
       ),
       actions: [
         FilledButton(
