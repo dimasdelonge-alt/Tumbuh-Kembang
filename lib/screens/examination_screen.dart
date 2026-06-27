@@ -575,6 +575,7 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                                         measuredLying: data.measuredLying,
                                         pointX: r.chartX,
                                         pointValue: r.value,
+                                        patientId: data.patient.id,
                                       ),
                                     ),
                                   ),

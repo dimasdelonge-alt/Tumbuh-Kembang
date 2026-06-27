@@ -333,6 +333,7 @@ class _ResultCard extends StatelessWidget {
                       measuredLying: measuredLying,
                       pointX: result.chartX,
                       pointValue: result.value,
+                      patientId: patient.id,
                     ),
                   ),
                 ),
