@@ -388,8 +388,32 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
       ));
     }
 
-    // Titik teal di lokasi yang diklik
+    // Data range untuk konversi pixel (dihitung dari kurva-kurva standar)
+    final range = _computeDataRange(lineBars);
+
+    // Titik teal di lokasi yang diklik & garis crosshair terputus (hanya sampai ke sumbu)
     if (_tappedSpot != null) {
+      // 1. Garis putus-putus horizontal dari sumbu Y (range.minX) ke titik ketuk
+      lineBars.add(LineChartBarData(
+        spots: [FlSpot(range.minX, _tappedSpot!.y), _tappedSpot!],
+        isCurved: false,
+        barWidth: 1.2,
+        color: Colors.teal.shade600.withOpacity(0.8),
+        dashArray: [4, 4],
+        dotData: const FlDotData(show: false),
+      ));
+
+      // 2. Garis putus-putus vertikal dari sumbu X (range.minY) ke titik ketuk
+      lineBars.add(LineChartBarData(
+        spots: [FlSpot(_tappedSpot!.x, range.minY), _tappedSpot!],
+        isCurved: false,
+        barWidth: 1.2,
+        color: Colors.teal.shade600.withOpacity(0.8),
+        dashArray: [4, 4],
+        dotData: const FlDotData(show: false),
+      ));
+
+      // 3. Titik teal di lokasi yang diklik
       lineBars.add(LineChartBarData(
         spots: [_tappedSpot!],
         barWidth: 0,
@@ -405,33 +429,6 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
         ),
       ));
     }
-
-    // Data range untuk konversi pixel
-    final range = _computeDataRange(lineBars);
-
-    // Crosshair: garis putus-putus horizontal & vertikal dari titik yang diklik
-    final extraLines = ExtraLinesData(
-      verticalLines: _tappedSpot != null
-          ? [
-              VerticalLine(
-                x: _tappedSpot!.x,
-                color: Colors.teal.shade600.withOpacity(0.6),
-                strokeWidth: 1.2,
-                dashArray: [4, 4],
-              ),
-            ]
-          : [],
-      horizontalLines: _tappedSpot != null
-          ? [
-              HorizontalLine(
-                y: _tappedSpot!.y,
-                color: Colors.teal.shade600.withOpacity(0.6),
-                strokeWidth: 1.2,
-                dashArray: [4, 4],
-              ),
-            ]
-          : [],
-    );
 
     final xAxisLabel = _isAgeBased ? 'Umur (bulan)' : 'Panjang/Tinggi (cm)';
 
@@ -464,7 +461,6 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
                   child: LineChart(
                     LineChartData(
                       lineBarsData: lineBars,
-                      extraLinesData: extraLines,
                       titlesData: FlTitlesData(
                         topTitles: const AxisTitles(
                             sideTitles: SideTitles(showTitles: false)),
