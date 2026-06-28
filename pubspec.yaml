@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.0.0+1
+version: 3.0.0+3
 
 environment:
   sdk: ^3.10.8
@@ -73,6 +73,7 @@ dev_dependencies:
   # Codegen untuk drift
   drift_dev: ^2.20.0
   build_runner: ^2.4.12
+  flutter_launcher_icons: ^0.13.1
 
 # Pin path_provider_foundation ke versi terakhir yang TIDAK menarik paket
 # `objective_c`. Sejak 2.5.0, path_provider_foundation (implementasi Apple)
@@ -127,3 +128,8 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: false
+  image_path: "assets/logo.png"
