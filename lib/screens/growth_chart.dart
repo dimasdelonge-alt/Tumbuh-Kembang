@@ -51,7 +51,6 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
   bool _loading = true;
   FlSpot? _tappedSpot;
   String? _tappedCalculationResult;
-  int? _tappedBarIndex;
 
   bool get _isAgeBased =>
       widget.indicator != GrowthIndicator.weightForLengthHeight;
@@ -116,40 +115,113 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
     }
   }
 
-  void _calculateAtPoint(LineTouchResponse? response) {
-    if (response == null) return;
-    final spots = response.lineBarSpots;
-    if (spots == null || spots.isEmpty) return;
+  // --- Konversi pixel → data koordinat ---
 
-    final zLines = NutritionClassifier.referenceLines(widget.indicator);
-
-    // Cari spot terdekat (distance terkecil) di antara semua garis referensi
-    LineBarSpot? closestSpot;
-    double closestDist = double.infinity;
-    for (final s in spots) {
-      if (s.barIndex < zLines.length && s.distance < closestDist) {
-        closestDist = s.distance;
-        closestSpot = s;
+  /// Hitung data range dari semua line bars.
+  ({double minX, double maxX, double minY, double maxY}) _computeDataRange(
+      List<LineChartBarData> bars) {
+    double minX = double.infinity, maxX = -double.infinity;
+    double minY = double.infinity, maxY = -double.infinity;
+    for (final bar in bars) {
+      for (final s in bar.spots) {
+        if (s.x < minX) minX = s.x;
+        if (s.x > maxX) maxX = s.x;
+        if (s.y < minY) minY = s.y;
+        if (s.y > maxY) maxY = s.y;
       }
     }
-    if (closestSpot == null) return;
+    return (minX: minX, maxX: maxX, minY: minY, maxY: maxY);
+  }
 
-    final dx = closestSpot.x;
-    final dy = closestSpot.y;
-    final barIdx = closestSpot.barIndex;
-    final z = zLines[barIdx];
-    final zLabel = z == 0 ? 'Median' : 'SD ${z > 0 ? '+${z.toStringAsFixed(0)}' : z.toStringAsFixed(0)}';
+  /// Konversi posisi tap (pixel lokal dalam widget LineChart) ke koordinat data.
+  FlSpot? _pixelToData({
+    required Offset tapLocal,
+    required Size chartSize,
+    required double minX,
+    required double maxX,
+    required double minY,
+    required double maxY,
+  }) {
+    // Estimasi layout fl_chart:
+    // leftTitles  = reservedSize(36) + axisNameSize(~16) = ~52
+    // bottomTitles = reservedSize(28) + axisNameSize(~16) = ~44
+    const double leftPad = 52;
+    const double bottomPad = 44;
 
+    final drawLeft = leftPad;
+    final drawRight = chartSize.width;
+    final drawTop = 0.0;
+    final drawBottom = chartSize.height - bottomPad;
+
+    final dx = tapLocal.dx;
+    final dy = tapLocal.dy;
+
+    if (dx < drawLeft || dx > drawRight ||
+        dy < drawTop || dy > drawBottom) {
+      return null;
+    }
+
+    final dataX = minX +
+        (dx - drawLeft) / (drawRight - drawLeft) * (maxX - minX);
+    final dataY = maxY -
+        (dy - drawTop) / (drawBottom - drawTop) * (maxY - minY);
+
+    return FlSpot(dataX, dataY);
+  }
+
+  /// Dipanggil saat pengguna mengetuk area kurva secara bebas.
+  void _onChartTapped(FlSpot spot) {
     final unit = _getYUnit(widget.indicator);
-    final xText = _getXText(dx);
-    final resultText = '$xText\n$zLabel: ${dy.toStringAsFixed(1)} $unit';
+    final xText = _getXText(spot.x);
+    final yVal = spot.y.toStringAsFixed(1);
+
+    // Hitung Z-score di titik tersebut
+    String zInfo = '';
+    try {
+      final who = WhoGrowthData.instance;
+      if (_isAgeBased) {
+        final ageDays = spot.x * 30.4375;
+        final z = who.zscoreForAge(
+          indicator: widget.indicator,
+          sex: widget.sex,
+          value: spot.y,
+          ageDays: ageDays,
+        );
+        if (z != null) {
+          final status = NutritionClassifier.classify(
+            widget.indicator,
+            z.zScore,
+            ageMonths: spot.x.round(),
+          );
+          zInfo =
+              '\nZ-Score: ${z.zScore.toStringAsFixed(2)} (${status.label})';
+        }
+      } else {
+        final z = who.zscoreWeightForLength(
+          sex: widget.sex,
+          weightKg: spot.y,
+          lengthHeightCm: spot.x,
+          measuredLying: widget.measuredLying,
+        );
+        if (z != null) {
+          final status = NutritionClassifier.classify(
+            widget.indicator,
+            z.zScore,
+            ageMonths: 12,
+          );
+          zInfo =
+              '\nZ-Score: ${z.zScore.toStringAsFixed(2)} (${status.label})';
+        }
+      }
+    } catch (_) {}
 
     setState(() {
-      _tappedSpot = FlSpot(dx, dy);
-      _tappedCalculationResult = resultText;
-      _tappedBarIndex = barIdx;
+      _tappedSpot = spot;
+      _tappedCalculationResult = '$xText, $yVal $unit$zInfo';
     });
   }
+
+  // --- Build UI ---
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +281,6 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
                         setState(() {
                           _tappedSpot = null;
                           _tappedCalculationResult = null;
-                          _tappedBarIndex = null;
                         });
                       },
                     ),
@@ -225,7 +296,8 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
     );
   }
 
-  Widget _buildChart(BuildContext context, List<LmsPoint> table, _ChartPatientData? patientData) {
+  Widget _buildChart(
+      BuildContext context, List<LmsPoint> table, _ChartPatientData? patientData) {
     final zLines = NutritionClassifier.referenceLines(widget.indicator);
 
     // Konversi sumbu-x ke satuan tampilan: bulan (umur) atau cm.
@@ -266,11 +338,10 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
       }
 
       // Tambahkan titik saat ini jika belum terdaftar
-      final currentSpot = FlSpot(toDisplayX(widget.pointX), widget.pointValue);
+      final currentSpot =
+          FlSpot(toDisplayX(widget.pointX), widget.pointValue);
       final exists = spots.any((s) => (s.x - currentSpot.x).abs() < 0.01);
-      if (!exists) {
-        spots.add(currentSpot);
-      }
+      if (!exists) spots.add(currentSpot);
 
       // Urutkan titik agar garis ditarik secara kronologis
       spots.sort((a, b) => a.x.compareTo(b.x));
@@ -282,11 +353,12 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
           barWidth: 2.0,
           color: Colors.red.shade700,
           isStrokeCapRound: true,
-          dashArray: [4, 4], // Garis putus-putus (imajiner)
+          dashArray: [4, 4],
           dotData: FlDotData(
             show: true,
             getDotPainter: (spot, percent, barData, index) {
-              final isCurrentPoint = (spot.x - toDisplayX(widget.pointX)).abs() < 0.01;
+              final isCurrentPoint =
+                  (spot.x - toDisplayX(widget.pointX)).abs() < 0.01;
               return FlDotCirclePainter(
                 radius: isCurrentPoint ? 5 : 3.5,
                 color: isCurrentPoint ? Colors.red : Colors.red.shade700,
@@ -316,47 +388,8 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
       ));
     }
 
-    // Titik kalkulasi interaktif ketika kotak diklik (hanya 1 garis).
+    // Titik teal di lokasi yang diklik
     if (_tappedSpot != null) {
-      // Cari batas minimum sumbu dari garis referensi
-      double minX = double.infinity;
-      double minY = double.infinity;
-      for (int i = 0; i < zLines.length; i++) {
-        if (i < lineBars.length) {
-          for (final spot in lineBars[i].spots) {
-            if (spot.x < minX) minX = spot.x;
-            if (spot.y < minY) minY = spot.y;
-          }
-        }
-      }
-
-      // Warna garis bantu mengikuti warna garis kurva yang diklik
-      final crosshairColor = _tappedBarIndex != null && _tappedBarIndex! < zLines.length
-          ? _zColor(zLines[_tappedBarIndex!]).withOpacity(0.7)
-          : Colors.teal.shade700;
-
-      if (minX != double.infinity && minY != double.infinity) {
-        // 1. Garis putus-putus horizontal dari sumbu Y ke titik ketuk
-        lineBars.add(LineChartBarData(
-          spots: [FlSpot(minX, _tappedSpot!.y), _tappedSpot!],
-          isCurved: false,
-          barWidth: 1.2,
-          color: crosshairColor,
-          dashArray: [4, 4],
-          dotData: const FlDotData(show: false),
-        ));
-
-        // 2. Garis putus-putus vertikal dari sumbu X ke titik ketuk
-        lineBars.add(LineChartBarData(
-          spots: [FlSpot(_tappedSpot!.x, minY), _tappedSpot!],
-          isCurved: false,
-          barWidth: 1.2,
-          color: crosshairColor,
-          dashArray: [4, 4],
-          dotData: const FlDotData(show: false),
-        ));
-      }
-
       lineBars.add(LineChartBarData(
         spots: [_tappedSpot!],
         barWidth: 0,
@@ -373,6 +406,33 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
       ));
     }
 
+    // Data range untuk konversi pixel
+    final range = _computeDataRange(lineBars);
+
+    // Crosshair: garis putus-putus horizontal & vertikal dari titik yang diklik
+    final extraLines = ExtraLinesData(
+      verticalLines: _tappedSpot != null
+          ? [
+              VerticalLine(
+                x: _tappedSpot!.x,
+                color: Colors.teal.shade600.withOpacity(0.6),
+                strokeWidth: 1.2,
+                dashArray: [4, 4],
+              ),
+            ]
+          : [],
+      horizontalLines: _tappedSpot != null
+          ? [
+              HorizontalLine(
+                y: _tappedSpot!.y,
+                color: Colors.teal.shade600.withOpacity(0.6),
+                strokeWidth: 1.2,
+                dashArray: [4, 4],
+              ),
+            ]
+          : [],
+    );
+
     final xAxisLabel = _isAgeBased ? 'Umur (bulan)' : 'Panjang/Tinggi (cm)';
 
     return Column(
@@ -386,70 +446,66 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
             scaleEnabled: true,
             minScale: 1.0,
             maxScale: 5.0,
-            child: LineChart(
-              LineChartData(
-                lineBarsData: lineBars,
-                titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    axisNameWidget: Text(xAxisLabel),
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 28,
-                      getTitlesWidget: (v, meta) => Text(
-                        v.toStringAsFixed(0),
-                        style: const TextStyle(fontSize: 10),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return GestureDetector(
+                  onTapUp: (details) {
+                    final spot = _pixelToData(
+                      tapLocal: details.localPosition,
+                      chartSize: Size(
+                          constraints.maxWidth, constraints.maxHeight),
+                      minX: range.minX,
+                      maxX: range.maxX,
+                      minY: range.minY,
+                      maxY: range.maxY,
+                    );
+                    if (spot != null) _onChartTapped(spot);
+                  },
+                  child: LineChart(
+                    LineChartData(
+                      lineBarsData: lineBars,
+                      extraLinesData: extraLines,
+                      titlesData: FlTitlesData(
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: AxisTitles(
+                          axisNameWidget: Text(xAxisLabel),
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 28,
+                            getTitlesWidget: (v, meta) => Text(
+                              v.toStringAsFixed(0),
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          axisNameWidget: Text(widget.indicator.code),
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 36,
+                            getTitlesWidget: (v, meta) => Text(
+                              v.toStringAsFixed(0),
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          ),
+                        ),
                       ),
+                      gridData: const FlGridData(show: true),
+                      borderData: FlBorderData(show: true),
+                      lineTouchData: const LineTouchData(enabled: false),
                     ),
                   ),
-                  leftTitles: AxisTitles(
-                    axisNameWidget: Text(widget.indicator.code),
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 36,
-                      getTitlesWidget: (v, meta) => Text(
-                        v.toStringAsFixed(0),
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                    ),
-                  ),
-                ),
-                gridData: const FlGridData(show: true),
-                borderData: FlBorderData(show: true),
-                lineTouchData: LineTouchData(
-                  enabled: true,
-                  handleBuiltInTouches: true,
-                  touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
-                    if (event is FlTapUpEvent) {
-                      _calculateAtPoint(response);
-                    }
-                  },
-                  getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
-                    return spotIndexes.map((index) {
-                      return TouchedSpotIndicatorData(
-                        const FlLine(color: Colors.transparent, strokeWidth: 0),
-                        const FlDotData(show: false),
-                      );
-                    }).toList();
-                  },
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (_) => Colors.transparent,
-                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                      // Sembunyikan semua tooltip bawaan
-                      return touchedSpots.map((_) => null).toList();
-                    },
-                  ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          'Garis putus-putus merah = tren pertumbuhan pasien • Klik kotak/grid untuk menghitung Z-score titik tersebut',
+          'Garis putus-putus merah = tren pertumbuhan pasien • Klik area kurva untuk menghitung Z-score',
           style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
           textAlign: TextAlign.center,
         ),
@@ -480,13 +536,6 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
     if (z.abs() == 1) return Colors.lightGreen;
     if (z.abs() == 2) return Colors.orange;
     return Colors.red;
-  }
-
-  Color _zColorLight(double z) {
-    if (z == 0) return Colors.greenAccent;
-    if (z.abs() == 1) return Colors.lightGreenAccent;
-    if (z.abs() == 2) return Colors.orangeAccent;
-    return Colors.redAccent;
   }
 
   String _getXText(double x) {
