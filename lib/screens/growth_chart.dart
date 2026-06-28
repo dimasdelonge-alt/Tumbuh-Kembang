@@ -51,6 +51,7 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
   bool _loading = true;
   FlSpot? _tappedSpot;
   String? _tappedCalculationResult;
+  int? _tappedBarIndex;
 
   bool get _isAgeBased =>
       widget.indicator != GrowthIndicator.weightForLengthHeight;
@@ -118,162 +119,36 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
   void _calculateAtPoint(LineTouchResponse? response) {
     if (response == null) return;
     final spots = response.lineBarSpots;
-    if (spots == null || spots.length < 2) return;
+    if (spots == null || spots.isEmpty) return;
 
-    // Filter out spots that are not part of the reference lines (barIndex < 5)
-    final refSpots = spots.where((s) => s.barIndex < 5).toList();
-    if (refSpots.length < 2) return;
+    final zLines = NutritionClassifier.referenceLines(widget.indicator);
 
-    // Sort by chart Y coordinate ascending
-    refSpots.sort((a, b) => a.y.compareTo(b.y));
-
-    // Find the index of the spot with the minimum distance
-    int minIndex = 0;
-    double minDistance = refSpots[0].distance;
-    for (int i = 1; i < refSpots.length; i++) {
-      if (refSpots[i].distance < minDistance) {
-        minDistance = refSpots[i].distance;
-        minIndex = i;
+    // Cari spot terdekat (distance terkecil) di antara semua garis referensi
+    LineBarSpot? closestSpot;
+    double closestDist = double.infinity;
+    for (final s in spots) {
+      if (s.barIndex < zLines.length && s.distance < closestDist) {
+        closestDist = s.distance;
+        closestSpot = s;
       }
     }
+    if (closestSpot == null) return;
 
-    double dx = refSpots[0].x;
-    double dy;
+    final dx = closestSpot.x;
+    final dy = closestSpot.y;
+    final barIdx = closestSpot.barIndex;
+    final z = zLines[barIdx];
+    final zLabel = z == 0 ? 'Median' : 'SD ${z > 0 ? '+${z.toStringAsFixed(0)}' : z.toStringAsFixed(0)}';
 
-    if (minIndex == 0 && refSpots[1].distance > refSpots[0].distance) {
-      final y0 = refSpots[0].y;
-      final y1 = refSpots[1].y;
-      final d0 = refSpots[0].distance;
-      final d1 = refSpots[1].distance;
-      
-      bool isBelow = false;
-      if (refSpots.length > 2) {
-        final y2 = refSpots[2].y;
-        final d2 = refSpots[2].distance;
-        final s1 = (d1 - d0) / (y1 - y0);
-        final s2 = (d2 - d1) / (y2 - y1);
-        if (s1 > 0 && s2 > 0 && (s1 - s2).abs() < s1 * 0.5) {
-          isBelow = true;
-        }
-      }
-      
-      if (isBelow) {
-        final s = (d1 - d0) / (y1 - y0);
-        dy = y0 - (s > 0 ? d0 / s : 0);
-      } else {
-        final s = (d0 + d1) / (y1 - y0);
-        dy = y0 + (s > 0 ? d0 / s : 0);
-      }
-    } else if (minIndex == refSpots.length - 1) {
-      final n = refSpots.length;
-      final yN1 = refSpots[n-1].y;
-      final yN2 = refSpots[n-2].y;
-      final dN1 = refSpots[n-1].distance;
-      final dN2 = refSpots[n-2].distance;
-      
-      bool isAbove = false;
-      if (n > 2) {
-        final yN3 = refSpots[n-3].y;
-        final dN3 = refSpots[n-3].distance;
-        final s1 = (dN2 - dN1) / (yN1 - yN2);
-        final s2 = (dN3 - dN2) / (yN2 - yN3);
-        if (s1 > 0 && s2 > 0 && (s1 - s2).abs() < s1 * 0.5) {
-          isAbove = true;
-        }
-      }
-      
-      if (isAbove) {
-        final s = (dN2 - dN1) / (yN1 - yN2);
-        dy = yN1 + (s > 0 ? dN1 / s : 0);
-      } else {
-        final s = (dN1 + dN2) / (yN1 - yN2);
-        dy = yN2 + (s > 0 ? dN2 / s : 0);
-      }
-    } else {
-      final y0 = refSpots[minIndex].y;
-      final d0 = refSpots[minIndex].distance;
-      
-      final yPrev = refSpots[minIndex - 1].y;
-      final dPrev = refSpots[minIndex - 1].distance;
-      
-      final yNext = refSpots[minIndex + 1].y;
-      final dNext = refSpots[minIndex + 1].distance;
-      
-      final sPrev = (d0 + dPrev) / (y0 - yPrev);
-      final sNext = (d0 + dNext) / (yNext - y0);
-      
-      if (dPrev < dNext) {
-        dy = yPrev + (sPrev > 0 ? dPrev / sPrev : 0);
-      } else {
-        dy = y0 + (sNext > 0 ? d0 / sNext : 0);
-      }
-    }
+    final unit = _getYUnit(widget.indicator);
+    final xText = _getXText(dx);
+    final resultText = '$xText\n$zLabel: ${dy.toStringAsFixed(1)} $unit';
 
-    final table = WhoGrowthData.instance.tableFor(
-      indicator: widget.indicator,
-      sex: widget.sex,
-      measuredLying: widget.measuredLying,
-    );
-    if (table == null || table.isEmpty) return;
-
-    final minX = _isAgeBased ? table.first.x / 30.4375 : table.first.x;
-    final maxX = _isAgeBased ? table.last.x / 30.4375 : table.last.x;
-
-    if (dx < minX || dx > maxX) return;
-
-    final double actualX = _isAgeBased ? dx * 30.4375 : dx;
-    final double actualY = dy;
-
-    String resultText = '';
-    try {
-      final who = WhoGrowthData.instance;
-      if (_isAgeBased) {
-        final z = who.zscoreForAge(
-          indicator: widget.indicator,
-          sex: widget.sex,
-          value: actualY,
-          ageDays: actualX,
-        );
-        if (z != null) {
-          final ageMonths = dx;
-          final status = NutritionClassifier.classify(
-            widget.indicator,
-            z.zScore,
-            ageMonths: ageMonths.round(),
-          );
-          
-          final xLabel = 'Umur: ${ageMonths.toStringAsFixed(1)} bln';
-          final yLabel = '${widget.indicator.code}: ${actualY.toStringAsFixed(1)}';
-          resultText = '$xLabel, $yLabel\nZ-Score: ${z.zScore.toStringAsFixed(2)} (${status.label})';
-        }
-      } else {
-        final z = who.zscoreWeightForLength(
-          sex: widget.sex,
-          weightKg: actualY,
-          lengthHeightCm: actualX,
-          measuredLying: widget.measuredLying,
-        );
-        if (z != null) {
-          final status = NutritionClassifier.classify(
-            widget.indicator,
-            z.zScore,
-            ageMonths: 12,
-          );
-          final xLabel = 'Tinggi/Panjang: ${actualX.toStringAsFixed(1)} cm';
-          final yLabel = 'BB: ${actualY.toStringAsFixed(1)} kg';
-          resultText = '$xLabel, $yLabel\nZ-Score: ${z.zScore.toStringAsFixed(2)} (${status.label})';
-        }
-      }
-    } catch (e) {
-      resultText = 'Gagal menghitung hasil pada titik ini';
-    }
-
-    if (resultText.isNotEmpty) {
-      setState(() {
-        _tappedSpot = FlSpot(dx, dy);
-        _tappedCalculationResult = resultText;
-      });
-    }
+    setState(() {
+      _tappedSpot = FlSpot(dx, dy);
+      _tappedCalculationResult = resultText;
+      _tappedBarIndex = barIdx;
+    });
   }
 
   @override
@@ -334,6 +209,7 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
                         setState(() {
                           _tappedSpot = null;
                           _tappedCalculationResult = null;
+                          _tappedBarIndex = null;
                         });
                       },
                     ),
@@ -440,8 +316,9 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
       ));
     }
 
-    // Titik kalkulasi interaktif ketika kotak diklik.
+    // Titik kalkulasi interaktif ketika kotak diklik (hanya 1 garis).
     if (_tappedSpot != null) {
+      // Cari batas minimum sumbu dari garis referensi
       double minX = double.infinity;
       double minY = double.infinity;
       for (int i = 0; i < zLines.length; i++) {
@@ -453,23 +330,28 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
         }
       }
 
+      // Warna garis bantu mengikuti warna garis kurva yang diklik
+      final crosshairColor = _tappedBarIndex != null && _tappedBarIndex! < zLines.length
+          ? _zColor(zLines[_tappedBarIndex!]).withOpacity(0.7)
+          : Colors.teal.shade700;
+
       if (minX != double.infinity && minY != double.infinity) {
-        // 1. Garis imajiner horizontal dari sumbu Y ke titik ketuk
+        // 1. Garis putus-putus horizontal dari sumbu Y ke titik ketuk
         lineBars.add(LineChartBarData(
           spots: [FlSpot(minX, _tappedSpot!.y), _tappedSpot!],
           isCurved: false,
           barWidth: 1.2,
-          color: Colors.teal.shade700,
+          color: crosshairColor,
           dashArray: [4, 4],
           dotData: const FlDotData(show: false),
         ));
 
-        // 2. Garis imajiner vertikal dari sumbu X ke titik ketuk
+        // 2. Garis putus-putus vertikal dari sumbu X ke titik ketuk
         lineBars.add(LineChartBarData(
           spots: [FlSpot(_tappedSpot!.x, minY), _tappedSpot!],
           isCurved: false,
           barWidth: 1.2,
-          color: Colors.teal.shade700,
+          color: crosshairColor,
           dashArray: [4, 4],
           dotData: const FlDotData(show: false),
         ));
@@ -548,77 +430,16 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
                   getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
                     return spotIndexes.map((index) {
                       return TouchedSpotIndicatorData(
-                        FlLine(
-                          color: Colors.red.withOpacity(0.4),
-                          strokeWidth: 1.2,
-                          dashArray: [3, 3],
-                        ),
-                        FlDotData(
-                          show: true,
-                          getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                            radius: 4,
-                            color: Colors.red.shade700,
-                            strokeWidth: 1,
-                            strokeColor: Colors.white,
-                          ),
-                        ),
+                        const FlLine(color: Colors.transparent, strokeWidth: 0),
+                        const FlDotData(show: false),
                       );
                     }).toList();
                   },
                   touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (touchedSpot) => Colors.blueGrey.shade900.withOpacity(0.95),
-                    fitInsideHorizontally: true,
-                    fitInsideVertically: true,
-                    maxContentWidth: 150,
+                    getTooltipColor: (_) => Colors.transparent,
                     getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                      return touchedSpots.map((LineBarSpot touchedSpot) {
-                        final barIndex = touchedSpot.barIndex;
-                        final yValue = touchedSpot.y;
-                        
-                        String label = '';
-                        TextStyle textStyle;
-                        
-                        if (barIndex < zLines.length) {
-                          final z = zLines[barIndex];
-                          label = z == 0 ? 'Median' : 'SD ${z > 0 ? '+$z' : z}';
-                          textStyle = TextStyle(
-                            color: _zColorLight(z),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          );
-                        } else if (_tappedSpot != null && barIndex == lineBars.length - 1) {
-                          label = 'Titik Klik';
-                          textStyle = const TextStyle(
-                            color: Colors.tealAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          );
-                        } else {
-                          label = 'Pasien';
-                          textStyle = TextStyle(
-                            color: Colors.red.shade300,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          );
-                        }
-                        
-                        final unit = _getYUnit(widget.indicator);
-                        final valStr = '${yValue.toStringAsFixed(1)} $unit';
-                        
-                        // Let's find the first spot to prepend the X value
-                        if (touchedSpots.indexOf(touchedSpot) == 0) {
-                          final xText = _getXText(touchedSpot.x);
-                          return LineTooltipItem(
-                            '$xText\n$label: $valStr',
-                            textStyle,
-                          );
-                        }
-                        
-                        return LineTooltipItem(
-                          '$label: $valStr',
-                          textStyle,
-                        );
-                      }).toList();
+                      // Sembunyikan semua tooltip bawaan
+                      return touchedSpots.map((_) => null).toList();
                     },
                   ),
                 ),
