@@ -442,6 +442,39 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
 
     // Titik kalkulasi interaktif ketika kotak diklik.
     if (_tappedSpot != null) {
+      double minX = double.infinity;
+      double minY = double.infinity;
+      for (int i = 0; i < zLines.length; i++) {
+        if (i < lineBars.length) {
+          for (final spot in lineBars[i].spots) {
+            if (spot.x < minX) minX = spot.x;
+            if (spot.y < minY) minY = spot.y;
+          }
+        }
+      }
+
+      if (minX != double.infinity && minY != double.infinity) {
+        // 1. Garis imajiner horizontal dari sumbu Y ke titik ketuk
+        lineBars.add(LineChartBarData(
+          spots: [FlSpot(minX, _tappedSpot!.y), _tappedSpot!],
+          isCurved: false,
+          barWidth: 1.2,
+          color: Colors.teal.shade700,
+          dashArray: [4, 4],
+          dotData: const FlDotData(show: false),
+        ));
+
+        // 2. Garis imajiner vertikal dari sumbu X ke titik ketuk
+        lineBars.add(LineChartBarData(
+          spots: [FlSpot(_tappedSpot!.x, minY), _tappedSpot!],
+          isCurved: false,
+          barWidth: 1.2,
+          color: Colors.teal.shade700,
+          dashArray: [4, 4],
+          dotData: const FlDotData(show: false),
+        ));
+      }
+
       lineBars.add(LineChartBarData(
         spots: [_tappedSpot!],
         barWidth: 0,
@@ -511,6 +544,26 @@ class _GrowthChartScreenState extends State<GrowthChartScreen> {
                     if (event is FlTapUpEvent) {
                       _calculateAtPoint(response);
                     }
+                  },
+                  getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+                    return spotIndexes.map((index) {
+                      return TouchedSpotIndicatorData(
+                        FlLine(
+                          color: Colors.red.withOpacity(0.4),
+                          strokeWidth: 1.2,
+                          dashArray: [3, 3],
+                        ),
+                        FlDotData(
+                          show: true,
+                          getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                            radius: 4,
+                            color: Colors.red.shade700,
+                            strokeWidth: 1,
+                            strokeColor: Colors.white,
+                          ),
+                        ),
+                      );
+                    }).toList();
                   },
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (touchedSpot) => Colors.blueGrey.shade900.withOpacity(0.95),
