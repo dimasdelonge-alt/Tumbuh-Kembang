@@ -54,7 +54,17 @@ class PdfReportService {
     // Pastikan data stimulasi terdaftar
     registerStimulationData();
     
-    final band = StimulationLibrary.bandFor(ageMonths);
+    var tempBand = StimulationLibrary.bandFor(ageMonths);
+    final isNextAge = interp.failedByDomain.isEmpty;
+    if (isNextAge && tempBand != null) {
+      final bands = StimulationLibrary.bands;
+      final idx = bands.indexOf(tempBand);
+      if (idx >= 0 && idx < bands.length - 1) {
+        tempBand = bands[idx + 1];
+      }
+    }
+    final band = tempBand;
+
     final domainsToPrint = filterDomain != null 
         ? [filterDomain] 
         : (interp.failedByDomain.isNotEmpty 
@@ -159,7 +169,7 @@ class PdfReportService {
           pw.Text(
             filterDomain != null 
                 ? 'Fokus Stimulasi Sektor: ${filterDomain.label} (Kelompok Usia ${band?.label ?? "$ageMonths bln"})'
-                : 'Program Stimulasi yang Dianjurkan (Kelompok Usia ${band?.label ?? "$ageMonths bln"})',
+                : 'Program Stimulasi yang Dianjurkan (Kelompok Usia ${band?.label ?? "$ageMonths bln"}${isNextAge ? " - Usia Di Atasnya" : ""})',
             style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
           ),
           pw.SizedBox(height: 8),

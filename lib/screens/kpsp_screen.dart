@@ -322,7 +322,7 @@ class _ResultDialog extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.picture_as_pdf, size: 16),
-                  label: const Text('Cetak Panduan Stimulasi Usia'),
+                  label: const Text('Cetak Panduan Stimulasi Usia Di Atasnya'),
                   onPressed: () => _printStimulationPdf(context),
                 ),
               ),
