@@ -308,15 +308,17 @@ class _ResultDialog extends StatelessWidget {
                 );
               }),
               const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.picture_as_pdf, size: 16),
-                  label: const Text('Cetak Semua Stimulasi Kurang'),
-                  onPressed: () => _printStimulationPdf(context),
+              if (interp.category != KpspResultCategory.sesuai)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.picture_as_pdf, size: 16),
+                    label: const Text('Cetak Semua Stimulasi Kurang'),
+                    onPressed: () => _printStimulationPdf(context),
+                  ),
                 ),
-              ),
-            ] else ...[
+            ],
+            if (interp.category == KpspResultCategory.sesuai) ...[
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,

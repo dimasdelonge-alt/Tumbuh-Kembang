@@ -55,7 +55,7 @@ class PdfReportService {
     registerStimulationData();
     
     var tempBand = StimulationLibrary.bandFor(ageMonths);
-    final isNextAge = interp.failedByDomain.isEmpty;
+    final isNextAge = interp.category == KpspResultCategory.sesuai;
     if (isNextAge && tempBand != null) {
       final bands = StimulationLibrary.bands;
       final idx = bands.indexOf(tempBand);
@@ -67,9 +67,11 @@ class PdfReportService {
 
     final domainsToPrint = filterDomain != null 
         ? [filterDomain] 
-        : (interp.failedByDomain.isNotEmpty 
-            ? interp.failedByDomain.keys.toList() 
-            : KpspDomain.values.toList());
+        : (isNextAge 
+            ? KpspDomain.values.toList()
+            : (interp.failedByDomain.isNotEmpty 
+                ? interp.failedByDomain.keys.toList() 
+                : KpspDomain.values.toList()));
 
     doc.addPage(
       pw.MultiPage(
