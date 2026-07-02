@@ -1,5 +1,4 @@
-import 'dart:convert';
-
+import 'kpsp_answers_parser.dart';
 import '../../core/age_calculator.dart';
 import 'developmental_age.dart';
 import 'kpsp_model.dart';
@@ -37,13 +36,11 @@ class DevelopmentalAgeService {
     for (final r in rows) {
       if (asOf != null && r.examDate.isAfter(asOf)) continue;
       final answers = <int, bool>{};
-      try {
-        final m = jsonDecode(r.answersJson) as Map<String, dynamic>;
-        m.forEach((key, val) {
-          final n = int.tryParse(key);
-          if (n != null && val is bool) answers[n] = val;
-        });
-      } catch (_) {}
+      final m = parseKpspPrimaryAnswers(r.answersJson);
+      m.forEach((key, val) {
+        final n = int.tryParse(key);
+        if (n != null && val is bool) answers[n] = val;
+      });
       if (answers.isNotEmpty) {
         entries.add(KpspHistoryEntry(
           formAgeMonths: r.formAgeMonths,

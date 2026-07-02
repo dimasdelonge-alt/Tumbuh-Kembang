@@ -531,7 +531,15 @@ class PdfReportService {
         pw.Text('Hasil: ${k.category.label.toUpperCase()}',
             style: pw.TextStyle(
                 fontSize: 11, fontWeight: pw.FontWeight.bold)),
-        if (k.failedByDomain.isNotEmpty) ...[
+        if (k.developmentalAges != null) ...[
+          pw.SizedBox(height: 4),
+          pw.Text('Usia Perkembangan Per Domain (Asesmen GDD):',
+              style: pw.TextStyle(
+                  fontSize: 9, fontWeight: pw.FontWeight.bold)),
+          ...k.developmentalAges!.entries.map((e) => pw.Text(
+              '- ${e.key.label}: ${e.value == 0 ? "< 3" : e.value} bulan',
+              style: const pw.TextStyle(fontSize: 9))),
+        ] else if (k.failedByDomain.isNotEmpty) ...[
           pw.SizedBox(height: 4),
           pw.Text('Item belum tercapai:',
               style: pw.TextStyle(

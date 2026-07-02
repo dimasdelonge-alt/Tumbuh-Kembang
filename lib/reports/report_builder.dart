@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../modules/kpsp/kpsp_answers_parser.dart';
 
 import '../core/age_calculator.dart';
 import '../data/database.dart';
@@ -47,6 +48,7 @@ class ReportKpsp {
   final KpspResultCategory category;
   final String recommendation;
   final Map<KpspDomain, List<int>> failedByDomain;
+  final Map<KpspDomain, int>? developmentalAges;
   ReportKpsp({
     required this.formAgeMonths,
     required this.yesCount,
@@ -54,6 +56,7 @@ class ReportKpsp {
     required this.category,
     required this.recommendation,
     required this.failedByDomain,
+    this.developmentalAges,
   });
 }
 
@@ -215,18 +218,25 @@ class ReportBuilder {
       // Rekonstruksi kegagalan per domain dari jawaban tersimpan + form.
       final failed = <KpspDomain, List<int>>{};
       if (form != null) {
-        Map<String, dynamic> ans;
-        try {
-          ans = jsonDecode(k.answersJson) as Map<String, dynamic>;
-        } catch (_) {
-          ans = const {};
-        }
+        final ans = parseKpspPrimaryAnswers(k.answersJson);
         for (final q in form.questions) {
           final v = ans['${q.number}'];
           if (v == false) {
             failed.putIfAbsent(q.domain, () => []).add(q.number);
           }
         }
+      }
+      final devAgesMap = <KpspDomain, int>{};
+      final devAgesRaw = parseKpspDevelopmentalAges(k.answersJson);
+      if (devAgesRaw != null) {
+        devAgesRaw.forEach((key, val) {
+          final domain = KpspDomain.values.firstWhere(
+              (d) => d.name == key,
+              orElse: () => KpspDomain.bicaraBahasa);
+          if (val is int) {
+            devAgesMap[domain] = val;
+          }
+        });
       }
       kpsp = ReportKpsp(
         formAgeMonths: k.formAgeMonths,
@@ -235,6 +245,7 @@ class ReportBuilder {
         category: category,
         recommendation: _kpspRecommendation(category),
         failedByDomain: failed,
+        developmentalAges: devAgesMap.isNotEmpty ? devAgesMap : null,
       );
     }
 
@@ -320,17 +331,38 @@ class ReportBuilder {
     // Program stimulasi berbasis hasil KPSP pemeriksaan ini.
     // Jika tidak ada KPSP, default ke kelompok usia saat pemeriksaan.
     final stimulation = <ReportStimulationItem>[];
-    if (k != null) {
+    if (kpsp?.developmentalAges != null) {
+      final ages = KpspData.availableAges;
+      final stimTargets = <KpspDomain, int>{};
+      kpsp!.developmentalAges!.forEach((domain, devAge) {
+        if (devAge == 0) {
+          stimTargets[domain] = ages.first;
+        } else {
+          final idx = ages.indexOf(devAge);
+          stimTargets[domain] =
+              (idx >= 0 && idx < ages.length - 1) ? ages[idx + 1] : devAge;
+        }
+      });
+      final suggestions = StimulationMatcher.forDomains(stimTargets);
+      for (final s in suggestions) {
+        stimulation.add(ReportStimulationItem(
+          domainLabel: s.domain.label,
+          developmentalAgeMonths: s.developmentalAgeMonths,
+          bandLabel: s.band.label,
+          activities: s.activities
+              .map((a) => (title: a.title, howTo: a.howTo))
+              .toList(),
+        ));
+      }
+    } else if (k != null) {
       final form = KpspData.form(k.formAgeMonths);
       final Map<int, bool> answers = {};
       if (form != null) {
-        try {
-          final m = jsonDecode(k.answersJson) as Map<String, dynamic>;
-          m.forEach((key, val) {
-            final n = int.tryParse(key);
-            if (n != null && val is bool) answers[n] = val;
-          });
-        } catch (_) {}
+        final m = parseKpspPrimaryAnswers(k.answersJson);
+        m.forEach((key, val) {
+          final n = int.tryParse(key);
+          if (n != null && val is bool) answers[n] = val;
+        });
       }
 
       if (form != null && answers.isNotEmpty) {
