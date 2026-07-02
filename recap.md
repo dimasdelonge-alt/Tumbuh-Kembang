@@ -155,10 +155,8 @@ Semua butuh file/data spesifik yang belum tersedia & TIDAK BOLEH dikarang.
   menyumbang ke estimasi usia perkembangan (lebih akurat dari KPSP).
 
 ### 3. M-CHAT-R/F Follow-Up (wawancara tahap 2)
-- Dokter setuju didigitalkan. Tapi file "follow-up" di folder ternyata
-  **M-CHAT versi lama 23 item**, BUKAN wawancara Follow-Up tahap 2 (bercabang).
-- **Butuh:** dokumen M-CHAT-R/F Follow-Up resmi (pertanyaan lanjutan per item
-  gagal). M-CHAT-R 20 item tahap 1 sudah jadi.
+- Dokumen M-CHAT-R/F Follow-Up resmi berbahasa Indonesia (`M-CHAT-R_F_Indonesian.pdf`, 25 halaman) sudah ditemukan di folder Downloads user. Fitur ini tidak lagi terblokir dan siap diimplementasikan.
+
 
 ### 4. CDC growth chart (opsional)
 - Bisa diambil dari sumber resmi CDC bila dokter mau. WHO 0–19 thn sudah cukup.
