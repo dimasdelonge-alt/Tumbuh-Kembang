@@ -4,6 +4,7 @@ import '../data/repository.dart';
 import '../services/backup_service.dart';
 import '../services/sync_service.dart';
 import '../utils/file_helper.dart';
+import '../utils/config_storage.dart';
 
 /// Halaman Pengaturan untuk mengelola data (Backup/Restore & Sinkronisasi Cloud).
 class SettingsScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
   final _projectIdController = TextEditingController();
   final _appIdController = TextEditingController();
+  final _doctorNameController = TextEditingController();
   bool _isConnected = false;
 
   @override
@@ -45,6 +47,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _appIdController.text = appId.isNotEmpty
         ? appId
         : '1:728132917509:web:6b57eddad890cb960fbf6c';
+
+    final docName = await ConfigStorage.getString('doctor_name') ?? '';
+    _doctorNameController.text = docName;
   }
 
   @override
@@ -52,6 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _apiKeyController.dispose();
     _projectIdController.dispose();
     _appIdController.dispose();
+    _doctorNameController.dispose();
     super.dispose();
   }
 
@@ -269,6 +275,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _saveDoctorName() async {
+    final name = _doctorNameController.text.trim();
+    await ConfigStorage.setString('doctor_name', name);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nama Dokter berhasil disimpan.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -426,6 +445,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
                         ),
                       ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // --- SEKSI: IDENTITAS PEMERIKSA ---
+              const Divider(),
+              const SizedBox(height: 8),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                child: Text(
+                  'Identitas Pemeriksa',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueGrey,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Nama Dokter Pemeriksa',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Nama ini akan ditampilkan pada bagian tanda tangan laporan PDF hasil pemeriksaan.',
+                        style: TextStyle(fontSize: 13, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _doctorNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Dokter',
+                          hintText: 'Contoh: dr. Budi Sp.A',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.save),
+                          label: const Text('Simpan Nama Dokter', style: TextStyle(fontWeight: FontWeight.bold)),
+                          onPressed: _saveDoctorName,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

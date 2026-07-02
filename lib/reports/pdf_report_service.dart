@@ -12,6 +12,7 @@ import '../modules/kpsp/kpsp_model.dart';
 import '../modules/stimulation/stimulation.dart';
 import '../modules/stimulation/stimulation_data.dart';
 import 'report_builder.dart';
+import '../utils/config_storage.dart';
 
 /// Membuat laporan PDF hasil pemeriksaan (Modul 16) dan menampilkan dialog
 /// cetak / bagikan / simpan via paket printing.
@@ -50,6 +51,7 @@ class PdfReportService {
     KpspDomain? filterDomain,
   ) async {
     final doc = pw.Document();
+    final doctorName = await ConfigStorage.getString('doctor_name') ?? '';
     
     // Pastikan data stimulasi terdaftar
     registerStimulationData();
@@ -253,8 +255,12 @@ class PdfReportService {
                 crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
                   pw.Text('Dokter Pemeriksa,', style: const pw.TextStyle(fontSize: 9)),
-                  pw.SizedBox(height: 40),
-                  pw.Container(width: 120, child: pw.Divider(thickness: 0.8)),
+                  pw.SizedBox(height: 35),
+                  if (doctorName.isNotEmpty) ...[
+                    pw.Text(doctorName, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 2),
+                  ],
+                  pw.Container(width: 140, child: pw.Divider(thickness: 0.8)),
                   pw.Text('Tanda Tangan & Stempel', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
                 ],
               ),
@@ -280,6 +286,7 @@ class PdfReportService {
 
   static Future<Uint8List> _build(ExamReportData data) async {
     final doc = pw.Document();
+    final doctorName = await ConfigStorage.getString('doctor_name') ?? '';
 
     doc.addPage(
       pw.MultiPage(
@@ -333,7 +340,7 @@ class PdfReportService {
             ...data.stimulation.map(_stimulationSection),
           ],
           pw.SizedBox(height: 24),
-          _signature(data),
+          _signature(data, doctorName),
         ],
         footer: (context) => pw.Container(
           alignment: pw.Alignment.centerRight,
@@ -694,7 +701,7 @@ class PdfReportService {
                 color: PdfColors.grey700)),
       );
 
-  static pw.Widget _signature(ExamReportData data) {
+  static pw.Widget _signature(ExamReportData data, String doctorName) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.end,
       children: [
@@ -703,7 +710,11 @@ class PdfReportService {
           children: [
             pw.Text(_dateFmt.format(data.examDate),
                 style: const pw.TextStyle(fontSize: 10)),
-            pw.SizedBox(height: 48),
+            pw.SizedBox(height: 35),
+            if (doctorName.isNotEmpty) ...[
+              pw.Text(doctorName, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 2),
+            ],
             pw.Container(width: 160, child: pw.Divider(thickness: 0.8)),
             pw.Text('Dokter Pemeriksa',
                 style: const pw.TextStyle(fontSize: 10)),
