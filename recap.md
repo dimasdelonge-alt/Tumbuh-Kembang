@@ -178,12 +178,10 @@ Semua butuh file/data spesifik yang belum tersedia & TIDAK BOLEH dikarang.
 - **JANGAN buka browser sub-agent.** User yang test sendiri.
 
 ## LANGKAH BERIKUTNYA
-1. ✅ ~~Sinkronisasi Cloud Firebase~~ → **sudah diimplementasi, tinggal test.**
-   - User buka https://dimasdelonge-alt.github.io/Tumbuh-Kembang/
-   - Pengaturan → isi 3 field Firebase → Aktifkan Sinkronisasi Cloud.
-   - Test: buat pasien di device 1, cek muncul di device 2.
-2. Bila dokter kirim file Fenton → implementasi modul Fenton preterm.
-3. Bila dokter kirim data 125 item Denver II → implementasi Denver II.
-4. Bila dokter kirim M-CHAT-R/F Follow-Up → alur follow-up tahap 2.
-5. Bila dokter kirim kop klinik → header laporan PDF.
-6. Pematangan UI/UX & uji coba lapangan oleh dokter.
+1. ✅ **KPSP Stimulation Fix** -> **Selesai.** Target stimulasi KPSP kini mengikuti pedoman klinis resmi: kategori "Sesuai" menaikkan level stimulasi ke atas, "Meragukan" menetap pada tingkat usia kronologis, dan "Penyimpangan" menetap pada tingkat usia perkembangan domain masing-masing.
+2. ✅ **M-CHAT-R/F Follow-Up (Tahap 2)** -> **Selesai.** Alur wawancara interaktif untuk mem-follow up pertanyaan gagal pada M-CHAT-R Tahap 1 telah diimplementasikan lengkap beserta evaluasi skor/risiko baru dan integrasi PDF.
+3. ✅ **Git Push** -> **Selesai.** Perubahan terbaru telah di-push ke branch `main`.
+4. Bila dokter kirim file Fenton → implementasi modul Fenton preterm.
+5. Bila dokter kirim data 125 item Denver II → implementasi Denver II.
+6. Bila dokter kirim kop klinik → header laporan PDF.
+7. Pematangan UI/UX & uji coba lapangan oleh dokter.
