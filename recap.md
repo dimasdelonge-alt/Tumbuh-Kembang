@@ -94,8 +94,8 @@ opsi penilai + cut-off per penilai, registry (`registry.dart`), tabel DB
 `ScreeningResults`. UI generik `screening_screen.dart`.
 - **KMME** (mental emosional, 12 item, bebas) — `data/kmme_data.dart`
 - **TDD** (tes daya dengar, per kelompok usia, bebas) — `data/tdd_data.dart`
-- **M-CHAT-R** (autisme, 20 item, item 2/5/12 terbalik, berhak cipta, pakai
-  klinik sendiri) — `data/mchat_data.dart`
+- **M-CHAT-R** (autisme, 20 item, item 2/5/12 terbalik, berhak cipta) — `data/mchat_data.dart`
+- **M-CHAT-R/F Follow-Up (Wawancara Tahap 2)**: Alur wawancara interaktif untuk mem-follow up jawaban berisiko dari Tahap 1. Mengintegrasikan 20 panduan alur pertanyaan dari PDF resmi Indonesia (`mchat_followup_data.dart`, `mchat_followup_screen.dart`). Skor akhir dihitung berdasarkan jumlah kegagalan wawancara follow-up (Skor >= 2 = Risiko Tinggi ASD).
 - **GPPH** (Abbreviated Conners, 10 item skala 0–3, ambang >=13, bebas Kemenkes)
   — `data/gpph_data.dart`
 - **SPPAHI** (35 item skala 0–3, cut-off per penilai: Dokter >=22 / Ortu >=30 /
@@ -154,11 +154,8 @@ Semua butuh file/data spesifik yang belum tersedia & TIDAK BOLEH dikarang.
   atau >=2 caution; Untestable). Pakai usia koreksi prematur. Bisa juga
   menyumbang ke estimasi usia perkembangan (lebih akurat dari KPSP).
 
-### 3. M-CHAT-R/F Follow-Up (wawancara tahap 2)
-- Dokumen M-CHAT-R/F Follow-Up resmi berbahasa Indonesia (`M-CHAT-R_F_Indonesian.pdf`, 25 halaman) sudah ditemukan di folder Downloads user. Fitur ini tidak lagi terblokir dan siap diimplementasikan.
 
-
-### 4. CDC growth chart (opsional)
+### 3. CDC growth chart (opsional)
 - Bisa diambil dari sumber resmi CDC bila dokter mau. WHO 0–19 thn sudah cukup.
 
 ---
