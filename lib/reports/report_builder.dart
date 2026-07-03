@@ -62,6 +62,7 @@ class ReportKpsp {
 
 /// Ringkasan hasil instrumen skrining generik (KMME, M-CHAT, dll) untuk laporan.
 class ReportScreening {
+  final String instrumentId;
   final String name;
   final int score;
   final int total;
@@ -74,6 +75,7 @@ class ReportScreening {
   final List<String> flaggedItemTexts;
 
   ReportScreening({
+    required this.instrumentId,
     required this.name,
     required this.score,
     required this.total,
@@ -258,13 +260,27 @@ class ReportBuilder {
       // Untuk instrumen ber-rater (mis. SPPAHI), variantLabel menyimpan penilai
       // dan menentukan cut-off; selain itu band biasa.
       final rater = inst.hasRaterSelection ? s.variantLabel : null;
-      final band = ScreeningScorer.bandForRater(inst, s.score, rater);
+      var band = ScreeningScorer.bandForRater(inst, s.score, rater);
+
+      if (inst.id == 'mchat_r' && s.variantLabel == 'Follow-Up') {
+        final isHigh = s.score >= 2;
+        band = ScoreBand(
+          minScore: isHigh ? 2 : 0,
+          level: isHigh ? RiskLevel.high : RiskLevel.low,
+          interpretation: isHigh 
+              ? 'Risiko tinggi ASD (Skrining M-CHAT-R/F Positif)' 
+              : 'Risiko rendah ASD (Skrining M-CHAT-R/F Negatif)',
+          recommendation: isHigh 
+              ? 'Rujuk segera untuk evaluasi diagnostik dan evaluasi eligibilitas intervensi dini.' 
+              : 'Tidak ada tindakan lanjutan khusus, kecuali surveilans rutin.',
+        );
+      }
+
       // Nama dasar band-agnostik + varian tersimpan (band usia TDD / penilai).
       final name = s.variantLabel == null || s.variantLabel!.isEmpty
           ? inst.name
           : '${inst.name} — ${s.variantLabel}';
 
-      // Untuk instrumen Likert (mis. GPPH), rekonstruksi item menonjol (>=2).
       final flaggedTexts = <String>[];
       if (inst.responseType == ResponseType.likert4) {
         Map<String, dynamic> ans;
@@ -280,9 +296,45 @@ class ReportBuilder {
             flaggedTexts.add('${item.text} (nilai $val)');
           }
         }
+      } else if (inst.id == 'mchat_r') {
+        Map<String, dynamic> ansMap;
+        try {
+          ansMap = jsonDecode(s.answersJson) as Map<String, dynamic>;
+        } catch (_) {
+          ansMap = const {};
+        }
+        if (ansMap.containsKey('followUp')) {
+          final followUp = ansMap['followUp'] as Map<String, dynamic>? ?? {};
+          followUp.forEach((k, v) {
+            if (v == 'fail') {
+              final numKey = int.tryParse(k);
+              if (numKey != null) {
+                final item = inst.items.firstWhere((i) => i.number == numKey, orElse: () => inst.items[numKey - 1]);
+                flaggedTexts.add('No. $numKey: ${item.text} (Wawancara Tahap 2: GAGAL)');
+              }
+            }
+          });
+        } else {
+          final answers = ansMap.containsKey('answers')
+              ? (ansMap['answers'] as Map<String, dynamic>? ?? {})
+              : ansMap;
+          answers.forEach((k, v) {
+            final numKey = int.tryParse(k);
+            final val = v as bool?;
+            if (numKey != null && val != null) {
+              final item = inst.items.firstWhere((i) => i.number == numKey, orElse: () => inst.items[numKey - 1]);
+              final isRisk = (item.riskAnswer == RiskAnswer.ya && val == true) ||
+                             (item.riskAnswer == RiskAnswer.tidak && val == false);
+              if (isRisk) {
+                flaggedTexts.add('No. $numKey: ${item.text} (${val ? "Ya" : "Tidak"})');
+              }
+            }
+          });
+        }
       }
 
       screenings.add(ReportScreening(
+        instrumentId: s.instrumentId,
         name: name,
         score: s.score,
         total: s.totalItems,
@@ -334,13 +386,24 @@ class ReportBuilder {
     if (kpsp?.developmentalAges != null) {
       final ages = KpspData.availableAges;
       final stimTargets = <KpspDomain, int>{};
+      final overallResult = kpsp!.category;
+
       kpsp!.developmentalAges!.forEach((domain, devAge) {
-        if (devAge == 0) {
-          stimTargets[domain] = ages.first;
+        if (overallResult == KpspResultCategory.meragukan) {
+          // Doubtful: stimulate at current chronological age level
+          stimTargets[domain] = kpsp!.formAgeMonths;
+        } else if (overallResult == KpspResultCategory.penyimpangan) {
+          // Delayed: stimulate at developmental age level
+          stimTargets[domain] = devAge == 0 ? ages.first : devAge;
         } else {
-          final idx = ages.indexOf(devAge);
-          stimTargets[domain] =
-              (idx >= 0 && idx < ages.length - 1) ? ages[idx + 1] : devAge;
+          // Appropriate: stimulate at next age level
+          if (devAge == 0) {
+            stimTargets[domain] = ages.first;
+          } else {
+            final idx = ages.indexOf(devAge);
+            stimTargets[domain] =
+                (idx >= 0 && idx < ages.length - 1) ? ages[idx + 1] : devAge;
+          }
         }
       });
       final suggestions = StimulationMatcher.forDomains(stimTargets);
@@ -356,6 +419,7 @@ class ReportBuilder {
       }
     } else if (k != null) {
       final form = KpspData.form(k.formAgeMonths);
+      final category = KpspResultCategory.fromCode(k.result);
       final Map<int, bool> answers = {};
       if (form != null) {
         final m = parseKpspPrimaryAnswers(k.answersJson);
@@ -365,11 +429,20 @@ class ReportBuilder {
         });
       }
 
-      if (form != null && answers.isNotEmpty) {
-        final suggestions = StimulationMatcher.forKpspResult(
-          form: form,
-          answers: answers,
-        );
+      if (form != null) {
+        List<StimulationSuggestion> suggestions;
+        if (category == KpspResultCategory.sesuai) {
+          suggestions = answers.isNotEmpty
+              ? StimulationMatcher.forKpspResult(form: form, answers: answers)
+              : StimulationMatcher.forDomains({
+                  for (final d in KpspDomain.values) d: k.formAgeMonths,
+                });
+        } else {
+          suggestions = StimulationMatcher.forDomains({
+            for (final d in KpspDomain.values) d: k.formAgeMonths,
+          });
+        }
+
         for (final s in suggestions) {
           stimulation.add(ReportStimulationItem(
             domainLabel: s.domain.label,

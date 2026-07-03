@@ -463,16 +463,27 @@ class _KpspScreenState extends State<KpspScreen> {
 
     setState(() => _inRegression = false);
 
-    // Determine next KPSP age for each domain's stimulation target.
+    // Determine target stimulation age for each domain based on overall KPSP result.
     final ages = KpspData.availableAges;
     final stimTargets = <KpspDomain, int>{};
+    final overallResult = _initialInterp!.category;
+
     for (final e in _devAges.entries) {
-      if (e.value == 0) {
-        stimTargets[e.key] = ages.first; // 3 months
+      if (overallResult == KpspResultCategory.meragukan) {
+        // Doubtful: stimulate at current chronological age level
+        stimTargets[e.key] = _formAge;
+      } else if (overallResult == KpspResultCategory.penyimpangan) {
+        // Delayed: stimulate at developmental age level
+        stimTargets[e.key] = e.value == 0 ? ages.first : e.value;
       } else {
-        final idx = ages.indexOf(e.value);
-        stimTargets[e.key] =
-            (idx >= 0 && idx < ages.length - 1) ? ages[idx + 1] : e.value;
+        // Appropriate: stimulate at next age level
+        if (e.value == 0) {
+          stimTargets[e.key] = ages.first;
+        } else {
+          final idx = ages.indexOf(e.value);
+          stimTargets[e.key] =
+              (idx >= 0 && idx < ages.length - 1) ? ages[idx + 1] : e.value;
+        }
       }
     }
 

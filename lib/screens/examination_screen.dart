@@ -18,6 +18,7 @@ import 'growth_screen.dart';
 import 'growth_chart.dart';
 import 'kpsp_screen.dart';
 import 'screening_screen.dart';
+import 'mchat_followup_screen.dart';
 import 'tdl_screen.dart';
 import 'cars_screen.dart';
 import 'stimulation_screen.dart';
@@ -696,6 +697,8 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                   : s.severity == 1
                       ? Colors.orange
                       : Colors.red;
+              final hasFollowUpButton = s.instrumentId == 'mchat_r' && 
+                  (s.name.contains('Follow-Up') || s.severity == 1);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: _resultCard(
@@ -715,6 +718,34 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                       const SizedBox(height: 4),
                       Text(s.recommendation,
                           style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+                    ],
+                    if (hasFollowUpButton) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            final done = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MchatFollowUpScreen(
+                                  examinationId: widget.examId,
+                                ),
+                              ),
+                            );
+                            if (done == true) {
+                              _load();
+                            }
+                          },
+                          icon: const Icon(Icons.psychology),
+                          label: Text(s.name.contains('Follow-Up')
+                              ? 'Edit Wawancara Follow-Up'
+                              : 'Mulai Wawancara Follow-Up (Tahap 2)'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: color,
+                          ),
+                        ),
+                      ),
                     ],
                   ],
                 ),
