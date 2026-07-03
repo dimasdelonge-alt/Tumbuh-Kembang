@@ -20,8 +20,9 @@ class KpspQuestion {
   final int number;
   final String text;
   final KpspDomain domain;
+  final String? imagePath;
 
-  const KpspQuestion(this.number, this.text, this.domain);
+  const KpspQuestion(this.number, this.text, this.domain, {this.imagePath});
 }
 
 /// Satu formulir KPSP untuk rentang usia tertentu.

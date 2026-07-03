@@ -42,38 +42,68 @@ class _TddBand {
 }
 
 const List<_TddBand> _bands = [
-  _TddBand(0, 6, '0-6 bulan', [
-    'Pada waktu bayi tidur lalu anda berbicara/membuat kegaduhan, apakah bayi bergerak atau terbangun?',
-    'Saat bayi telentang dan anda bertepuk tangan keras dari posisi tak terlihat, apakah bayi terkejut/mengedipkan mata/menegangkan tubuh?',
-    'Bila ada suara nyaring (batuk, salak anjing, piring jatuh), apakah bayi terkejut atau terlompat?',
+  _TddBand(0, 3, '0-3 bulan', [
+    'Apakah bayi dapat mengatakan "Aaaaa", "Ooooo"?',
+    'Apakah bayi menatap wajah dan tampak mendengarkan Anda, lalu berbicara saat Anda diam? Apakah Anda dapat seolah-olah berbicara dengan bayi Anda?',
+    'Apakah bayi kaget bila mendengar suara (mengejapkan mata, napas lebih cepat)?',
+    'Apakah bayi kelihatan menoleh bila Anda berbicara di sebelahnya?',
+    'Apakah bayi Anda dapat tersenyum?',
+    'Apakah bayi Anda kenal dengan Anda, seperti tersenyum lebih cepat pada Anda dibandingkan orang lain?',
   ]),
-  _TddBand(6, 9, '6-9 bulan', [
-    'Pada waktu bayi tidur lalu anda berbicara/membuat kegaduhan, apakah bayi bergerak atau terbangun?',
-    'Saat bayi telentang dan anda bertepuk tangan keras dari posisi tak terlihat, apakah bayi terkejut/mengedipkan mata/menegangkan tubuh?',
-    'Bila ada suara nyaring, apakah bayi terkejut atau terlompat?',
-    'Dari sisi yang tak terlihat bayi, sebut namanya atau bunyikan sesuatu — apakah bayi memalingkan kepala mencari sumber suara?',
+  _TddBand(3, 6, '3-6 bulan', [
+    'Apakah bayi Anda dapat tertawa keras?',
+    'Apakah bayi dapat bermain menggelembungkan mulut seperti meniup balon?',
+    'Apakah bayi memberi respons tertentu, seperti menjadi lebih riang bila Anda datang?',
+    'Pemeriksa duduk menghadap bayi yang dipangku orang tuanya, bunyikan bel disamping tanpa terlihat bayi, apakah bayi itu menoleh ke samping?',
+    'Pemeriksa menatap mata bayi sekitar 45 cm, lalu gunakan mainan untuk menarik pandangan bayi ke kiri, kanan, atas, dan bawah. Apakah bayi dapat mengikutinya?',
+    'Apakah bayi berkedip bila pemeriksa melakukan gerakan menusuk mata, lalu berhenti sekitar 3 cm tanpa menyentuh mata?',
   ]),
-  _TddBand(9, 12, '9-12 bulan', [
-    'Pada waktu bayi tidur lalu anda berbicara/membuat kegaduhan, apakah bayi bergerak atau terbangun?',
-    'Saat bayi telentang dan anda bertepuk tangan keras dari posisi tak terlihat, apakah bayi terkejut/mengedipkan mata/menegangkan tubuh?',
-    'Bila ada suara nyaring, apakah bayi terkejut atau terlompat?',
-    'Dari samping/belakang bayi tanpa terlihat, sebut namanya atau bunyikan sesuatu — apakah bayi langsung memalingkan kepala ke arah suara?',
+  _TddBand(6, 12, '6-12 bulan', [
+    'Apakah bayi dapat membuat suara berulang seperti \'mamamama\', \'babababa\'?',
+    'Apakah bayi dapat memanggil mama atau papa, walaupun tidak untuk memanggil orang tuanya?',
+    'Pemeriksa duduk mengahadap bayi yang dipangku orang tuanya, bunyikan bel di samping bawah tanpa terlihat bayi, apakah bayi langsung menoleh ke samping bawah?',
+    'Apakah bayi mengikuti perintah tanpa dibantu gerakan badan, seperti "Stop, berikan mainanmu"?',
+    'Apakah bayi mengikuti perintah dengan dibantu gerakan badan, seperti "Stop, berikan mainanmu"?',
+    'Apakah bayi secara spontan memulai permainan dengan gerakan tubuh, seperti \'Pok Ame-Ame\' atau \'Cilukba\'?',
   ]),
-  _TddBand(12, 24, '12-24 bulan', [
-    'Pada waktu anak tidur lalu anda berbicara/membuat kegaduhan, apakah anak bergerak atau terbangun?',
-    'Saat anak telentang dan anda bertepuk tangan keras dari posisi tak terlihat, apakah anak terkejut/mengedipkan mata/menegangkan tubuh?',
-    'Bila ada suara nyaring, apakah anak terkejut atau terlompat?',
-    'Tanpa terlihat anak, buat suara menarik perhatian — apakah anak langsung mengetahui posisi sumber suara yang berpindah-pindah?',
-    'Ucapkan kata-kata yang mudah dan sederhana — dapatkah anak menirukan anda?',
+  _TddBand(12, 18, '12-18 bulan', [
+    'Apakah anak dapat memanggil \'mama\' atau \'papa\', hanya untuk memanggil orang tuanya?',
+    'Apakah anak memulai menggunakan kata-kata lain, selain kata \'mama\', \'papa\', anggota keluarga lain, dan hewan peliharaan?',
+    'Pemeriksa duduk menghadap bayi yang dipangku orang tuanya, bunyikan bel di samping bawah tanpa terlihat bayi, apakah bayi langsung menoleh ke samping bawah?',
+    'Apakah anak mengikuti perintah tanpa dibantu gerakan badan, seperti "Stop, berikan mainanmu"?',
+    'Apakah anak secara spontan memulai permainan dengan gerakan tubuh, seperti \'Pok Ame-Ame\' atau \'Cilukba\'?',
+    'Apakah anak Anda menunjuk dengan jari telunjuk bila ingin sesuatu, bukan dengan cara memegang dengan semua jari?',
   ]),
-  _TddBand(24, 36, '2-3 tahun', [
-    'Tutup mulut anda dengan buku/kertas, tanpa terlihat gerak bibir, minta anak "Pegang matamu", "Pegang kakimu" — apakah anak melakukannya dengan benar?',
-    'Tutup mulut anda, minta anak menunjukkan gambar (kucing/anjing/mobil/rumah dll) di majalah — dapatkah anak menunjukkan gambar yang dimaksud dengan benar?',
-    'Tutup mulut anda, perintahkan sesuatu ("Berikan boneka itu", "Taruh kubus di atas meja") — apakah anak mengerjakan perintah dengan benar?',
+  _TddBand(18, 24, '18-24 bulan', [
+    'Apakah anak dapat mengucapkan 2 atau lebih kata yang menunjukkan keinginan, seperti "Susu", "Minum", "Lagi"?',
+    'Apakah anak secara spontan mengatakan 2 kombinasi kata, seperti "Mau bobo", "Lihat Papa"?',
+    'Apakah anak dapat menunjukkan paling sedikit 1 anggota badan, misal "Mana hidungmu?", "Mana matamu?" tanpa diberi contoh?',
+    'Apakah anak dapat mengerjakan 2 macam perintah dalam satu kalimat, seperti "Ambil sepatumu dan taruh disini" tanpa diberi contoh?',
+    'Apakah anak secara spontan memulai permainan dengan gerakan tubuh, seperti \'Pok Ame-Ame\' atau \'Cilukba\'?',
+    'Apakah anak Anda menunjuk dengan jari telunjuk bila ingin sesuatu, bukan dengan cara memegang dengan semua jari?',
+  ]),
+  _TddBand(24, 30, '24-30 bulan', [
+    'Apakah anak mulai menggunakan kata-kata lain, selain kata \'mama\', \'papa\', anggota keluarga lain, dan hewan peliharaan?',
+    'Apakah anak mulai mengungkapkan kata yang berarti \'milik\' misal "Susu kamu", "Bonekaku"?',
+    'Apakah anak dapat mengerjakan 2 macam perintah dalam satu kalimat, seperti "Ambil sepatu dan taruh disini" tanpa diberi contoh?',
+    'Apakah anak dapat menunjuk minimal 2 nama benda di depannya (cangkir, bola, sendok)?',
+    'Apakah anak secara spontan memulai permainan dengan gerakan tubuh, seperti \'Pok Ame-Ame\' atau \'Cilukba\'?',
+    'Apakah anak Anda menunjuk dengan jari telunjuk bila ingin sesuatu, bukan dengan cara memegang dengan semua jari?',
+  ]),
+  _TddBand(30, 36, '30-36 bulan', [
+    'Apakah anak dapat menyebutkan nama benda dan kegunaannya, seperi cangkir untuk minum, bola untuk dilempar, pensil warna untuk menggambar, sendok untuk makan?',
+    'Apakah lebih dari tiga perempat orang mengerti apa yang dibicarakan anak Anda?',
+    'Apakah anak dapat menunjukkan minimal 2 nama benda di depannya sesuai fungsinya (misal untuk minum: cangkir, untuk dilempar: bola, untuk makan: sendok, untuk menggambar: pensil warna)?',
+    'Apakah anak dapat mengerjakan perintah yang disertai kata depan? (misal: "Sekarang kubus itu di bawah meja, tolong taruh di atas meja")?',
+    'Apakah anak secara spontan memulai permainan dengan gerakan tubuh? Seperti \'Pok Ame-Ame\' atau \'Cilukba\'?',
+    'Apakah anak Anda menunjuk dengan jari telunjuk bila ingin sesuatu, bukan dengan cara memegang dengan semua jari?',
   ]),
   _TddBand(36, 72, 'lebih dari 3 tahun', [
-    'Perlihatkan benda di sekeliling (sendok, cangkir, bola, bunga) dan minta anak menyebutkan namanya — apakah anak dapat menyebut dengan benar?',
-    'Dari jarak 3 meter, tutup mulut anda dengan buku/kertas, ucapkan 4 angka berlainan — dapatkah anak mengulangi atau menirukan dengan jari tangannya?',
+    'Apakah anak dapat menyebutkan nama benda dan kegunaannya, seperti cangkir untuk minum, bola untuk dilempar, pensil warna untuk menggambar, sendok untuk makan?',
+    'Apakah lebih dari tiga perempat orang mengerti apa yang dibicarakan anak Anda?',
+    'Apakah anak Anda dapat menunjukkan minimal 2 nama benda di depannya sesuai fungsi (misal untuk minum: cangkir, untuk dilempar: bola, untuk makan: sendok, untuk menggambar: pensil warna)?',
+    'Apakah anak secara spontan memulai permainan dengan gerakan tubuh, seperti \'Pok Ame-Ame\' atau \'Cilukba\'?',
+    'Apakah anak Anda menunjuk dengan jari telunjuk bila ingin sesuatu, bukan dengan cara memegang dengan semua jari?',
   ]),
 ];
 

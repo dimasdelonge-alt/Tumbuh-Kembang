@@ -192,6 +192,18 @@ class _KpspScreenState extends State<KpspScreen> {
               const SizedBox(width: 10),
               Expanded(child: Text(q.text)),
             ]),
+            if (q.imagePath != null) ...[
+              const SizedBox(height: 12),
+              Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    q.imagePath!,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 6),
             Align(
               alignment: Alignment.centerLeft,
