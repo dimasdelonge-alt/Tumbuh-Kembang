@@ -9,6 +9,7 @@ import '../core/age_calculator.dart';
 import '../data/database.dart';
 import '../modules/growth/zscore_calculator.dart';
 import '../modules/kpsp/kpsp_model.dart';
+import '../modules/redleaf/redleaf_model.dart';
 import '../modules/stimulation/stimulation.dart';
 import '../modules/stimulation/stimulation_data.dart';
 import 'report_builder.dart';
@@ -19,12 +20,63 @@ import '../utils/config_storage.dart';
 class PdfReportService {
   static final _dateFmt = DateFormat('d MMMM yyyy', 'id_ID');
 
-  /// Render PDF lalu buka layout/preview cetak bawaan sistem.
+  /// Render PDF Komprehensif (Gabungan Semua Modul & Hasil).
   static Future<void> generateAndPrint(ExamReportData data) async {
     final bytes = await _build(data);
     await Printing.layoutPdf(
       onLayout: (_) async => bytes,
-      name: 'Laporan_${_safe(data.patient.name)}_'
+      name: 'Laporan_Gabungan_${_safe(data.patient.name)}_'
+          '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    );
+  }
+
+  /// Cetak Laporan Antropometri & Status Gizi Saja.
+  static Future<void> generateAndPrintGrowthOnly(ExamReportData data) async {
+    final bytes = await _build(
+      data,
+      includeKpsp: false,
+      includeScreenings: false,
+      includeVision: false,
+      includeCars: false,
+      includeStimulation: false,
+    );
+    await Printing.layoutPdf(
+      onLayout: (_) async => bytes,
+      name: 'Laporan_Antropometri_${_safe(data.patient.name)}_'
+          '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    );
+  }
+
+  /// Cetak Laporan KPSP Saja.
+  static Future<void> generateAndPrintKpspOnly(ExamReportData data) async {
+    final bytes = await _build(
+      data,
+      includeGrowth: false,
+      includeScreenings: false,
+      includeVision: false,
+      includeCars: false,
+      includeStimulation: false,
+    );
+    await Printing.layoutPdf(
+      onLayout: (_) async => bytes,
+      name: 'Laporan_KPSP_${_safe(data.patient.name)}_'
+          '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    );
+  }
+
+  /// Cetak Laporan Skrining & Redleaf Checklist Saja.
+  static Future<void> generateAndPrintScreeningsOnly(ExamReportData data) async {
+    final bytes = await _build(
+      data,
+      includeGrowth: false,
+      includeKpsp: false,
+      includeVision: false,
+      includeCars: false,
+      includeStimulation: false,
+    );
+    await Printing.layoutPdf(
+      onLayout: (_) async => bytes,
+      name: 'Laporan_Skrining_${_safe(data.patient.name)}_'
           '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
     );
   }
@@ -42,6 +94,226 @@ class PdfReportService {
       onLayout: (_) async => bytes,
       name: 'Panduan_Stimulasi_${_safe(patient.name)}$domainSuffix.pdf',
     );
+  }
+
+  /// Cetak panduan stimulasi Redleaf khusus untuk orang tua.
+  static Future<void> generateAndPrintRedleafStimulation({
+    required Patient patient,
+    required RedleafAgeGroup ageGroup,
+    required Map<String, bool> checkedItems,
+    DateTime? examDate,
+  }) async {
+    final bytes = await _buildRedleafStimulationPdf(
+      patient,
+      ageGroup,
+      checkedItems,
+      examDate ?? DateTime.now(),
+    );
+    await Printing.layoutPdf(
+      onLayout: (_) async => bytes,
+      name: 'Panduan_Stimulasi_Redleaf_${_safe(patient.name)}_${ageGroup.name}.pdf',
+    );
+  }
+
+  static Future<Uint8List> _buildRedleafStimulationPdf(
+    Patient patient,
+    RedleafAgeGroup ageGroup,
+    Map<String, bool> checkedItems,
+    DateTime examDate,
+  ) async {
+    final doc = pw.Document();
+    final doctorName = await ConfigStorage.getString('doctor_name') ?? '';
+
+    doc.addPage(
+      pw.MultiPage(
+        pageTheme: pw.PageTheme(
+          margin: const pw.EdgeInsets.all(32),
+          theme: pw.ThemeData.withFont(),
+        ),
+        build: (context) => [
+          // Header Klinik Premium
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('PANDUAN STIMULASI TUMBUH KEMBANG (REDLEAF)',
+                      style: pw.TextStyle(
+                          fontSize: 13,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.teal800)),
+                  pw.Text('Berdasarkan Developmental Milestones (Karen Petty, PhD)',
+                      style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
+                ],
+              ),
+              pw.Text(_dateFmt.format(examDate),
+                  style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800)),
+            ],
+          ),
+          pw.Divider(thickness: 1, color: PdfColors.teal700),
+          pw.SizedBox(height: 8),
+
+          // Identitas Pasien
+          pw.Container(
+            padding: const pw.EdgeInsets.all(8),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.grey100,
+              borderRadius: pw.BorderRadius.circular(6),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Nama Anak: ${patient.name}',
+                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                pw.Text('Kelompok Usia: ${ageGroup.name}',
+                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 14),
+
+          // Render Domain & Tips Stimulasi
+          ...ageGroup.domains.map((domain) {
+            if (domain.items.isEmpty) return pw.SizedBox();
+            return pw.Container(
+              margin: const pw.EdgeInsets.only(bottom: 12),
+              padding: const pw.EdgeInsets.all(10),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.teal50,
+                borderRadius: pw.BorderRadius.circular(8),
+                border: pw.Border.all(color: PdfColors.teal200, width: 0.8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Domain: ${domain.name}',
+                    style: pw.TextStyle(
+                      fontSize: 11,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.teal900,
+                    ),
+                  ),
+                  pw.SizedBox(height: 6),
+                  ...domain.items.map((item) {
+                    final key = '${ageGroup.id}_${domain.id}_${item.number}';
+                    final isChecked = checkedItems[key] ?? false;
+
+                    return pw.Padding(
+                      padding: const pw.EdgeInsets.only(bottom: 8),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Row(
+                            children: [
+                              pw.Text(
+                                '${item.number}. ${item.title}',
+                                style: pw.TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: isChecked ? PdfColors.teal800 : PdfColors.black,
+                                ),
+                              ),
+                              pw.SizedBox(width: 6),
+                              pw.Container(
+                                padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: pw.BoxDecoration(
+                                  color: isChecked ? PdfColors.green100 : PdfColors.orange100,
+                                  borderRadius: pw.BorderRadius.circular(3),
+                                ),
+                                child: pw.Text(
+                                  isChecked ? 'Tercapai' : 'Perlu Stimulasi',
+                                  style: pw.TextStyle(
+                                    fontSize: 7.5,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: isChecked ? PdfColors.green900 : PdfColors.orange900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          pw.SizedBox(height: 2),
+                          pw.Text(
+                            item.target,
+                            style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey800),
+                          ),
+                          if (item.parentTips.isNotEmpty) ...[
+                            pw.SizedBox(height: 3),
+                            pw.Text(
+                              'Yang dapat dilakukan orang tua / pengasuh:',
+                              style: pw.TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.grey900),
+                            ),
+                            ...item.parentTips.map((tip) {
+                              return pw.Padding(
+                                padding: const pw.EdgeInsets.only(left: 8, top: 1),
+                                child: pw.Row(
+                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                  children: [
+                                    pw.Text('• ',
+                                        style: pw.TextStyle(
+                                            fontSize: 8.5,
+                                            fontWeight: pw.FontWeight.bold,
+                                            color: PdfColors.teal700)),
+                                    pw.Expanded(
+                                      child: pw.Text(
+                                        tip,
+                                        style: const pw.TextStyle(
+                                            fontSize: 8, color: PdfColors.grey800),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            );
+          }),
+
+          pw.SizedBox(height: 20),
+          // Signature
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.end,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text('Dokter Pemeriksa,', style: const pw.TextStyle(fontSize: 9)),
+                  pw.SizedBox(height: 35),
+                  if (doctorName.isNotEmpty) ...[
+                    pw.Text(doctorName,
+                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 2),
+                  ],
+                  pw.Container(width: 140, child: pw.Divider(thickness: 0.8)),
+                  pw.Text('Tanda Tangan & Stempel',
+                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                ],
+              ),
+            ],
+          ),
+        ],
+        footer: (context) => pw.Container(
+          alignment: pw.Alignment.centerRight,
+          margin: const pw.EdgeInsets.only(top: 8),
+          child: pw.Text(
+            'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+          ),
+        ),
+      ),
+    );
+
+    return doc.save();
   }
 
   static Future<Uint8List> _buildStimulationPdf(
@@ -284,7 +556,15 @@ class PdfReportService {
   static String _safe(String s) =>
       s.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_');
 
-  static Future<Uint8List> _build(ExamReportData data) async {
+  static Future<Uint8List> _build(
+    ExamReportData data, {
+    bool includeGrowth = true,
+    bool includeKpsp = true,
+    bool includeScreenings = true,
+    bool includeVision = true,
+    bool includeCars = true,
+    bool includeStimulation = true,
+  }) async {
     final doc = pw.Document();
     final doctorName = await ConfigStorage.getString('doctor_name') ?? '';
 
@@ -299,42 +579,42 @@ class PdfReportService {
           pw.SizedBox(height: 12),
           _identity(data),
           pw.SizedBox(height: 16),
-          if (data.growthRows.isNotEmpty) ...[
+          if (includeGrowth && data.growthRows.isNotEmpty) ...[
             _sectionTitle('Status Pertumbuhan (WHO)'),
             _growthTable(data),
             pw.SizedBox(height: 12),
           ],
-          if (data.growthOutOfRange)
+          if (includeGrowth && data.growthOutOfRange)
             _note(
                 'Catatan: usia anak di luar rentang standar WHO 0-5 tahun; '
                 'sebagian indikator berbasis umur tidak ditampilkan. '
                 'Status gizi BB/TB memakai referensi CDC 2000 (Waterlow).'),
-          if (data.kpsp != null) ...[
+          if (includeKpsp && data.kpsp != null) ...[
             pw.SizedBox(height: 4),
             _sectionTitle('Skrining Perkembangan (KPSP)'),
             _kpspSection(data.kpsp!),
             pw.SizedBox(height: 12),
           ],
-          if (data.screenings.isNotEmpty) ...[
+          if (includeScreenings && data.screenings.isNotEmpty) ...[
             pw.SizedBox(height: 4),
-            _sectionTitle('Skrining Lain'),
+            _sectionTitle('Skrining Perkembangan & Milestones'),
             ...data.screenings.map(_screeningSection),
             pw.SizedBox(height: 12),
           ],
-          if (data.vision != null) ...[
+          if (includeVision && data.vision != null) ...[
             pw.SizedBox(height: 4),
             _sectionTitle('Tes Daya Lihat (TDL)'),
             _visionSection(data.vision!),
             pw.SizedBox(height: 12),
           ],
-          if (data.cars != null) ...[
+          if (includeCars && data.cars != null) ...[
             pw.SizedBox(height: 4),
             _sectionTitle('CARS (Skrining Autisme)'),
             _carsSection(data.cars!),
             pw.SizedBox(height: 12),
           ],
           _conclusion(data),
-          if (data.stimulation.isNotEmpty) ...[
+          if (includeStimulation && data.stimulation.isNotEmpty) ...[
             pw.SizedBox(height: 12),
             _sectionTitle('Program Stimulasi (sesuai usia perkembangan)'),
             ...data.stimulation.map(_stimulationSection),

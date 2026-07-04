@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -21,6 +22,9 @@ import 'screening_screen.dart';
 import 'mchat_followup_screen.dart';
 import 'tdl_screen.dart';
 import 'cars_screen.dart';
+import 'redleaf_screen.dart';
+import '../modules/redleaf/redleaf_data.dart';
+import '../modules/redleaf/redleaf_model.dart';
 import 'stimulation_screen.dart';
 
 /// Hub satu pemeriksaan/kunjungan: pilih tanggal lalu kerjakan modul
@@ -156,6 +160,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         Text('Modul Pemeriksaan',
             style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
+        // 1. Antropometri
         _ModuleTile(
           icon: Icons.monitor_weight,
           color: Colors.indigo,
@@ -171,10 +176,32 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                 examDate: _examDate,
               ),
             ));
-            setState(() {}); // Refresh hasil tab
+            setState(() {});
           },
         ),
         const SizedBox(height: 8),
+
+        // 2. Redleaf Milestones Checklist
+        _ModuleTile(
+          icon: Icons.checklist_rtl_rounded,
+          color: Colors.teal.shade700,
+          title: 'Redleaf Milestones Checklist',
+          subtitle: 'Capaian perkembangan 0-8 tahun (5 domain, ringkasan & tips)',
+          onTap: () async {
+            final id = await _ensureExam();
+            if (!mounted) return;
+            await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => RedleafScreen(
+                examinationId: id,
+                ageMonths: _age.chronologicalMonths,
+              ),
+            ));
+            setState(() {});
+          },
+        ),
+        const SizedBox(height: 8),
+
+        // 3. KPSP & Stimulasi
         _ModuleTile(
           icon: Icons.checklist,
           color: Colors.deepPurple,
@@ -197,7 +224,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         _ModuleTile(
           icon: Icons.lightbulb,
           color: Colors.amber.shade800,
-          title: 'Stimulasi (Saran Aktivitas)',
+          title: 'Stimulasi (Saran Aktivitas SDIDTK)',
           subtitle: 'Aktivitas stimulasi SDIDTK sesuai hasil KPSP',
           onTap: () async {
             final id = await _ensureExam();
@@ -213,6 +240,28 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
           },
         ),
         const SizedBox(height: 8),
+
+        // 4. GPPH / ACRS
+        _ModuleTile(
+          icon: Icons.bolt,
+          color: Colors.orange,
+          title: 'GPPH / ACRS (Hiperaktivitas / ADHD)',
+          subtitle: 'Abbreviated Conners Rating Scale, skala 0-3',
+          onTap: () => _openScreening(gpphInstrument),
+        ),
+        const SizedBox(height: 8),
+
+        // 5. SPPAHI
+        _ModuleTile(
+          icon: Icons.run_circle,
+          color: Colors.deepOrange,
+          title: 'SPPAHI (Perilaku Hiperaktif)',
+          subtitle: '35 item, skala 0-3, cut-off sesuai penilai',
+          onTap: () => _openScreening(sppahiInstrument),
+        ),
+        const SizedBox(height: 8),
+
+        // 6. KMME
         _ModuleTile(
           icon: Icons.sentiment_satisfied_alt,
           color: Colors.teal,
@@ -221,6 +270,35 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
           onTap: () => _openScreening(kmmeInstrument),
         ),
         const SizedBox(height: 8),
+
+        // 7. M-CHAT-R
+        _ModuleTile(
+          icon: Icons.extension,
+          color: Colors.redAccent,
+          title: 'M-CHAT-R (Skrining Autisme)',
+          subtitle: 'Deteksi dini risiko ASD, anak usia 16-30 bulan',
+          onTap: () => _openScreening(mchatInstrument),
+        ),
+        const SizedBox(height: 8),
+
+        // 8. CARS
+        _ModuleTile(
+          icon: Icons.psychology_alt,
+          color: Colors.pink,
+          title: 'CARS (Skrining Autisme)',
+          subtitle: '15 area, skala 1-4; Childhood Autism Rating Scale',
+          onTap: () async {
+            final id = await _ensureExam();
+            if (!mounted) return;
+            await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => CarsScreen(examinationId: id),
+            ));
+            setState(() {});
+          },
+        ),
+        const SizedBox(height: 8),
+
+        // 9. TDD
         _ModuleTile(
           icon: Icons.hearing,
           color: Colors.brown,
@@ -230,30 +308,8 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
               _openScreening(tddInstrumentForAge(_age.chronologicalMonths)),
         ),
         const SizedBox(height: 8),
-        _ModuleTile(
-          icon: Icons.extension,
-          color: Colors.redAccent,
-          title: 'M-CHAT-R (Skrining Autisme)',
-          subtitle: 'Deteksi dini risiko ASD, anak usia 16-30 bulan',
-          onTap: () => _openScreening(mchatInstrument),
-        ),
-        const SizedBox(height: 8),
-        _ModuleTile(
-          icon: Icons.bolt,
-          color: Colors.orange,
-          title: 'GPPH (Hiperaktivitas / ADHD)',
-          subtitle: 'Abbreviated Conners, skala 0-3, untuk usia sekolah',
-          onTap: () => _openScreening(gpphInstrument),
-        ),
-        const SizedBox(height: 8),
-        _ModuleTile(
-          icon: Icons.run_circle,
-          color: Colors.deepOrange,
-          title: 'SPPAHI (Perilaku Hiperaktif)',
-          subtitle: '35 item, skala 0-3, cut-off sesuai penilai',
-          onTap: () => _openScreening(sppahiInstrument),
-        ),
-        const SizedBox(height: 8),
+
+        // 10. TDL
         _ModuleTile(
           icon: Icons.visibility,
           color: Colors.cyan,
@@ -267,21 +323,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                 examinationId: id,
                 ageMonths: _age.chronologicalMonths,
               ),
-            ));
-            setState(() {});
-          },
-        ),
-        const SizedBox(height: 8),
-        _ModuleTile(
-          icon: Icons.psychology_alt,
-          color: Colors.pink,
-          title: 'CARS (Skrining Autisme)',
-          subtitle: '15 area, skala 1-4; berhak cipta (pakai klinik sendiri)',
-          onTap: () async {
-            final id = await _ensureExam();
-            if (!mounted) return;
-            await Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => CarsScreen(examinationId: id),
             ));
             setState(() {});
           },
@@ -342,7 +383,162 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         );
         return;
       }
-      await PdfReportService.generateAndPrint(data);
+      if (!mounted) return;
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (ctx) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Pilihan Cetak Laporan PDF',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Pilih format file PDF yang ingin Anda simpan atau cetak:',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 1. Gabungan All-in-One
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.picture_as_pdf, color: Colors.teal.shade700),
+                    ),
+                    title: const Text('Cetak PDF Gabungan (Komprehensif)',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: const Text(
+                        'Semua hasil pemeriksaan + lampiran stimulasi jadi 1 file PDF'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      PdfReportService.generateAndPrint(data);
+                    },
+                  ),
+                  const Divider(),
+
+                  // 2. Antropometri saja
+                  if (data.growthRows.isNotEmpty)
+                    ListTile(
+                      leading: const Icon(Icons.monitor_weight_outlined),
+                      title: const Text('Cetak Antropometri & Gizi Saja'),
+                      subtitle: const Text('Tabel BB, TB, LK, Z-Score & Status Gizi'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        PdfReportService.generateAndPrintGrowthOnly(data);
+                      },
+                    ),
+
+                  // 3. KPSP saja
+                  if (data.kpsp != null)
+                    ListTile(
+                      leading: const Icon(Icons.child_care_outlined),
+                      title: const Text('Cetak KPSP & Usia Perkembangan Saja'),
+                      subtitle: const Text('Hasil skrining KPSP & Rincian per Domain'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        PdfReportService.generateAndPrintKpspOnly(data);
+                      },
+                    ),
+
+                  // 4. Skrining & Redleaf Checklist
+                  if (data.screenings.isNotEmpty || data.vision != null || data.cars != null)
+                    ListTile(
+                      leading: const Icon(Icons.checklist_rtl_rounded),
+                      title: const Text('Cetak Skrining & Redleaf Checklist Saja'),
+                      subtitle: const Text('Modul Redleaf, TDL, CARS, KMME, M-CHAT, dll'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        PdfReportService.generateAndPrintScreeningsOnly(data);
+                      },
+                    ),
+
+                  // 5. Panduan Stimulasi saja
+                  if (data.kpsp != null)
+                    ListTile(
+                      leading: const Icon(Icons.psychology_outlined),
+                      title: const Text('Cetak Panduan Stimulasi Ortu Saja'),
+                      subtitle: const Text('Buku panduan latihan stimulasi sesuai usia'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        PdfReportService.generateAndPrintStimulation(
+                          patient: widget.patient,
+                          ageMonths: data.kpsp!.formAgeMonths,
+                          interp: KpspInterpretation(
+                            yesCount: data.kpsp!.yesCount,
+                            total: data.kpsp!.total,
+                            category: data.kpsp!.category,
+                            recommendation: data.kpsp!.recommendation,
+                            failedByDomain: data.kpsp!.failedByDomain,
+                          ),
+                        );
+                      },
+                    ),
+
+                  // 6. Panduan Stimulasi Redleaf
+                  ListTile(
+                    leading: const Icon(Icons.volunteer_activism_outlined),
+                    title: const Text('Cetak Panduan Stimulasi Redleaf (Ortu)'),
+                    subtitle: const Text('Rincian poin "Yang dapat dilakukan ortu" per domain Redleaf'),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      final rawResult = await repo.getScreening(exam.id, 'redleaf');
+                      final variantId = rawResult?.variantLabel ?? '0_12m';
+                      final ageGroup = redleafAgeGroups.firstWhere(
+                        (g) => g.id == variantId,
+                        orElse: () => getRedleafAgeGroupForAge(_age.chronologicalMonths),
+                      );
+                      Map<String, bool> checkedMap = {};
+                      if (rawResult != null) {
+                        try {
+                          final m = jsonDecode(rawResult.answersJson) as Map<String, dynamic>;
+                          m.forEach((k, v) {
+                            if (v is bool) checkedMap[k] = v;
+                          });
+                        } catch (_) {}
+                      }
+                      await PdfReportService.generateAndPrintRedleafStimulation(
+                        patient: widget.patient,
+                        ageGroup: ageGroup,
+                        checkedItems: checkedMap,
+                        examDate: exam.examDate,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

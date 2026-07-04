@@ -255,6 +255,25 @@ class ReportBuilder {
     final screenings = <ReportScreening>[];
     final screeningRows = await repo.getScreeningsForExam(exam.id);
     for (final s in screeningRows) {
+      if (s.instrumentId == 'redleaf') {
+        final levelLabel = s.riskLevel == 0
+            ? 'Capaian Baik (≥75%)'
+            : (s.riskLevel == 1 ? 'Perlu Pemantauan (50-74%)' : 'Perlu Atensi (<50%)');
+        screenings.add(ReportScreening(
+          instrumentId: 'redleaf',
+          name: 'Redleaf Milestones Checklist',
+          score: s.score,
+          total: s.totalItems,
+          levelLabel: levelLabel,
+          severity: s.riskLevel,
+          interpretation: 'Tercapai ${s.score} dari ${s.totalItems} indikator milestone.',
+          recommendation: s.riskLevel == 0
+              ? 'Lanjutkan stimulasi harian secara konsisten.'
+              : 'Berikan stimulasi ekstra pada indikator yang belum tercapai.',
+        ));
+        continue;
+      }
+
       final inst = ScreeningRegistry.byId(s.instrumentId);
       if (inst == null) continue;
       // Untuk instrumen ber-rater (mis. SPPAHI), variantLabel menyimpan penilai
