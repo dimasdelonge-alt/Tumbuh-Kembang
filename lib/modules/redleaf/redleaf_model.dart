@@ -1,4 +1,4 @@
-/// Model data untuk Redleaf Milestones Checklist.
+// Model data untuk Redleaf Milestones Checklist.
 
 class RedleafItem {
   final int number;
@@ -6,11 +6,17 @@ class RedleafItem {
   final String target;
   final List<String> parentTips;
 
+  /// Sub-usia dalam bulan (opsional, digunakan untuk filter di dalam age group).
+  final int? minMonth;
+  final int? maxMonth;
+
   const RedleafItem({
     required this.number,
     required this.title,
     required this.target,
     required this.parentTips,
+    this.minMonth,
+    this.maxMonth,
   });
 }
 

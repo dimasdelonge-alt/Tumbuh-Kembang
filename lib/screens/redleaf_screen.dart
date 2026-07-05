@@ -100,10 +100,20 @@ class _RedleafScreenState extends State<RedleafScreen>
     return '${_selectedAgeGroup.id}_${domainId}_$number';
   }
 
+  /// Filter items sesuai usia anak (hanya item dengan minMonth <= usia anak).
+  List<RedleafItem> _filteredItems(RedleafDomain domain) {
+    final age = widget.ageMonths;
+    if (age == null) return domain.items;
+    return domain.items.where((item) {
+      if (item.minMonth == null) return true;
+      return item.minMonth! <= age;
+    }).toList();
+  }
+
   int get _totalItemsInCurrentGroup {
     int total = 0;
     for (final d in _selectedAgeGroup.domains) {
-      total += d.items.length;
+      total += _filteredItems(d).length;
     }
     return total;
   }
@@ -111,7 +121,7 @@ class _RedleafScreenState extends State<RedleafScreen>
   int get _checkedItemsInCurrentGroup {
     int count = 0;
     for (final d in _selectedAgeGroup.domains) {
-      for (final item in d.items) {
+      for (final item in _filteredItems(d)) {
         final key = _getItemKey(d.id, item.number);
         if (_checkedItems[key] == true) {
           count++;
@@ -308,7 +318,8 @@ class _RedleafScreenState extends State<RedleafScreen>
                   child: TabBarView(
                     controller: _tabController,
                     children: _selectedAgeGroup.domains.map((domain) {
-                      if (domain.items.isEmpty) {
+                      final items = _filteredItems(domain);
+                      if (items.isEmpty) {
                         return const Center(
                           child: Text(
                             'Tidak ada indikator milestone untuk domain ini pada usia yang dipilih.',
@@ -319,9 +330,9 @@ class _RedleafScreenState extends State<RedleafScreen>
 
                       return ListView.builder(
                         padding: const EdgeInsets.all(12),
-                        itemCount: domain.items.length,
+                        itemCount: items.length,
                         itemBuilder: (context, index) {
-                          final item = domain.items[index];
+                          final item = items[index];
                           final key = _getItemKey(domain.id, item.number);
                           final isChecked = _checkedItems[key] ?? false;
 
