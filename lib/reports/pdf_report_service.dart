@@ -253,7 +253,7 @@ class PdfReportService {
                                 child: pw.Row(
                                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                                   children: [
-                                    pw.Text('• ',
+                                    pw.Text('- ',
                                         style: pw.TextStyle(
                                             fontSize: 8.5,
                                             fontWeight: pw.FontWeight.bold,
@@ -328,16 +328,11 @@ class PdfReportService {
     // Pastikan data stimulasi terdaftar
     registerStimulationData();
     
-    var tempBand = StimulationLibrary.bandFor(ageMonths);
     final isNextAge = interp.category == KpspResultCategory.sesuai;
-    if (isNextAge && tempBand != null) {
-      final bands = StimulationLibrary.bands;
-      final idx = bands.indexOf(tempBand);
-      if (idx >= 0 && idx < bands.length - 1) {
-        tempBand = bands[idx + 1];
-      }
-    }
-    final band = tempBand;
+    // Jika KPSP sesuai (lulus target bulan X), berikan stimulasi untuk usia selanjutnya (band yang memuat X).
+    // Jika KPSP kurang (gagal target bulan X), berikan stimulasi untuk mengejar target X (band yang memuat X - 1).
+    final targetMonthForBand = isNextAge ? ageMonths : (ageMonths - 1);
+    final band = StimulationLibrary.bandFor(targetMonthForBand);
 
     final domainsToPrint = filterDomain != null 
         ? [filterDomain] 
