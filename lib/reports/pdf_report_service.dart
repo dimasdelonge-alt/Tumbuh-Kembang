@@ -102,12 +102,14 @@ class PdfReportService {
     required RedleafAgeGroup ageGroup,
     required Map<String, bool> checkedItems,
     DateTime? examDate,
+    int? childAgeMonths,
   }) async {
     final bytes = await _buildRedleafStimulationPdf(
       patient,
       ageGroup,
       checkedItems,
       examDate ?? DateTime.now(),
+      childAgeMonths,
     );
     await Printing.layoutPdf(
       onLayout: (_) async => bytes,
@@ -120,6 +122,7 @@ class PdfReportService {
     RedleafAgeGroup ageGroup,
     Map<String, bool> checkedItems,
     DateTime examDate,
+    int? childAgeMonths,
   ) async {
     final doc = pw.Document();
     final doctorName = await ConfigStorage.getString('doctor_name') ?? '';
@@ -175,7 +178,14 @@ class PdfReportService {
 
           // Render Domain & Tips Stimulasi
           ...ageGroup.domains.map((domain) {
-            if (domain.items.isEmpty) return pw.SizedBox();
+            final filteredItems = domain.items.where((item) {
+              if (childAgeMonths == null) return true;
+              if (item.minMonth == null) return true;
+              if (item.maxMonth == null) return item.minMonth! <= childAgeMonths;
+              return childAgeMonths >= item.minMonth! && childAgeMonths <= item.maxMonth!;
+            }).toList();
+
+            if (filteredItems.isEmpty) return pw.SizedBox();
             return pw.Container(
               margin: const pw.EdgeInsets.only(bottom: 12),
               padding: const pw.EdgeInsets.all(10),
@@ -196,7 +206,7 @@ class PdfReportService {
                     ),
                   ),
                   pw.SizedBox(height: 6),
-                  ...domain.items.map((item) {
+                  ...filteredItems.map((item) {
                     final key = '${ageGroup.id}_${domain.id}_${item.number}';
                     final isChecked = checkedItems[key] ?? false;
 

@@ -530,6 +530,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                         ageGroup: ageGroup,
                         checkedItems: checkedMap,
                         examDate: exam.examDate,
+                        childAgeMonths: exam.ageMonths,
                       );
                     },
                   ),

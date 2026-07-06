@@ -106,7 +106,8 @@ class _RedleafScreenState extends State<RedleafScreen>
     if (age == null) return domain.items;
     return domain.items.where((item) {
       if (item.minMonth == null) return true;
-      return item.minMonth! <= age;
+      if (item.maxMonth == null) return item.minMonth! <= age;
+      return age >= item.minMonth! && age <= item.maxMonth!;
     }).toList();
   }
 
@@ -179,6 +180,7 @@ class _RedleafScreenState extends State<RedleafScreen>
           ageGroup: _selectedAgeGroup,
           checkedItems: _checkedItems,
           examDate: exam.examDate,
+          childAgeMonths: widget.ageMonths,
         );
         return;
       }
