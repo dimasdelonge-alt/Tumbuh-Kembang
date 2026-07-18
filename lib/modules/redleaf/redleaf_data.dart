@@ -3514,9 +3514,13 @@ final List<RedleafAgeGroup> redleafAgeGroups = [
 ];
 
 /// Mendapatkan kelompok usia Redleaf yang sesuai dengan usia anak dalam bulan.
+///
+/// Batas atas inklusif. Pada titik tumpang-tindih (12, 24, 36, …) group
+/// lebih muda menang agar "Lahir–12 bulan" mencakup usia tepat 12 bulan
+/// (sesuai chapter 4 buku Redleaf / item maxMonth: 12).
 RedleafAgeGroup getRedleafAgeGroupForAge(int ageMonths) {
   for (final group in redleafAgeGroups) {
-    if (ageMonths >= group.minAgeMonths && ageMonths < group.maxAgeMonths) {
+    if (ageMonths >= group.minAgeMonths && ageMonths <= group.maxAgeMonths) {
       return group;
     }
   }
@@ -3524,4 +3528,30 @@ RedleafAgeGroup getRedleafAgeGroupForAge(int ageMonths) {
     return redleafAgeGroups.first;
   }
   return redleafAgeGroups.last;
+}
+
+/// Apakah milestone relevan untuk [ageMonths].
+///
+/// Untuk 0–12 bulan, buku Redleaf membagi sub-usia (mis. 0–2, 6–9, 9–12).
+/// Item hanya ditampilkan jika usia anak jatuh di [minMonth, maxMonth].
+/// Tanpa sub-usia (kelompok ≥1 tahun), semua item di group ditampilkan.
+bool isRedleafItemRelevantForAge(RedleafItem item, int? ageMonths) {
+  if (ageMonths == null) {
+    // Tanpa usia real: jangan tampilkan item ber-sub-usia (hindari 93 item 0–12).
+    return item.minMonth == null && item.maxMonth == null;
+  }
+  if (item.minMonth == null && item.maxMonth == null) return true;
+  final min = item.minMonth ?? 0;
+  final max = item.maxMonth ?? item.minMonth!;
+  return ageMonths >= min && ageMonths <= max;
+}
+
+/// Filter daftar milestone sesuai usia anak (bulan).
+List<RedleafItem> filterRedleafItemsForAge(
+  List<RedleafItem> items,
+  int? ageMonths,
+) {
+  return items
+      .where((item) => isRedleafItemRelevantForAge(item, ageMonths))
+      .toList(growable: false);
 }

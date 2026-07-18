@@ -9,6 +9,7 @@ import '../core/age_calculator.dart';
 import '../data/database.dart';
 import '../modules/growth/zscore_calculator.dart';
 import '../modules/kpsp/kpsp_model.dart';
+import '../modules/redleaf/redleaf_data.dart';
 import '../modules/redleaf/redleaf_model.dart';
 import '../modules/stimulation/stimulation.dart';
 import '../modules/stimulation/stimulation_data.dart';
@@ -16,17 +17,62 @@ import 'report_builder.dart';
 import '../utils/config_storage.dart';
 
 /// Membuat laporan PDF hasil pemeriksaan (Modul 16) dan menampilkan dialog
-/// cetak / bagikan / simpan via paket printing.
+/// bagikan / simpan / cetak via paket printing (share sheet sistem).
 class PdfReportService {
   static final _dateFmt = DateFormat('d MMMM yyyy', 'id_ID');
+
+  /// Bagikan PDF lewat share sheet (WhatsApp, Bluetooth, Files, Print, dll).
+  static Future<void> _presentPdf(Uint8List bytes, String name) async {
+    final filename = name.endsWith('.pdf') ? name : '$name.pdf';
+    await Printing.sharePdf(bytes: bytes, filename: filename);
+  }
+
+  /// Bullet point digambar (bukan glyph font) agar tidak jadi kotak/X saat print.
+  static pw.Widget _bulletItem(
+    String text, {
+    double fontSize = 9,
+    PdfColor? color,
+    PdfColor? bulletColor,
+    pw.FontWeight? fontWeight,
+  }) {
+    final textColor = color ?? PdfColors.grey800;
+    final dotColor = bulletColor ?? PdfColors.teal700;
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(top: 1, bottom: 1),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Container(
+            width: 4,
+            height: 4,
+            margin: const pw.EdgeInsets.only(top: 3.5, right: 6),
+            decoration: pw.BoxDecoration(
+              color: dotColor,
+              shape: pw.BoxShape.circle,
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(
+              text,
+              style: pw.TextStyle(
+                fontSize: fontSize,
+                color: textColor,
+                fontWeight: fontWeight,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Render PDF Komprehensif (Gabungan Semua Modul & Hasil).
   static Future<void> generateAndPrint(ExamReportData data) async {
     final bytes = await _build(data);
-    await Printing.layoutPdf(
-      onLayout: (_) async => bytes,
-      name: 'Laporan_Gabungan_${_safe(data.patient.name)}_'
-          '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    await _presentPdf(
+      bytes,
+      'Laporan_Gabungan_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
     );
   }
 
@@ -40,10 +86,10 @@ class PdfReportService {
       includeCars: false,
       includeStimulation: false,
     );
-    await Printing.layoutPdf(
-      onLayout: (_) async => bytes,
-      name: 'Laporan_Antropometri_${_safe(data.patient.name)}_'
-          '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    await _presentPdf(
+      bytes,
+      'Laporan_Antropometri_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
     );
   }
 
@@ -57,10 +103,10 @@ class PdfReportService {
       includeCars: false,
       includeStimulation: false,
     );
-    await Printing.layoutPdf(
-      onLayout: (_) async => bytes,
-      name: 'Laporan_KPSP_${_safe(data.patient.name)}_'
-          '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    await _presentPdf(
+      bytes,
+      'Laporan_KPSP_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
     );
   }
 
@@ -74,10 +120,10 @@ class PdfReportService {
       includeCars: false,
       includeStimulation: false,
     );
-    await Printing.layoutPdf(
-      onLayout: (_) async => bytes,
-      name: 'Laporan_Skrining_${_safe(data.patient.name)}_'
-          '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    await _presentPdf(
+      bytes,
+      'Laporan_Skrining_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
     );
   }
 
@@ -90,9 +136,9 @@ class PdfReportService {
   }) async {
     final bytes = await _buildStimulationPdf(patient, ageMonths, interp, filterDomain);
     final domainSuffix = filterDomain != null ? '_${filterDomain.label}' : '_Semua_Stimulasi';
-    await Printing.layoutPdf(
-      onLayout: (_) async => bytes,
-      name: 'Panduan_Stimulasi_${_safe(patient.name)}$domainSuffix.pdf',
+    await _presentPdf(
+      bytes,
+      'Panduan_Stimulasi_${_safe(patient.name)}$domainSuffix.pdf',
     );
   }
 
@@ -111,9 +157,9 @@ class PdfReportService {
       examDate ?? DateTime.now(),
       childAgeMonths,
     );
-    await Printing.layoutPdf(
-      onLayout: (_) async => bytes,
-      name: 'Panduan_Stimulasi_Redleaf_${_safe(patient.name)}_${ageGroup.name}.pdf',
+    await _presentPdf(
+      bytes,
+      'Panduan_Stimulasi_Redleaf_${_safe(patient.name)}_${ageGroup.name}.pdf',
     );
   }
 
@@ -178,12 +224,8 @@ class PdfReportService {
 
           // Render Domain & Tips Stimulasi
           ...ageGroup.domains.map((domain) {
-            final filteredItems = domain.items.where((item) {
-              if (childAgeMonths == null) return true;
-              if (item.minMonth == null) return true;
-              if (item.maxMonth == null) return item.minMonth! <= childAgeMonths;
-              return childAgeMonths >= item.minMonth! && childAgeMonths <= item.maxMonth!;
-            }).toList();
+            final filteredItems =
+                filterRedleafItemsForAge(domain.items, childAgeMonths);
 
             if (filteredItems.isEmpty) return pw.SizedBox();
             return pw.Container(
@@ -257,28 +299,16 @@ class PdfReportService {
                                   fontWeight: pw.FontWeight.bold,
                                   color: PdfColors.grey900),
                             ),
-                            ...item.parentTips.map((tip) {
-                              return pw.Padding(
-                                padding: const pw.EdgeInsets.only(left: 8, top: 1),
-                                child: pw.Row(
-                                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                  children: [
-                                    pw.Text('- ',
-                                        style: pw.TextStyle(
-                                            fontSize: 8.5,
-                                            fontWeight: pw.FontWeight.bold,
-                                            color: PdfColors.teal700)),
-                                    pw.Expanded(
-                                      child: pw.Text(
-                                        tip,
-                                        style: const pw.TextStyle(
-                                            fontSize: 8, color: PdfColors.grey800),
-                                      ),
-                                    ),
-                                  ],
+                            ...item.parentTips.map(
+                              (tip) => pw.Padding(
+                                padding: const pw.EdgeInsets.only(left: 8),
+                                child: _bulletItem(
+                                  tip,
+                                  fontSize: 8,
+                                  color: PdfColors.grey800,
                                 ),
-                              );
-                            }),
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -480,8 +510,12 @@ class PdfReportService {
                           child: pw.Column(
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
-                              pw.Text('- ${act.title}',
-                                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                              _bulletItem(
+                                act.title,
+                                fontSize: 9,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.black,
+                              ),
                               pw.Padding(
                                 padding: const pw.EdgeInsets.only(left: 10, top: 2),
                                 child: pw.Text(
@@ -778,12 +812,21 @@ class PdfReportService {
                 pw.Text('Analisis Waterlow (CDC 2000):',
                     style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 2),
-                pw.Text('- Usia Tinggi (Height Age): ${data.waterlow!.heightAgeMonths.toStringAsFixed(1)} bulan',
-                    style: const pw.TextStyle(fontSize: 9)),
-                pw.Text('- Berat Badan Ideal (BBI): ${data.waterlow!.idealWeightKg.toStringAsFixed(1)} kg',
-                    style: const pw.TextStyle(fontSize: 9)),
-                pw.Text('- BB Aktual / BBI: ${data.waterlow!.percentage.toStringAsFixed(1)}%',
-                    style: const pw.TextStyle(fontSize: 9)),
+                _bulletItem(
+                  'Usia Tinggi (Height Age): ${data.waterlow!.heightAgeMonths.toStringAsFixed(1)} bulan',
+                  fontSize: 9,
+                  color: PdfColors.black,
+                ),
+                _bulletItem(
+                  'Berat Badan Ideal (BBI): ${data.waterlow!.idealWeightKg.toStringAsFixed(1)} kg',
+                  fontSize: 9,
+                  color: PdfColors.black,
+                ),
+                _bulletItem(
+                  'BB Aktual / BBI: ${data.waterlow!.percentage.toStringAsFixed(1)}%',
+                  fontSize: 9,
+                  color: PdfColors.black,
+                ),
               ],
             ),
           ),
@@ -821,17 +864,25 @@ class PdfReportService {
           pw.Text('Usia Perkembangan Per Domain (Asesmen GDD):',
               style: pw.TextStyle(
                   fontSize: 9, fontWeight: pw.FontWeight.bold)),
-          ...k.developmentalAges!.entries.map((e) => pw.Text(
-              '- ${e.key.label}: ${e.value == 0 ? "< 3" : e.value} bulan',
-              style: const pw.TextStyle(fontSize: 9))),
+          ...k.developmentalAges!.entries.map(
+            (e) => _bulletItem(
+              '${e.key.label}: ${e.value == 0 ? "< 3" : e.value} bulan',
+              fontSize: 9,
+              color: PdfColors.black,
+            ),
+          ),
         ] else if (k.failedByDomain.isNotEmpty) ...[
           pw.SizedBox(height: 4),
           pw.Text('Item belum tercapai:',
               style: pw.TextStyle(
                   fontSize: 9, fontWeight: pw.FontWeight.bold)),
-          ...k.failedByDomain.entries.map((e) => pw.Text(
-              '- ${e.key.label}: no. ${e.value.join(', ')}',
-              style: const pw.TextStyle(fontSize: 9))),
+          ...k.failedByDomain.entries.map(
+            (e) => _bulletItem(
+              '${e.key.label}: no. ${e.value.join(', ')}',
+              fontSize: 9,
+              color: PdfColors.black,
+            ),
+          ),
         ],
         pw.SizedBox(height: 4),
         pw.Text('Rekomendasi: ${k.recommendation}',
@@ -857,8 +908,9 @@ class PdfReportService {
             pw.Text('Perilaku menonjol:',
                 style: pw.TextStyle(
                     fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            ...s.flaggedItemTexts.map((t) => pw.Text('- $t',
-                style: const pw.TextStyle(fontSize: 9))),
+            ...s.flaggedItemTexts.map(
+              (t) => _bulletItem(t, fontSize: 9, color: PdfColors.black),
+            ),
           ],
           pw.Text('Rekomendasi: ${s.recommendation}',
               style: const pw.TextStyle(fontSize: 9)),
@@ -919,10 +971,9 @@ class PdfReportService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('- ${a.title}',
-                        style: const pw.TextStyle(fontSize: 9)),
+                    _bulletItem(a.title, fontSize: 9, color: PdfColors.black),
                     pw.Padding(
-                      padding: const pw.EdgeInsets.only(left: 8),
+                      padding: const pw.EdgeInsets.only(left: 10),
                       child: pw.Text(a.howTo,
                           style: const pw.TextStyle(
                               fontSize: 8, color: PdfColors.grey700)),
@@ -976,8 +1027,7 @@ class PdfReportService {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: flags
-                  .map((f) => pw.Text('- $f',
-                      style: const pw.TextStyle(fontSize: 10)))
+                  .map((f) => _bulletItem(f, fontSize: 10, color: PdfColors.black))
                   .toList(),
             ),
         ],

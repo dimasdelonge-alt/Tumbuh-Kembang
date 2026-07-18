@@ -100,15 +100,9 @@ class _RedleafScreenState extends State<RedleafScreen>
     return '${_selectedAgeGroup.id}_${domainId}_$number';
   }
 
-  /// Filter items sesuai usia anak (hanya item dengan minMonth <= usia anak).
+  /// Filter items sesuai usia anak (window sub-usia 0–12 bln, bukan kumulatif).
   List<RedleafItem> _filteredItems(RedleafDomain domain) {
-    final age = widget.ageMonths;
-    if (age == null) return domain.items;
-    return domain.items.where((item) {
-      if (item.minMonth == null) return true;
-      if (item.maxMonth == null) return item.minMonth! <= age;
-      return age >= item.minMonth! && age <= item.maxMonth!;
-    }).toList();
+    return filterRedleafItemsForAge(domain.items, widget.ageMonths);
   }
 
   int get _totalItemsInCurrentGroup {
@@ -227,7 +221,9 @@ class _RedleafScreenState extends State<RedleafScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Kelompok Usia: ${_selectedAgeGroup.name}',
+                      widget.ageMonths != null
+                          ? 'Usia anak: ${widget.ageMonths} bln · ${_selectedAgeGroup.name}'
+                          : 'Kelompok Usia: ${_selectedAgeGroup.name}',
                       style: const TextStyle(
                           fontSize: 12, color: Colors.grey),
                     ),
