@@ -256,6 +256,61 @@ class AppRepository {
         .getSingleOrNull();
   }
 
+  // ---------------- Denver II ----------------
+
+  Future<String> saveDenverResult({
+    required String examinationId,
+    required String patientId,
+    required double ageInMonths,
+    required bool usedCorrectedAge,
+    required int cautionsCount,
+    required int delaysCount,
+    required String globalResult,
+    required String answersJson,
+  }) async {
+    final id = _uuid.v4();
+    await db.transaction(() async {
+      await (db.delete(db.denverResults)
+            ..where((d) => d.examinationId.equals(examinationId)))
+          .go();
+      await db.into(db.denverResults).insert(DenverResultsCompanion(
+            id: Value(id),
+            examinationId: Value(examinationId),
+            ageInMonths: Value(ageInMonths),
+            usedCorrectedAge: Value(usedCorrectedAge),
+            cautionsCount: Value(cautionsCount),
+            delaysCount: Value(delaysCount),
+            globalResult: Value(globalResult),
+            answersJson: Value(answersJson),
+          ));
+    });
+    await _promoteIfAnonymous(examinationId);
+    return id;
+  }
+
+  Future<DenverResult?> getDenverResultForExamination(String examinationId) {
+    return (db.select(db.denverResults)
+          ..where((d) => d.examinationId.equals(examinationId)))
+        .getSingleOrNull();
+  }
+
+  Future<List<({Examination exam, DenverResult denver})>> denverHistory(
+      String patientId) async {
+    final query = db.select(db.examinations).join([
+      innerJoin(db.denverResults,
+          db.denverResults.examinationId.equalsExp(db.examinations.id))
+    ])
+      ..where(db.examinations.patientId.equals(patientId))
+      ..orderBy([OrderingTerm(expression: db.examinations.examDate)]);
+    final rows = await query.get();
+    return rows
+        .map((r) => (
+              exam: r.readTable(db.examinations),
+              denver: r.readTable(db.denverResults),
+            ))
+        .toList();
+  }
+
   /// Semua hasil KPSP untuk seorang pasien (untuk grafik longitudinal),
   /// digabung dengan tanggal pemeriksaannya.
   Future<List<({Examination exam, KpspResult kpsp})>> kpspHistory(

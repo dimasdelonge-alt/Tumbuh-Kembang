@@ -110,19 +110,25 @@ opsi penilai + cut-off per penilai, registry (`registry.dart`), tabel DB
   >=37 berat. Berhak cipta (notice tampil). Tabel DB `CarsResults` (skor REAL).
   Layar `cars_screen.dart`.
 
+### Denver II (Skrining Perkembangan) — `modules/denver/`
+- 125 item 4 sektor (Personal-Sosial, Adaptif-Motorik Halus, Bahasa, Motorik Kasar).
+- Kanvas visualisasi diagram batang `denver_chart_blank.png` dengan **Garis Usia Vertikal (Age Line)** otomatis.
+- Clinical calculation engine (`denver_calculator.dart`) memetakan status item (Advanced, Normal, Caution, Delayed) dan interpretasi global (Normal, Suspek, Untestable).
+- Tabel DB `DenverResults` (skema DB v6).
+
 ### Laporan & tren
 - **Laporan PDF** (Modul 16): identitas, usia, antropometri+Z-score, KPSP,
-  skrining (KMME/M-CHAT/GPPH/SPPAHI), TDL, CARS, kesimpulan red-flag, program
+  skrining (KMME/M-CHAT/GPPH/SPPAHI), TDL, CARS, **Denver II**, kesimpulan red-flag, program
   stimulasi, tanda tangan. (`reports/report_builder.dart`,
   `reports/pdf_report_service.dart`)
 - **Tren longitudinal** (Modul 14): grafik Z-score BB/U & TB/U, skor KPSP,
   estimasi usia perkembangan + stimulasi antar kunjungan.
   (`screens/longitudinal_screen.dart`)
 
-## Skema DB (drift, v5) — `data/database.dart`
+## Skema DB (drift, v6) — `data/database.dart`
 Patients, Examinations, GrowthMeasurements, KpspResults, ScreeningResults
 (+ kolom `variantLabel` untuk band usia TDD / penilai SPPAHI), VisionResults,
-CarsResults. Migrasi additive v1→v5 (aman, hanya createTable/addColumn).
+CarsResults, **DenverResults**. Migrasi additive v1→v6 (aman, hanya createTable/addColumn).
 
 ---
 
@@ -137,25 +143,7 @@ Semua butuh file/data spesifik yang belum tersedia & TIDAK BOLEH dikarang.
 - **Butuh:** file Excel/LMS resmi dari **fenton.ucalgary.ca** (6 set: BB/PB/LK ×
   L/P, per minggu usia 22–50). Mesin Z-score & usia koreksi sudah siap pakai.
 
-### 2. Denver II
-- Dokter setuju integrasikan & berlisensi memakainya. Dokter menjelaskan bahwa
-  **"125 item itu penulisan ulang sesuai diagram batang"** — artinya tiap item
-  punya rentang usia (titik di mana 25%/50%/75%/90% anak lulus) yang dibaca dari
-  grafik batang formulir Denver II.
-- PDF di folder HANYA berisi metode/cara interpretasi
-  (Normal/Caution/Delayed/Untestable), BUKAN data 125 item + norma usianya.
-- **Butuh:** data 125 item Denver II — daftar item per 4 domain (Personal Social,
-  Fine Motor Adaptive, Language, Gross Motor) beserta **rentang usia tiap item**
-  (umur 25/50/75/90% lulus) hasil penulisan ulang dari diagram batang.
-  Tanpa angka usia per item ini, interpretasi Denver II tak bisa dihitung akurat.
-- **Rencana implementasi (saat data ada):** model item {domain, p25,p50,p75,p90},
-  hitung garis umur → tandai tiap item Advanced/Normal/Caution/Delayed →
-  interpretasi global (Normal: tak ada delay & maks 1 caution; Suspek: >=1 delay
-  atau >=2 caution; Untestable). Pakai usia koreksi prematur. Bisa juga
-  menyumbang ke estimasi usia perkembangan (lebih akurat dari KPSP).
-
-
-### 3. CDC growth chart (opsional)
+### 2. CDC growth chart (opsional)
 - Bisa diambil dari sumber resmi CDC bila dokter mau. WHO 0–19 thn sudah cukup.
 
 ---
@@ -177,8 +165,8 @@ Semua butuh file/data spesifik yang belum tersedia & TIDAK BOLEH dikarang.
 ## LANGKAH BERIKUTNYA
 1. ✅ **KPSP Stimulation Fix** -> **Selesai.** Target stimulasi KPSP kini mengikuti pedoman klinis resmi: kategori "Sesuai" menaikkan level stimulasi ke atas, "Meragukan" menetap pada tingkat usia kronologis, dan "Penyimpangan" menetap pada tingkat usia perkembangan domain masing-masing.
 2. ✅ **M-CHAT-R/F Follow-Up (Tahap 2)** -> **Selesai.** Alur wawancara interaktif untuk mem-follow up pertanyaan gagal pada M-CHAT-R Tahap 1 telah diimplementasikan lengkap beserta evaluasi skor/risiko baru dan integrasi PDF.
-3. ✅ **Git Push** -> **Selesai.** Perubahan terbaru telah di-push ke branch `main`.
-4. Bila dokter kirim file Fenton → implementasi modul Fenton preterm.
-5. Bila dokter kirim data 125 item Denver II → implementasi Denver II.
+3. ✅ **Denver II Module** -> **Selesai.** Modul skrining Denver II 125 item dengan kanvas diagram interaktif + garis usia merah, engine evaluasi klinis, database v6, dan cetak PDF.
+4. ✅ **Git Push** -> **Selesai.** Perubahan terbaru telah di-push ke branch `main`.
+5. Bila dokter kirim file Fenton → implementasi modul Fenton preterm.
 6. Bila dokter kirim kop klinik → header laporan PDF.
 7. Pematangan UI/UX & uji coba lapangan oleh dokter.

@@ -5,6 +5,7 @@ import '../services/backup_service.dart';
 import '../services/sync_service.dart';
 import '../utils/file_helper.dart';
 import '../utils/config_storage.dart';
+import '../utils/denver_license.dart';
 
 /// Halaman Pengaturan untuk mengelola data (Backup/Restore & Sinkronisasi Cloud).
 class SettingsScreen extends StatefulWidget {
@@ -27,6 +28,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _tapCount = 0;
   DateTime? _lastTapTime;
   bool _showFirebaseConfig = false;
+
+  // --- Denver II License ---
+  bool _denverActivated = false;
+  final _activationCodeController = TextEditingController();
 
   void _handleSecretTap() {
     final now = DateTime.now();
@@ -63,6 +68,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _syncService = Provider.of<SyncService>(context, listen: false);
     _isConnected = _syncService.isInitialized;
     _loadSyncConfig();
+    _checkDenverLicense();
+  }
+
+  Future<void> _checkDenverLicense() async {
+    final activated = await DenverLicense.isActivated();
+    if (mounted) setState(() => _denverActivated = activated);
   }
 
   Future<void> _loadSyncConfig() async {
@@ -91,7 +102,166 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _projectIdController.dispose();
     _appIdController.dispose();
     _doctorNameController.dispose();
+    _activationCodeController.dispose();
     super.dispose();
+  }
+
+  // ─── Denver II Activation ──────────────────────────────────────────────────
+
+  Future<void> _showDenverActivationDialog() async {
+    _activationCodeController.clear();
+    String? errorText;
+    bool step2 = false; // false = kode, true = T&C
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setInner) {
+          if (!step2) {
+            // Step 1: masukkan kode aktivasi
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.lock_open, color: Color(0xFF0148A0)),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Aktifkan Modul Denver II', style: TextStyle(fontSize: 16))),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Masukkan kode aktivasi yang diperoleh dari penyedia aplikasi.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _activationCodeController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: 'Kode Aktivasi',
+                      border: const OutlineInputBorder(),
+                      errorText: errorText,
+                      prefixIcon: const Icon(Icons.vpn_key),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Batal'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final valid = DenverLicense.validateCode(
+                        _activationCodeController.text);
+                    if (!valid) {
+                      setInner(() => errorText = 'Kode tidak valid. Periksa kembali.');
+                    } else {
+                      setInner(() { errorText = null; step2 = true; });
+                    }
+                  },
+                  child: const Text('Lanjut'),
+                ),
+              ],
+            );
+          } else {
+            // Step 2: Syarat & Ketentuan
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.gavel, color: Colors.deepOrange),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Syarat & Ketentuan', style: TextStyle(fontSize: 16))),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Denver Developmental Screening Test II (Denver II) adalah instrumen yang dilindungi hak cipta oleh Frankenburg et al. (1990), diterbitkan oleh Denver Developmental Materials, Inc.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'Dengan mengaktifkan modul ini, Anda menyatakan bahwa:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    SizedBox(height: 6),
+                    Text('• Anda adalah tenaga kesehatan berlisensi (dokter, perawat, atau terapis).'),
+                    SizedBox(height: 4),
+                    Text('• Penggunaan terbatas untuk keperluan klinis dan pendidikan kedokteran.'),
+                    SizedBox(height: 4),
+                    Text('• Anda tidak akan mendistribusikan atau mereproduksi instrumen ini kepada pihak yang tidak berhak.'),
+                    SizedBox(height: 4),
+                    Text('• Penggunaan komersial atau publikasi tanpa izin tertulis dari pemilik hak cipta adalah pelanggaran hukum.'),
+                    SizedBox(height: 10),
+                    Text(
+                      'Pelanggaran terhadap ketentuan di atas sepenuhnya menjadi tanggung jawab pengguna.',
+                      style: TextStyle(fontSize: 12, color: Colors.red),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Tolak'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.green),
+                  onPressed: () async {
+                    await DenverLicense.activate();
+                    if (!mounted) return;
+                    setState(() => _denverActivated = true);
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Modul Denver II berhasil diaktifkan!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                  child: const Text('Saya Setuju & Aktifkan'),
+                ),
+              ],
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _showDenverDeactivateDialog() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nonaktifkan Denver II'),
+        content: const Text(
+            'Modul Denver II akan disembunyikan. Data yang sudah tersimpan tidak akan terhapus. Lanjutkan?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Nonaktifkan'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await DenverLicense.deactivate();
+      if (mounted) setState(() => _denverActivated = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Modul Denver II telah dinonaktifkan.')),
+        );
+      }
+    }
   }
 
   Future<void> _exportBackup(BuildContext context) async {
@@ -633,6 +803,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   'Versi Aplikasi 1.1.0 (Real-time Cloud Sync)',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ─── Menu Tersembunyi: Aktifkan Modul Tambahan ───────────────────
+              GestureDetector(
+                onTap: _denverActivated
+                    ? _showDenverDeactivateDialog
+                    : _showDenverActivationDialog,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: _denverActivated
+                          ? Colors.green.shade200
+                          : Colors.grey.shade300,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    color: _denverActivated
+                        ? Colors.green.shade50
+                        : Colors.grey.shade50,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _denverActivated ? Icons.verified : Icons.extension_outlined,
+                        size: 16,
+                        color: _denverActivated ? Colors.green : Colors.grey,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _denverActivated
+                                  ? 'Modul Denver II: Aktif'
+                                  : 'Aktifkan Modul Tambahan',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: _denverActivated
+                                    ? Colors.green.shade700
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                            Text(
+                              _denverActivated
+                                  ? 'Ketuk untuk menonaktifkan'
+                                  : 'Diperlukan kode aktivasi',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 16,
+                        color: Colors.grey.shade400,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

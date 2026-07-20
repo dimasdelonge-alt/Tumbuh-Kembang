@@ -7,8 +7,6 @@ import '../core/age_calculator.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import '../modules/kpsp/kpsp_model.dart';
-import '../modules/stimulation/stimulation.dart';
-import '../modules/stimulation/stimulation_data.dart';
 import '../reports/pdf_report_service.dart';
 
 /// Layar pemeriksaan KPSP (Modul 4).

@@ -3345,6 +3345,559 @@ class CarsResultsCompanion extends UpdateCompanion<CarsResult> {
   }
 }
 
+class $DenverResultsTable extends DenverResults
+    with TableInfo<$DenverResultsTable, DenverResult> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DenverResultsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: () => _uuid.v4(),
+  );
+  static const VerificationMeta _examinationIdMeta = const VerificationMeta(
+    'examinationId',
+  );
+  @override
+  late final GeneratedColumn<String> examinationId = GeneratedColumn<String>(
+    'examination_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES examinations (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _ageInMonthsMeta = const VerificationMeta(
+    'ageInMonths',
+  );
+  @override
+  late final GeneratedColumn<double> ageInMonths = GeneratedColumn<double>(
+    'age_in_months',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _usedCorrectedAgeMeta = const VerificationMeta(
+    'usedCorrectedAge',
+  );
+  @override
+  late final GeneratedColumn<bool> usedCorrectedAge = GeneratedColumn<bool>(
+    'used_corrected_age',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("used_corrected_age" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _cautionsCountMeta = const VerificationMeta(
+    'cautionsCount',
+  );
+  @override
+  late final GeneratedColumn<int> cautionsCount = GeneratedColumn<int>(
+    'cautions_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _delaysCountMeta = const VerificationMeta(
+    'delaysCount',
+  );
+  @override
+  late final GeneratedColumn<int> delaysCount = GeneratedColumn<int>(
+    'delays_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _globalResultMeta = const VerificationMeta(
+    'globalResult',
+  );
+  @override
+  late final GeneratedColumn<String> globalResult = GeneratedColumn<String>(
+    'global_result',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _answersJsonMeta = const VerificationMeta(
+    'answersJson',
+  );
+  @override
+  late final GeneratedColumn<String> answersJson = GeneratedColumn<String>(
+    'answers_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    examinationId,
+    ageInMonths,
+    usedCorrectedAge,
+    cautionsCount,
+    delaysCount,
+    globalResult,
+    answersJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'denver_results';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DenverResult> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('examination_id')) {
+      context.handle(
+        _examinationIdMeta,
+        examinationId.isAcceptableOrUnknown(
+          data['examination_id']!,
+          _examinationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_examinationIdMeta);
+    }
+    if (data.containsKey('age_in_months')) {
+      context.handle(
+        _ageInMonthsMeta,
+        ageInMonths.isAcceptableOrUnknown(
+          data['age_in_months']!,
+          _ageInMonthsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_ageInMonthsMeta);
+    }
+    if (data.containsKey('used_corrected_age')) {
+      context.handle(
+        _usedCorrectedAgeMeta,
+        usedCorrectedAge.isAcceptableOrUnknown(
+          data['used_corrected_age']!,
+          _usedCorrectedAgeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cautions_count')) {
+      context.handle(
+        _cautionsCountMeta,
+        cautionsCount.isAcceptableOrUnknown(
+          data['cautions_count']!,
+          _cautionsCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_cautionsCountMeta);
+    }
+    if (data.containsKey('delays_count')) {
+      context.handle(
+        _delaysCountMeta,
+        delaysCount.isAcceptableOrUnknown(
+          data['delays_count']!,
+          _delaysCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_delaysCountMeta);
+    }
+    if (data.containsKey('global_result')) {
+      context.handle(
+        _globalResultMeta,
+        globalResult.isAcceptableOrUnknown(
+          data['global_result']!,
+          _globalResultMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_globalResultMeta);
+    }
+    if (data.containsKey('answers_json')) {
+      context.handle(
+        _answersJsonMeta,
+        answersJson.isAcceptableOrUnknown(
+          data['answers_json']!,
+          _answersJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_answersJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DenverResult map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DenverResult(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      examinationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}examination_id'],
+      )!,
+      ageInMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}age_in_months'],
+      )!,
+      usedCorrectedAge: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}used_corrected_age'],
+      )!,
+      cautionsCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cautions_count'],
+      )!,
+      delaysCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}delays_count'],
+      )!,
+      globalResult: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}global_result'],
+      )!,
+      answersJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}answers_json'],
+      )!,
+    );
+  }
+
+  @override
+  $DenverResultsTable createAlias(String alias) {
+    return $DenverResultsTable(attachedDatabase, alias);
+  }
+}
+
+class DenverResult extends DataClass implements Insertable<DenverResult> {
+  final String id;
+  final String examinationId;
+  final double ageInMonths;
+  final bool usedCorrectedAge;
+  final int cautionsCount;
+  final int delaysCount;
+
+  /// Hasil global: 'normal' | 'suspect' | 'untestable'.
+  final String globalResult;
+
+  /// JSON map jawaban per itemId ('P', 'F', 'R', 'NO').
+  final String answersJson;
+  const DenverResult({
+    required this.id,
+    required this.examinationId,
+    required this.ageInMonths,
+    required this.usedCorrectedAge,
+    required this.cautionsCount,
+    required this.delaysCount,
+    required this.globalResult,
+    required this.answersJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['examination_id'] = Variable<String>(examinationId);
+    map['age_in_months'] = Variable<double>(ageInMonths);
+    map['used_corrected_age'] = Variable<bool>(usedCorrectedAge);
+    map['cautions_count'] = Variable<int>(cautionsCount);
+    map['delays_count'] = Variable<int>(delaysCount);
+    map['global_result'] = Variable<String>(globalResult);
+    map['answers_json'] = Variable<String>(answersJson);
+    return map;
+  }
+
+  DenverResultsCompanion toCompanion(bool nullToAbsent) {
+    return DenverResultsCompanion(
+      id: Value(id),
+      examinationId: Value(examinationId),
+      ageInMonths: Value(ageInMonths),
+      usedCorrectedAge: Value(usedCorrectedAge),
+      cautionsCount: Value(cautionsCount),
+      delaysCount: Value(delaysCount),
+      globalResult: Value(globalResult),
+      answersJson: Value(answersJson),
+    );
+  }
+
+  factory DenverResult.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DenverResult(
+      id: serializer.fromJson<String>(json['id']),
+      examinationId: serializer.fromJson<String>(json['examinationId']),
+      ageInMonths: serializer.fromJson<double>(json['ageInMonths']),
+      usedCorrectedAge: serializer.fromJson<bool>(json['usedCorrectedAge']),
+      cautionsCount: serializer.fromJson<int>(json['cautionsCount']),
+      delaysCount: serializer.fromJson<int>(json['delaysCount']),
+      globalResult: serializer.fromJson<String>(json['globalResult']),
+      answersJson: serializer.fromJson<String>(json['answersJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'examinationId': serializer.toJson<String>(examinationId),
+      'ageInMonths': serializer.toJson<double>(ageInMonths),
+      'usedCorrectedAge': serializer.toJson<bool>(usedCorrectedAge),
+      'cautionsCount': serializer.toJson<int>(cautionsCount),
+      'delaysCount': serializer.toJson<int>(delaysCount),
+      'globalResult': serializer.toJson<String>(globalResult),
+      'answersJson': serializer.toJson<String>(answersJson),
+    };
+  }
+
+  DenverResult copyWith({
+    String? id,
+    String? examinationId,
+    double? ageInMonths,
+    bool? usedCorrectedAge,
+    int? cautionsCount,
+    int? delaysCount,
+    String? globalResult,
+    String? answersJson,
+  }) => DenverResult(
+    id: id ?? this.id,
+    examinationId: examinationId ?? this.examinationId,
+    ageInMonths: ageInMonths ?? this.ageInMonths,
+    usedCorrectedAge: usedCorrectedAge ?? this.usedCorrectedAge,
+    cautionsCount: cautionsCount ?? this.cautionsCount,
+    delaysCount: delaysCount ?? this.delaysCount,
+    globalResult: globalResult ?? this.globalResult,
+    answersJson: answersJson ?? this.answersJson,
+  );
+  DenverResult copyWithCompanion(DenverResultsCompanion data) {
+    return DenverResult(
+      id: data.id.present ? data.id.value : this.id,
+      examinationId: data.examinationId.present
+          ? data.examinationId.value
+          : this.examinationId,
+      ageInMonths: data.ageInMonths.present
+          ? data.ageInMonths.value
+          : this.ageInMonths,
+      usedCorrectedAge: data.usedCorrectedAge.present
+          ? data.usedCorrectedAge.value
+          : this.usedCorrectedAge,
+      cautionsCount: data.cautionsCount.present
+          ? data.cautionsCount.value
+          : this.cautionsCount,
+      delaysCount: data.delaysCount.present
+          ? data.delaysCount.value
+          : this.delaysCount,
+      globalResult: data.globalResult.present
+          ? data.globalResult.value
+          : this.globalResult,
+      answersJson: data.answersJson.present
+          ? data.answersJson.value
+          : this.answersJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DenverResult(')
+          ..write('id: $id, ')
+          ..write('examinationId: $examinationId, ')
+          ..write('ageInMonths: $ageInMonths, ')
+          ..write('usedCorrectedAge: $usedCorrectedAge, ')
+          ..write('cautionsCount: $cautionsCount, ')
+          ..write('delaysCount: $delaysCount, ')
+          ..write('globalResult: $globalResult, ')
+          ..write('answersJson: $answersJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    examinationId,
+    ageInMonths,
+    usedCorrectedAge,
+    cautionsCount,
+    delaysCount,
+    globalResult,
+    answersJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DenverResult &&
+          other.id == this.id &&
+          other.examinationId == this.examinationId &&
+          other.ageInMonths == this.ageInMonths &&
+          other.usedCorrectedAge == this.usedCorrectedAge &&
+          other.cautionsCount == this.cautionsCount &&
+          other.delaysCount == this.delaysCount &&
+          other.globalResult == this.globalResult &&
+          other.answersJson == this.answersJson);
+}
+
+class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
+  final Value<String> id;
+  final Value<String> examinationId;
+  final Value<double> ageInMonths;
+  final Value<bool> usedCorrectedAge;
+  final Value<int> cautionsCount;
+  final Value<int> delaysCount;
+  final Value<String> globalResult;
+  final Value<String> answersJson;
+  final Value<int> rowid;
+  const DenverResultsCompanion({
+    this.id = const Value.absent(),
+    this.examinationId = const Value.absent(),
+    this.ageInMonths = const Value.absent(),
+    this.usedCorrectedAge = const Value.absent(),
+    this.cautionsCount = const Value.absent(),
+    this.delaysCount = const Value.absent(),
+    this.globalResult = const Value.absent(),
+    this.answersJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DenverResultsCompanion.insert({
+    this.id = const Value.absent(),
+    required String examinationId,
+    required double ageInMonths,
+    this.usedCorrectedAge = const Value.absent(),
+    required int cautionsCount,
+    required int delaysCount,
+    required String globalResult,
+    required String answersJson,
+    this.rowid = const Value.absent(),
+  }) : examinationId = Value(examinationId),
+       ageInMonths = Value(ageInMonths),
+       cautionsCount = Value(cautionsCount),
+       delaysCount = Value(delaysCount),
+       globalResult = Value(globalResult),
+       answersJson = Value(answersJson);
+  static Insertable<DenverResult> custom({
+    Expression<String>? id,
+    Expression<String>? examinationId,
+    Expression<double>? ageInMonths,
+    Expression<bool>? usedCorrectedAge,
+    Expression<int>? cautionsCount,
+    Expression<int>? delaysCount,
+    Expression<String>? globalResult,
+    Expression<String>? answersJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (examinationId != null) 'examination_id': examinationId,
+      if (ageInMonths != null) 'age_in_months': ageInMonths,
+      if (usedCorrectedAge != null) 'used_corrected_age': usedCorrectedAge,
+      if (cautionsCount != null) 'cautions_count': cautionsCount,
+      if (delaysCount != null) 'delays_count': delaysCount,
+      if (globalResult != null) 'global_result': globalResult,
+      if (answersJson != null) 'answers_json': answersJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DenverResultsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? examinationId,
+    Value<double>? ageInMonths,
+    Value<bool>? usedCorrectedAge,
+    Value<int>? cautionsCount,
+    Value<int>? delaysCount,
+    Value<String>? globalResult,
+    Value<String>? answersJson,
+    Value<int>? rowid,
+  }) {
+    return DenverResultsCompanion(
+      id: id ?? this.id,
+      examinationId: examinationId ?? this.examinationId,
+      ageInMonths: ageInMonths ?? this.ageInMonths,
+      usedCorrectedAge: usedCorrectedAge ?? this.usedCorrectedAge,
+      cautionsCount: cautionsCount ?? this.cautionsCount,
+      delaysCount: delaysCount ?? this.delaysCount,
+      globalResult: globalResult ?? this.globalResult,
+      answersJson: answersJson ?? this.answersJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (examinationId.present) {
+      map['examination_id'] = Variable<String>(examinationId.value);
+    }
+    if (ageInMonths.present) {
+      map['age_in_months'] = Variable<double>(ageInMonths.value);
+    }
+    if (usedCorrectedAge.present) {
+      map['used_corrected_age'] = Variable<bool>(usedCorrectedAge.value);
+    }
+    if (cautionsCount.present) {
+      map['cautions_count'] = Variable<int>(cautionsCount.value);
+    }
+    if (delaysCount.present) {
+      map['delays_count'] = Variable<int>(delaysCount.value);
+    }
+    if (globalResult.present) {
+      map['global_result'] = Variable<String>(globalResult.value);
+    }
+    if (answersJson.present) {
+      map['answers_json'] = Variable<String>(answersJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DenverResultsCompanion(')
+          ..write('id: $id, ')
+          ..write('examinationId: $examinationId, ')
+          ..write('ageInMonths: $ageInMonths, ')
+          ..write('usedCorrectedAge: $usedCorrectedAge, ')
+          ..write('cautionsCount: $cautionsCount, ')
+          ..write('delaysCount: $delaysCount, ')
+          ..write('globalResult: $globalResult, ')
+          ..write('answersJson: $answersJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3358,6 +3911,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $VisionResultsTable visionResults = $VisionResultsTable(this);
   late final $CarsResultsTable carsResults = $CarsResultsTable(this);
+  late final $DenverResultsTable denverResults = $DenverResultsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3370,6 +3924,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     screeningResults,
     visionResults,
     carsResults,
+    denverResults,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3414,6 +3969,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('cars_results', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'examinations',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('denver_results', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -4031,6 +4593,27 @@ final class $$ExaminationsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$DenverResultsTable, List<DenverResult>>
+  _denverResultsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.denverResults,
+    aliasName: $_aliasNameGenerator(
+      db.examinations.id,
+      db.denverResults.examinationId,
+    ),
+  );
+
+  $$DenverResultsTableProcessedTableManager get denverResultsRefs {
+    final manager = $$DenverResultsTableTableManager(
+      $_db,
+      $_db.denverResults,
+    ).filter((f) => f.examinationId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_denverResultsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ExaminationsTableFilterComposer
@@ -4201,6 +4784,31 @@ class $$ExaminationsTableFilterComposer
           }) => $$CarsResultsTableFilterComposer(
             $db: $db,
             $table: $db.carsResults,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> denverResultsRefs(
+    Expression<bool> Function($$DenverResultsTableFilterComposer f) f,
+  ) {
+    final $$DenverResultsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.denverResults,
+      getReferencedColumn: (t) => t.examinationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DenverResultsTableFilterComposer(
+            $db: $db,
+            $table: $db.denverResults,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4435,6 +5043,31 @@ class $$ExaminationsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> denverResultsRefs<T extends Object>(
+    Expression<T> Function($$DenverResultsTableAnnotationComposer a) f,
+  ) {
+    final $$DenverResultsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.denverResults,
+      getReferencedColumn: (t) => t.examinationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DenverResultsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.denverResults,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ExaminationsTableTableManager
@@ -4457,6 +5090,7 @@ class $$ExaminationsTableTableManager
             bool screeningResultsRefs,
             bool visionResultsRefs,
             bool carsResultsRefs,
+            bool denverResultsRefs,
           })
         > {
   $$ExaminationsTableTableManager(_$AppDatabase db, $ExaminationsTable table)
@@ -4518,6 +5152,7 @@ class $$ExaminationsTableTableManager
                 screeningResultsRefs = false,
                 visionResultsRefs = false,
                 carsResultsRefs = false,
+                denverResultsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -4527,6 +5162,7 @@ class $$ExaminationsTableTableManager
                     if (screeningResultsRefs) db.screeningResults,
                     if (visionResultsRefs) db.visionResults,
                     if (carsResultsRefs) db.carsResults,
+                    if (denverResultsRefs) db.denverResults,
                   ],
                   addJoins:
                       <
@@ -4669,6 +5305,27 @@ class $$ExaminationsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (denverResultsRefs)
+                        await $_getPrefetchedData<
+                          Examination,
+                          $ExaminationsTable,
+                          DenverResult
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ExaminationsTableReferences
+                              ._denverResultsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ExaminationsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).denverResultsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.examinationId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4696,6 +5353,7 @@ typedef $$ExaminationsTableProcessedTableManager =
         bool screeningResultsRefs,
         bool visionResultsRefs,
         bool carsResultsRefs,
+        bool denverResultsRefs,
       })
     >;
 typedef $$GrowthMeasurementsTableCreateCompanionBuilder =
@@ -6452,6 +7110,401 @@ typedef $$CarsResultsTableProcessedTableManager =
       CarsResult,
       PrefetchHooks Function({bool examinationId})
     >;
+typedef $$DenverResultsTableCreateCompanionBuilder =
+    DenverResultsCompanion Function({
+      Value<String> id,
+      required String examinationId,
+      required double ageInMonths,
+      Value<bool> usedCorrectedAge,
+      required int cautionsCount,
+      required int delaysCount,
+      required String globalResult,
+      required String answersJson,
+      Value<int> rowid,
+    });
+typedef $$DenverResultsTableUpdateCompanionBuilder =
+    DenverResultsCompanion Function({
+      Value<String> id,
+      Value<String> examinationId,
+      Value<double> ageInMonths,
+      Value<bool> usedCorrectedAge,
+      Value<int> cautionsCount,
+      Value<int> delaysCount,
+      Value<String> globalResult,
+      Value<String> answersJson,
+      Value<int> rowid,
+    });
+
+final class $$DenverResultsTableReferences
+    extends BaseReferences<_$AppDatabase, $DenverResultsTable, DenverResult> {
+  $$DenverResultsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ExaminationsTable _examinationIdTable(_$AppDatabase db) =>
+      db.examinations.createAlias(
+        $_aliasNameGenerator(
+          db.denverResults.examinationId,
+          db.examinations.id,
+        ),
+      );
+
+  $$ExaminationsTableProcessedTableManager get examinationId {
+    final $_column = $_itemColumn<String>('examination_id')!;
+
+    final manager = $$ExaminationsTableTableManager(
+      $_db,
+      $_db.examinations,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_examinationIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DenverResultsTableFilterComposer
+    extends Composer<_$AppDatabase, $DenverResultsTable> {
+  $$DenverResultsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get ageInMonths => $composableBuilder(
+    column: $table.ageInMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get usedCorrectedAge => $composableBuilder(
+    column: $table.usedCorrectedAge,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cautionsCount => $composableBuilder(
+    column: $table.cautionsCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get delaysCount => $composableBuilder(
+    column: $table.delaysCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get globalResult => $composableBuilder(
+    column: $table.globalResult,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get answersJson => $composableBuilder(
+    column: $table.answersJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ExaminationsTableFilterComposer get examinationId {
+    final $$ExaminationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.examinationId,
+      referencedTable: $db.examinations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ExaminationsTableFilterComposer(
+            $db: $db,
+            $table: $db.examinations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DenverResultsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DenverResultsTable> {
+  $$DenverResultsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get ageInMonths => $composableBuilder(
+    column: $table.ageInMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get usedCorrectedAge => $composableBuilder(
+    column: $table.usedCorrectedAge,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cautionsCount => $composableBuilder(
+    column: $table.cautionsCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get delaysCount => $composableBuilder(
+    column: $table.delaysCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get globalResult => $composableBuilder(
+    column: $table.globalResult,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get answersJson => $composableBuilder(
+    column: $table.answersJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ExaminationsTableOrderingComposer get examinationId {
+    final $$ExaminationsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.examinationId,
+      referencedTable: $db.examinations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ExaminationsTableOrderingComposer(
+            $db: $db,
+            $table: $db.examinations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DenverResultsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DenverResultsTable> {
+  $$DenverResultsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get ageInMonths => $composableBuilder(
+    column: $table.ageInMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get usedCorrectedAge => $composableBuilder(
+    column: $table.usedCorrectedAge,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get cautionsCount => $composableBuilder(
+    column: $table.cautionsCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get delaysCount => $composableBuilder(
+    column: $table.delaysCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get globalResult => $composableBuilder(
+    column: $table.globalResult,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get answersJson => $composableBuilder(
+    column: $table.answersJson,
+    builder: (column) => column,
+  );
+
+  $$ExaminationsTableAnnotationComposer get examinationId {
+    final $$ExaminationsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.examinationId,
+      referencedTable: $db.examinations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ExaminationsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.examinations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DenverResultsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DenverResultsTable,
+          DenverResult,
+          $$DenverResultsTableFilterComposer,
+          $$DenverResultsTableOrderingComposer,
+          $$DenverResultsTableAnnotationComposer,
+          $$DenverResultsTableCreateCompanionBuilder,
+          $$DenverResultsTableUpdateCompanionBuilder,
+          (DenverResult, $$DenverResultsTableReferences),
+          DenverResult,
+          PrefetchHooks Function({bool examinationId})
+        > {
+  $$DenverResultsTableTableManager(_$AppDatabase db, $DenverResultsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DenverResultsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DenverResultsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DenverResultsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> examinationId = const Value.absent(),
+                Value<double> ageInMonths = const Value.absent(),
+                Value<bool> usedCorrectedAge = const Value.absent(),
+                Value<int> cautionsCount = const Value.absent(),
+                Value<int> delaysCount = const Value.absent(),
+                Value<String> globalResult = const Value.absent(),
+                Value<String> answersJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DenverResultsCompanion(
+                id: id,
+                examinationId: examinationId,
+                ageInMonths: ageInMonths,
+                usedCorrectedAge: usedCorrectedAge,
+                cautionsCount: cautionsCount,
+                delaysCount: delaysCount,
+                globalResult: globalResult,
+                answersJson: answersJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                required String examinationId,
+                required double ageInMonths,
+                Value<bool> usedCorrectedAge = const Value.absent(),
+                required int cautionsCount,
+                required int delaysCount,
+                required String globalResult,
+                required String answersJson,
+                Value<int> rowid = const Value.absent(),
+              }) => DenverResultsCompanion.insert(
+                id: id,
+                examinationId: examinationId,
+                ageInMonths: ageInMonths,
+                usedCorrectedAge: usedCorrectedAge,
+                cautionsCount: cautionsCount,
+                delaysCount: delaysCount,
+                globalResult: globalResult,
+                answersJson: answersJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DenverResultsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({examinationId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (examinationId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.examinationId,
+                                referencedTable: $$DenverResultsTableReferences
+                                    ._examinationIdTable(db),
+                                referencedColumn: $$DenverResultsTableReferences
+                                    ._examinationIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DenverResultsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DenverResultsTable,
+      DenverResult,
+      $$DenverResultsTableFilterComposer,
+      $$DenverResultsTableOrderingComposer,
+      $$DenverResultsTableAnnotationComposer,
+      $$DenverResultsTableCreateCompanionBuilder,
+      $$DenverResultsTableUpdateCompanionBuilder,
+      (DenverResult, $$DenverResultsTableReferences),
+      DenverResult,
+      PrefetchHooks Function({bool examinationId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6470,4 +7523,6 @@ class $AppDatabaseManager {
       $$VisionResultsTableTableManager(_db, _db.visionResults);
   $$CarsResultsTableTableManager get carsResults =>
       $$CarsResultsTableTableManager(_db, _db.carsResults);
+  $$DenverResultsTableTableManager get denverResults =>
+      $$DenverResultsTableTableManager(_db, _db.denverResults);
 }

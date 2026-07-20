@@ -153,6 +153,28 @@ class CarsResults extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Hasil Skrining Denver II.
+class DenverResults extends Table {
+  TextColumn get id => text().clientDefault(() => _uuid.v4())();
+  TextColumn get examinationId =>
+      text().references(Examinations, #id, onDelete: KeyAction.cascade)();
+
+  RealColumn get ageInMonths => real()();
+  BoolColumn get usedCorrectedAge =>
+      boolean().withDefault(const Constant(false))();
+  IntColumn get cautionsCount => integer()();
+  IntColumn get delaysCount => integer()();
+
+  /// Hasil global: 'normal' | 'suspect' | 'untestable'.
+  TextColumn get globalResult => text()();
+
+  /// JSON map jawaban per itemId ('P', 'F', 'R', 'NO').
+  TextColumn get answersJson => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Patients,
@@ -162,6 +184,7 @@ class CarsResults extends Table {
     ScreeningResults,
     VisionResults,
     CarsResults,
+    DenverResults,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -170,7 +193,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -192,6 +215,10 @@ class AppDatabase extends _$AppDatabase {
           // v4 -> v5: tambah tabel hasil CARS.
           if (from < 5) {
             await m.createTable(carsResults);
+          }
+          // v5 -> v6: tambah tabel hasil Denver II.
+          if (from < 6) {
+            await m.createTable(denverResults);
           }
         },
       );

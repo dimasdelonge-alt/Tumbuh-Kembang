@@ -24,7 +24,8 @@ import 'tdl_screen.dart';
 import 'cars_screen.dart';
 import 'redleaf_screen.dart';
 import '../modules/redleaf/redleaf_data.dart';
-import '../modules/redleaf/redleaf_model.dart';
+import '../modules/denver/denver_screen.dart';
+import '../utils/denver_license.dart';
 import 'stimulation_screen.dart';
 
 /// Hub satu pemeriksaan/kunjungan: pilih tanggal lalu kerjakan modul
@@ -41,12 +42,19 @@ class ExaminationScreen extends StatefulWidget {
 class _ExaminationScreenState extends State<ExaminationScreen> {
   late DateTime _examDate;
   String? _examId;
+  bool _denverActivated = false;
 
   @override
   void initState() {
     super.initState();
     _examDate = widget.existing?.examDate ?? DateTime.now();
     _examId = widget.existing?.id;
+    _checkDenverLicense();
+  }
+
+  Future<void> _checkDenverLicense() async {
+    final activated = await DenverLicense.isActivated();
+    if (mounted) setState(() => _denverActivated = activated);
   }
 
   AgeResult get _age => AgeCalculator.calculate(
@@ -221,6 +229,33 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
           },
         ),
         const SizedBox(height: 8),
+
+        // 3b. Denver II — hanya tampil jika sudah diaktifkan via Settings
+        if (_denverActivated) ...[  
+          _ModuleTile(
+            icon: Icons.alt_route,
+            color: Colors.blue.shade800,
+            title: 'Denver II (Skrining Perkembangan)',
+            subtitle: '120 item 4 sektor (Personal-Sosial, Motorik, Bahasa) + Diagram',
+            onTap: () async {
+              final id = await _ensureExam();
+              if (!mounted) return;
+              await Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => DenverScreen(
+                  patient: widget.patient,
+                  examination: widget.existing ?? Examination(
+                    id: id,
+                    patientId: widget.patient.id,
+                    examDate: _examDate,
+                    createdAt: DateTime.now(),
+                  ),
+                ),
+              ));
+              setState(() {});
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
         _ModuleTile(
           icon: Icons.lightbulb,
           color: Colors.amber.shade800,

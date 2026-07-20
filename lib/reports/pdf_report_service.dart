@@ -652,6 +652,12 @@ class PdfReportService {
             _carsSection(data.cars!),
             pw.SizedBox(height: 12),
           ],
+          if (data.denver != null) ...[
+            pw.SizedBox(height: 4),
+            _sectionTitle('Skrining Perkembangan (Denver II)'),
+            _denverSection(data.denver!),
+            pw.SizedBox(height: 12),
+          ],
           _conclusion(data),
           if (includeStimulation && data.stimulation.isNotEmpty) ...[
             pw.SizedBox(height: 12),
@@ -944,14 +950,61 @@ class PdfReportService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text('Skor total: ${c.totalScore.toStringAsFixed(1)} (rentang 15-60)',
+        pw.Text('Skor total: ${c.totalScore.toStringAsFixed(1)} / 60,0',
             style: const pw.TextStyle(fontSize: 10)),
-        pw.Text('Hasil: ${c.categoryLabel.toUpperCase()}',
-            style: pw.TextStyle(
-                fontSize: 11, fontWeight: pw.FontWeight.bold)),
+        pw.Text('Kategori: ${c.categoryLabel.toUpperCase()}',
+            style:
+                pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
         pw.Text('Rekomendasi: ${c.recommendation}',
             style: const pw.TextStyle(fontSize: 9)),
       ],
+    );
+  }
+
+  static pw.Widget _denverSection(ReportDenver d) {
+    final isAlert = d.globalResultLabel.contains('SUSPEK') || d.globalResultLabel.contains('UNTESTABLE');
+    final color = isAlert ? PdfColors.red800 : PdfColors.green800;
+    final bg = isAlert ? PdfColors.red50 : PdfColors.green50;
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(8),
+      decoration: pw.BoxDecoration(
+        color: bg,
+        borderRadius: pw.BorderRadius.circular(4),
+        border: pw.Border.all(color: color, width: 0.8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'Denver II: ${d.globalResultLabel}',
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              pw.Text(
+                'Usia Uji: ${d.ageInMonths.toStringAsFixed(1)} Bulan${d.usedCorrectedAge ? " (Koreksi)" : ""}',
+                style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            'Rincian: ${d.cautionsCount} Caution (Peringatan) | ${d.delaysCount} Delay (Keterlambatan)',
+            style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900),
+          ),
+          pw.SizedBox(height: 2),
+          pw.Text(
+            'Rekomendasi: ${d.recommendation}',
+            style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey800),
+          ),
+        ],
+      ),
     );
   }
 

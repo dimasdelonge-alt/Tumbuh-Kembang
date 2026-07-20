@@ -138,6 +138,25 @@ class ReportCars {
   });
 }
 
+/// Ringkasan hasil Denver II untuk laporan.
+class ReportDenver {
+  final double ageInMonths;
+  final bool usedCorrectedAge;
+  final int cautionsCount;
+  final int delaysCount;
+  final String globalResultLabel;
+  final String recommendation;
+
+  ReportDenver({
+    required this.ageInMonths,
+    required this.usedCorrectedAge,
+    required this.cautionsCount,
+    required this.delaysCount,
+    required this.globalResultLabel,
+    required this.recommendation,
+  });
+}
+
 /// Seluruh data yang dibutuhkan untuk merender satu laporan pemeriksaan.
 class ExamReportData {
   final Patient patient;
@@ -148,6 +167,7 @@ class ExamReportData {
   final List<ReportScreening> screenings;
   final ReportVision? vision;
   final ReportCars? cars;
+  final ReportDenver? denver;
   final WaterlowResult? waterlow;
 
   /// Cara pengukuran tinggi: true=berbaring (PB), false=berdiri (TB).
@@ -168,6 +188,7 @@ class ExamReportData {
     required this.screenings,
     required this.vision,
     required this.cars,
+    this.denver,
     required this.stimulation,
     required this.growthOutOfRange,
     required this.waterlow,
@@ -399,18 +420,43 @@ class ReportBuilder {
       );
     }
 
+    // Denver II
+    ReportDenver? denver;
+    final d = await repo.getDenverResultForExamination(exam.id);
+    if (d != null) {
+      String label = 'NORMAL';
+      String rec = 'Perkembangan anak berada dalam batas normal. Lanjutkan pemantauan rutin.';
+      if (d.globalResult == 'suspect') {
+        label = 'SUSPEK (Keterlambatan Perkembangan)';
+        rec = 'Ditemukan keterlambatan/peringatan perkembangan. Lakukan skrining ulang 1-2 minggu atau rujuk ke dokter spesialis anak.';
+      } else if (d.globalResult == 'untestable') {
+        label = 'UNTESTABLE (Tidak Dapat Diuji)';
+        rec = 'Terdapat penolakan pada item kritis. Ulangi skrining pada kesempatan berikutnya.';
+      }
+
+      denver = ReportDenver(
+        ageInMonths: d.ageInMonths,
+        usedCorrectedAge: d.usedCorrectedAge,
+        cautionsCount: d.cautionsCount,
+        delaysCount: d.delaysCount,
+        globalResultLabel: label,
+        recommendation: rec,
+      );
+    }
+
     // Program stimulasi berbasis hasil KPSP pemeriksaan ini.
     // Jika tidak ada KPSP, default ke kelompok usia saat pemeriksaan.
     final stimulation = <ReportStimulationItem>[];
-    if (kpsp?.developmentalAges != null) {
+    final kpspReport = kpsp;
+    if (kpspReport != null && kpspReport.developmentalAges != null) {
       final ages = KpspData.availableAges;
       final stimTargets = <KpspDomain, int>{};
-      final overallResult = kpsp!.category;
+      final overallResult = kpspReport.category;
 
-      kpsp!.developmentalAges!.forEach((domain, devAge) {
+      kpspReport.developmentalAges!.forEach((domain, devAge) {
         if (overallResult == KpspResultCategory.meragukan) {
           // Doubtful: stimulate at current chronological age level
-          stimTargets[domain] = kpsp!.formAgeMonths;
+          stimTargets[domain] = kpspReport.formAgeMonths;
         } else if (overallResult == KpspResultCategory.penyimpangan) {
           // Delayed: stimulate at developmental age level
           stimTargets[domain] = devAge == 0 ? ages.first : devAge;
@@ -501,6 +547,7 @@ class ReportBuilder {
       screenings: screenings,
       vision: vision,
       cars: cars,
+      denver: denver,
       stimulation: stimulation,
       growthOutOfRange: age.chronologicalMonths > 60,
       waterlow: assessment.waterlow,
