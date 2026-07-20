@@ -24,6 +24,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _doctorNameController = TextEditingController();
   bool _isConnected = false;
 
+  int _tapCount = 0;
+  DateTime? _lastTapTime;
+  bool _showFirebaseConfig = false;
+
+  void _handleSecretTap() {
+    final now = DateTime.now();
+    if (_lastTapTime == null || now.difference(_lastTapTime!).inSeconds > 2) {
+      _tapCount = 1;
+    } else {
+      _tapCount++;
+    }
+    _lastTapTime = now;
+
+    if (_tapCount >= 5) {
+      _tapCount = 0;
+      setState(() {
+        _showFirebaseConfig = !_showFirebaseConfig;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _showFirebaseConfig
+                ? 'Pengaturan Konfigurasi Firebase berhasil dibuka!'
+                : 'Pengaturan Konfigurasi Firebase disembunyikan.',
+          ),
+          backgroundColor: _showFirebaseConfig ? Colors.teal : Colors.blueGrey,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+
   @override
   void initState() {
     super.initState();
@@ -300,156 +333,172 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.all(16.0),
             children: [
               // --- SEKSI 1: LINK CLOUD SINKRONISASI ---
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-                child: Text(
-                  'Sinkronisasi Cloud (Perawat - Dokter)',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blueGrey,
+              GestureDetector(
+                onTap: _handleSecretTap,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Sinkronisasi Cloud (Perawat - Dokter)',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueGrey,
+                        ),
+                      ),
+                      if (_showFirebaseConfig)
+                        const Icon(Icons.lock_open, size: 18, color: Colors.teal),
+                    ],
                   ),
                 ),
               ),
               const SizedBox(height: 8),
 
               // Status Card
-              Card(
-                color: _isConnected ? Colors.green.shade50 : Colors.grey.shade100,
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    color: _isConnected ? Colors.green.shade300 : Colors.grey.shade400,
-                    width: 1.5,
+              GestureDetector(
+                onTap: _handleSecretTap,
+                child: Card(
+                  color: _isConnected ? Colors.green.shade50 : Colors.grey.shade100,
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      color: _isConnected ? Colors.green.shade300 : Colors.grey.shade400,
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isConnected ? Icons.cloud_done : Icons.cloud_off,
-                        color: _isConnected ? Colors.green : Colors.grey,
-                        size: 32,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _isConnected ? 'Sinkronisasi Aktif (Online)' : 'Sinkronisasi Nonaktif (Lokal)',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: _isConnected ? Colors.green.shade900 : Colors.grey.shade800,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _isConnected
-                                  ? 'Data tersinkronisasi secara real-time antar perangkat perawat dan dokter.'
-                                  : 'Data hanya disimpan secara lokal di browser/perangkat ini.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: _isConnected ? Colors.green.shade700 : Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _isConnected ? Icons.cloud_done : Icons.cloud_off,
+                          color: _isConnected ? Colors.green : Colors.grey,
+                          size: 32,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _isConnected ? 'Sinkronisasi Aktif (Online)' : 'Sinkronisasi Nonaktif (Lokal)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: _isConnected ? Colors.green.shade900 : Colors.grey.shade800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _isConnected
+                                    ? 'Data tersinkronisasi secara real-time antar perangkat perawat dan dokter.'
+                                    : 'Data hanya disimpan secara lokal di browser/perangkat ini.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: _isConnected ? Colors.green.shade700 : Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
 
-              // Form / Konfigurasi Firebase
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Konfigurasi Firebase Klinik',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _apiKeyController,
-                        enabled: !_isConnected,
-                        decoration: const InputDecoration(
-                          labelText: 'Firebase API Key',
-                          hintText: 'AIzaSy...',
-                          border: OutlineInputBorder(),
+              // Form / Konfigurasi Firebase (Tampil hanya jika _showFirebaseConfig = true)
+              if (_showFirebaseConfig) ...[
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Konfigurasi Firebase Klinik',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _projectIdController,
-                        enabled: !_isConnected,
-                        decoration: const InputDecoration(
-                          labelText: 'Firebase Project ID',
-                          hintText: 'klinik-tumbang-123',
-                          border: OutlineInputBorder(),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _apiKeyController,
+                          enabled: !_isConnected,
+                          decoration: const InputDecoration(
+                            labelText: 'Firebase API Key',
+                            hintText: 'AIzaSy...',
+                            border: OutlineInputBorder(),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _appIdController,
-                        enabled: !_isConnected,
-                        decoration: const InputDecoration(
-                          labelText: 'Firebase App ID',
-                          hintText: '1:12345678:web:abcdef...',
-                          border: OutlineInputBorder(),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _projectIdController,
+                          enabled: !_isConnected,
+                          decoration: const InputDecoration(
+                            labelText: 'Firebase Project ID',
+                            hintText: 'klinik-tumbang-123',
+                            border: OutlineInputBorder(),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isProcessing
-                              ? null
-                              : (_isConnected ? _disconnectCloud : _connectCloud),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _isConnected ? Colors.redAccent : Colors.blueAccent,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _appIdController,
+                          enabled: !_isConnected,
+                          decoration: const InputDecoration(
+                            labelText: 'Firebase App ID',
+                            hintText: '1:12345678:web:abcdef...',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _isProcessing
+                                ? null
+                                : (_isConnected ? _disconnectCloud : _connectCloud),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _isConnected ? Colors.redAccent : Colors.blueAccent,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              _isConnected ? 'Putuskan Sinkronisasi Cloud' : 'Aktifkan Sinkronisasi Cloud',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
-                          child: Text(
-                            _isConnected ? 'Putuskan Sinkronisasi Cloud' : 'Aktifkan Sinkronisasi Cloud',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        if (!_isConnected) ...[
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Cara Menghubungkan:',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey),
                           ),
-                        ),
-                      ),
-                      if (!_isConnected) ...[
-                        const SizedBox(height: 16),
-                        const Divider(),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Cara Menghubungkan:',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '1. Buka Firebase Console (console.firebase.google.com) dan buat proyek baru.\n'
-                          '2. Daftarkan aplikasi baru jenis Web App (</>) pada pengaturan proyek.\n'
-                          '3. Salin nilai apiKey, projectId, dan appId dari konfigurasi web Firebase.\n'
-                          '4. Pastikan Cloud Firestore diaktifkan di konsol Firebase Anda dengan aturan rules: allow read, write: if true; (atau aturan otentikasi yang sesuai).',
-                          style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
-                        ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            '1. Buka Firebase Console (console.firebase.google.com) dan buat proyek baru.\n'
+                            '2. Daftarkan aplikasi baru jenis Web App (</>) pada pengaturan proyek.\n'
+                            '3. Salin nilai apiKey, projectId, dan appId dari konfigurasi web Firebase.\n'
+                            '4. Pastikan Cloud Firestore diaktifkan di konsol Firebase Anda dengan aturan rules: allow read, write: if true; (atau aturan otentikasi yang sesuai).',
+                            style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
+              ],
 
               // --- SEKSI: IDENTITAS PEMERIKSA ---
               const Divider(),
