@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:intl/intl.dart';
@@ -128,6 +129,42 @@ class PdfReportService {
     );
   }
 
+  /// Cetak Laporan Fenton 2013 Saja.
+  static Future<void> generateAndPrintFentonOnly(ExamReportData data) async {
+    final bytes = await _build(
+      data,
+      includeGrowth: false,
+      includeKpsp: false,
+      includeScreenings: false,
+      includeVision: false,
+      includeCars: false,
+      includeStimulation: false,
+    );
+    await _presentPdf(
+      bytes,
+      'Laporan_Fenton2013_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    );
+  }
+
+  /// Cetak Laporan CDC 2000 & TPG Saja.
+  static Future<void> generateAndPrintCdcOnly(ExamReportData data) async {
+    final bytes = await _build(
+      data,
+      includeGrowth: false,
+      includeKpsp: false,
+      includeScreenings: false,
+      includeVision: false,
+      includeCars: false,
+      includeStimulation: false,
+    );
+    await _presentPdf(
+      bytes,
+      'Laporan_CDC2000_TPG_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    );
+  }
+
   /// Cetak Laporan Skrining & Redleaf Checklist Saja.
   static Future<void> generateAndPrintScreeningsOnly(ExamReportData data) async {
     final bytes = await _build(
@@ -190,6 +227,7 @@ class PdfReportService {
   ) async {
     final doc = pw.Document();
     final doctorName = await ConfigStorage.getString('doctor_name') ?? '';
+    final sigWidget = await _buildSimpleSignatureWidget(doctorName, examDate, patientName: patient.name, mrNo: patient.medicalRecordNo);
 
     doc.addPage(
       pw.MultiPage(
@@ -339,26 +377,7 @@ class PdfReportService {
 
           pw.SizedBox(height: 20),
           // Signature
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.end,
-            children: [
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  pw.Text('Dokter Pemeriksa,', style: const pw.TextStyle(fontSize: 9)),
-                  pw.SizedBox(height: 35),
-                  if (doctorName.isNotEmpty) ...[
-                    pw.Text(doctorName,
-                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 2),
-                  ],
-                  pw.Container(width: 140, child: pw.Divider(thickness: 0.8)),
-                  pw.Text('Tanda Tangan & Stempel',
-                      style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                ],
-              ),
-            ],
-          ),
+          sigWidget,
         ],
         footer: (context) => pw.Container(
           alignment: pw.Alignment.centerRight,
@@ -624,6 +643,7 @@ class PdfReportService {
   }) async {
     final doc = pw.Document();
     final doctorName = await ConfigStorage.getString('doctor_name') ?? '';
+    final sigWidget = await _buildSignatureWidget(data, doctorName);
 
     doc.addPage(
       pw.MultiPage(
@@ -676,14 +696,34 @@ class PdfReportService {
             _denverSection(data.denver!),
             pw.SizedBox(height: 12),
           ],
-          _conclusion(data),
+          if (data.fenton != null) ...[
+            pw.SizedBox(height: 4),
+            _sectionTitle('Pertumbuhan Bayi Prematur (Kurva Fenton 2013)'),
+            _fentonSection(data.fenton!),
+            pw.SizedBox(height: 12),
+          ],
+          if (data.cdc != null) ...[
+            pw.SizedBox(height: 4),
+            _sectionTitle('Kurva Pertumbuhan CDC 2000 & Tinggi Potensi Genetik (TPG)'),
+            _cdcSection(data.cdc!),
+            pw.SizedBox(height: 12),
+          ],
           if (includeStimulation && data.stimulation.isNotEmpty) ...[
             pw.SizedBox(height: 12),
             _sectionTitle('Program Stimulasi (sesuai usia perkembangan)'),
             ...data.stimulation.map(_stimulationSection),
           ],
-          pw.SizedBox(height: 24),
-          _signature(data, doctorName),
+          pw.SizedBox(height: 12),
+          pw.Container(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _conclusion(data),
+                pw.SizedBox(height: 16),
+                sigWidget,
+              ],
+            ),
+          ),
         ],
         footer: (context) => pw.Container(
           alignment: pw.Alignment.centerRight,
@@ -1026,6 +1066,106 @@ class PdfReportService {
     );
   }
 
+  static pw.Widget _fentonSection(ReportFenton f) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(8),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.blue50,
+        borderRadius: pw.BorderRadius.circular(6),
+        border: pw.Border.all(color: PdfColors.blue200, width: 0.8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'Usia Gestasi saat Lahir: ${f.gestationalWeeksAtBirth} minggu',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+              ),
+              pw.Text(
+                'PMA Usia Uji: ${f.pmaWeeks.toStringAsFixed(1)} minggu',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            'Status: ${f.pmaStatusLabel}',
+            style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Row(
+            children: [
+              if (f.weightKg != null)
+                pw.Text('BB: ${f.weightKg!.toStringAsFixed(2)} kg   ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+              if (f.lengthCm != null)
+                pw.Text('PB: ${f.lengthCm!.toStringAsFixed(1)} cm   ', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+              if (f.headCircumferenceCm != null)
+                pw.Text('LK: ${f.headCircumferenceCm!.toStringAsFixed(1)} cm', style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+          if (f.chartImageBytes != null) ...[
+            pw.SizedBox(height: 8),
+            pw.Center(
+              child: pw.Image(
+                pw.MemoryImage(f.chartImageBytes!),
+                height: 310,
+                fit: pw.BoxFit.contain,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _cdcSection(ReportCdc c) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(8),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.teal50,
+        borderRadius: pw.BorderRadius.circular(6),
+        border: pw.Border.all(color: PdfColors.teal200, width: 0.8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'Usia Uji: ${c.ageYears.toStringAsFixed(1)} Tahun',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+              ),
+              if (c.tpg != null)
+                pw.Text(
+                  'TPG: ${c.tpg!.label}',
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+                ),
+            ],
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            'Evaluasi: ${c.evaluation}',
+            style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900),
+          ),
+          if (c.chartImageBytes != null) ...[
+            pw.SizedBox(height: 8),
+            pw.Center(
+              child: pw.Image(
+                pw.MemoryImage(c.chartImageBytes!),
+                height: 330,
+                fit: pw.BoxFit.contain,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   static pw.Widget _stimulationSection(ReportStimulationItem s) {
     return pw.Padding(
       padding: const pw.EdgeInsets.only(bottom: 8),
@@ -1118,23 +1258,83 @@ class PdfReportService {
                 color: PdfColors.grey700)),
       );
 
-  static pw.Widget _signature(ExamReportData data, String doctorName) {
+  static Future<pw.Widget> _buildSignatureWidget(ExamReportData data, String doctorName) {
+    return _buildSimpleSignatureWidget(
+      doctorName,
+      data.examDate,
+      patientName: data.patient.name,
+      mrNo: data.patient.medicalRecordNo,
+    );
+  }
+
+  static Future<pw.Widget> _buildSimpleSignatureWidget(
+    String doctorName,
+    DateTime examDate, {
+    String? patientName,
+    String? mrNo,
+  }) async {
+    final docSip = await ConfigStorage.getString('doctor_sip') ?? '';
+    final sigType = await ConfigStorage.getString('doctor_signature_type') ?? 'qr_generated';
+    final sigBase64 = await ConfigStorage.getString('doctor_signature_base64');
+
+    final nameText = doctorName.isNotEmpty ? doctorName : 'Dokter Pemeriksa';
+    final sipText = docSip.isNotEmpty ? docSip : '';
+
+    final qrText = 'VERIFIKASI DOKUMEN SKRINING TUMBUH KEMBANG\n'
+        '${patientName != null ? "Pasien: $patientName (RM: ${mrNo ?? "-"})\n" : ""}'
+        'Tanggal Periksa: ${_dateFmt.format(examDate)}\n'
+        'Disahkan Digital Oleh: $nameText\n'
+        '${sipText.isNotEmpty ? "$sipText\n" : ""}'
+        'Status: Dokumen Sah & Terverifikasi Digital';
+
+    pw.Widget signatureGraphic;
+    if (sigType == 'custom_image' && sigBase64 != null && sigBase64.isNotEmpty) {
+      try {
+        final bytes = base64Decode(sigBase64);
+        signatureGraphic = pw.Image(
+          pw.MemoryImage(bytes),
+          width: 90,
+          height: 48,
+          fit: pw.BoxFit.contain,
+        );
+      } catch (_) {
+        signatureGraphic = pw.BarcodeWidget(
+          barcode: pw.Barcode.qrCode(),
+          data: qrText,
+          width: 48,
+          height: 48,
+        );
+      }
+    } else {
+      signatureGraphic = pw.BarcodeWidget(
+        barcode: pw.Barcode.qrCode(),
+        data: qrText,
+        width: 48,
+        height: 48,
+      );
+    }
+
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.end,
       children: [
         pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
-            pw.Text(_dateFmt.format(data.examDate),
-                style: const pw.TextStyle(fontSize: 10)),
-            pw.SizedBox(height: 35),
-            if (doctorName.isNotEmpty) ...[
-              pw.Text(doctorName, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 2),
+            pw.Text(_dateFmt.format(examDate),
+                style: const pw.TextStyle(fontSize: 8.5)),
+            pw.SizedBox(height: 4),
+            pw.Text('Dokter Pemeriksa,',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
+            signatureGraphic,
+            pw.SizedBox(height: 4),
+            pw.Text(nameText,
+                style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+            if (sipText.isNotEmpty) ...[
+              pw.SizedBox(height: 1),
+              pw.Text(sipText,
+                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey800)),
             ],
-            pw.Container(width: 160, child: pw.Divider(thickness: 0.8)),
-            pw.Text('Dokter Pemeriksa',
-                style: const pw.TextStyle(fontSize: 10)),
           ],
         ),
       ],

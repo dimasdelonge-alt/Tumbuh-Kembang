@@ -12,8 +12,16 @@ import '../modules/growth/waterlow_calculator.dart';
 import '../modules/kpsp/kpsp_model.dart';
 import '../modules/screening/instrument.dart';
 import '../modules/screening/registry.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../modules/stimulation/stimulation.dart';
 import '../modules/vision/tdl.dart';
+import '../modules/fenton/fenton_calculator.dart';
+import '../modules/fenton/fenton_chart_painter.dart';
+import '../modules/cdc/cdc_calculator.dart';
+import '../modules/cdc/cdc_chart_painter.dart';
 
 /// Satu baris hasil antropometri untuk laporan.
 class ReportGrowthRow {
@@ -157,6 +165,48 @@ class ReportDenver {
   });
 }
 
+/// Ringkasan hasil Kurva Fenton 2013 (bayi prematur) untuk laporan.
+class ReportFenton {
+  final double pmaWeeks;
+  final int gestationalWeeksAtBirth;
+  final double? weightKg;
+  final double? lengthCm;
+  final double? headCircumferenceCm;
+  final String pmaStatusLabel;
+  final List<FentonPoint> points;
+  final Uint8List? chartImageBytes;
+
+  ReportFenton({
+    required this.pmaWeeks,
+    required this.gestationalWeeksAtBirth,
+    this.weightKg,
+    this.lengthCm,
+    this.headCircumferenceCm,
+    required this.pmaStatusLabel,
+    this.points = const [],
+    this.chartImageBytes,
+  });
+}
+
+/// Ringkasan hasil Kurva CDC 2000 & TPG untuk laporan.
+class ReportCdc {
+  final double ageYears;
+  final double? fatherHeightCm;
+  final double? motherHeightCm;
+  final TpgResult? tpg;
+  final String evaluation;
+  final Uint8List? chartImageBytes;
+
+  ReportCdc({
+    required this.ageYears,
+    this.fatherHeightCm,
+    this.motherHeightCm,
+    this.tpg,
+    required this.evaluation,
+    this.chartImageBytes,
+  });
+}
+
 /// Seluruh data yang dibutuhkan untuk merender satu laporan pemeriksaan.
 class ExamReportData {
   final Patient patient;
@@ -168,6 +218,8 @@ class ExamReportData {
   final ReportVision? vision;
   final ReportCars? cars;
   final ReportDenver? denver;
+  final ReportFenton? fenton;
+  final ReportCdc? cdc;
   final WaterlowResult? waterlow;
 
   /// Cara pengukuran tinggi: true=berbaring (PB), false=berdiri (TB).
@@ -189,6 +241,8 @@ class ExamReportData {
     required this.vision,
     required this.cars,
     this.denver,
+    this.fenton,
+    this.cdc,
     required this.stimulation,
     required this.growthOutOfRange,
     required this.waterlow,
@@ -444,6 +498,169 @@ class ReportBuilder {
       );
     }
 
+    // Fenton 2013 (Prematur)
+    ReportFenton? fenton;
+    final gestationalWeeks = patient.gestationalWeeks ?? (patient.isPremature ? 32 : null);
+    if (gestationalWeeks != null && gestationalWeeks < 37) {
+      final pma = FentonCalculator.calculatePMAWeeks(
+        gestationalWeeks: gestationalWeeks,
+        birthDate: patient.birthDate,
+        examDate: exam.examDate,
+      );
+      if (pma <= 52.0) {
+        final growth = await repo.getGrowthForExam(exam.id);
+
+        // Load semua riwayat pertumbuhan untuk memplot garis tren
+        final history = await repo.growthHistory(patient.id);
+        final List<FentonPoint> pointsList = [];
+
+        for (final item in history) {
+          final itemPma = FentonCalculator.calculatePMAWeeks(
+            gestationalWeeks: gestationalWeeks,
+            birthDate: patient.birthDate,
+            examDate: item.exam.examDate,
+          );
+          if (itemPma >= 20.0 && itemPma <= 52.0) {
+            pointsList.add(
+              FentonPoint(
+                date: item.exam.examDate,
+                pmaWeeks: itemPma,
+                weightKg: item.growth.weightKg,
+                lengthCm: item.growth.heightCm,
+                headCircumferenceCm: item.growth.headCircumferenceCm,
+                isCurrentExam: item.exam.id == exam.id,
+              ),
+            );
+          }
+        }
+
+        // Render gambar kurva Fenton (Boys / Girls) ke byte PNG untuk PDF
+        Uint8List? chartBytes;
+        try {
+          final isBoy = patient.sex.toUpperCase() == 'M' || patient.sex.toUpperCase() == 'L';
+          final assetPath = isBoy ? 'assets/fenton/fenton_boys.jpg' : 'assets/fenton/fenton_girls.jpg';
+          final ByteData assetData = await rootBundle.load(assetPath);
+          final ui.Codec codec = await ui.instantiateImageCodec(assetData.buffer.asUint8List());
+          final ui.FrameInfo fi = await codec.getNextFrame();
+
+          final recorder = ui.PictureRecorder();
+          final canvas = Canvas(recorder);
+          const size = Size(1000, 1414);
+
+          final painter = FentonChartPainter(
+            image: fi.image,
+            currentPmaWeeks: pma,
+            points: pointsList,
+            showAgeLine: true,
+            sex: patient.sex,
+          );
+          painter.paint(canvas, size);
+
+          final picture = recorder.endRecording();
+          final img = await picture.toImage(1000, 1414);
+          final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+          chartBytes = byteData?.buffer.asUint8List();
+        } catch (e) {
+          debugPrint('Error generating Fenton PDF chart image: $e');
+        }
+
+        fenton = ReportFenton(
+          pmaWeeks: pma,
+          gestationalWeeksAtBirth: gestationalWeeks,
+          weightKg: growth?.weightKg,
+          lengthCm: growth?.heightCm,
+          headCircumferenceCm: growth?.headCircumferenceCm,
+          pmaStatusLabel: FentonCalculator.formatPMAStatus(pma),
+          points: pointsList,
+          chartImageBytes: chartBytes,
+        );
+      }
+    }
+
+    // CDC 2000 & Tinggi Potensi Genetik (TPG) (2 - 20 Tahun)
+    ReportCdc? cdc;
+    final ageYears = age.chronologicalMonths / 12.0;
+    if (ageYears >= 2.0 && ageYears <= 20.0) {
+      final fH = patient.fatherHeightCm;
+      final mH = patient.motherHeightCm;
+      final tpg = CdcCalculator.calculateTPG(
+        fatherHeightCm: fH,
+        motherHeightCm: mH,
+        sex: patient.sex,
+      );
+
+      final growth = await repo.getGrowthForExam(exam.id);
+      final currentH = growth?.heightCm ?? 0.0;
+      final realtimeTpg = CdcCalculator.calculateRealtimeTPG(
+        currentHeightCm: currentH,
+        ageMonths: age.chronologicalMonths,
+        tpg: tpg,
+      );
+      final eval = realtimeTpg?.statusLabel ?? 'TPG: ${tpg?.label ?? "-"}';
+
+      // Load semua riwayat pertumbuhan CDC
+      final history = await repo.growthHistory(patient.id);
+      final List<CdcPoint> cdcPointsList = [];
+
+      for (final item in history) {
+        final itemAgeRes = AgeCalculator.calculate(
+          birthDate: patient.birthDate,
+          examDate: item.exam.examDate,
+        );
+        final itemAgeY = itemAgeRes.chronologicalMonths / 12.0;
+        if (item.growth.heightCm != null && item.growth.heightCm! > 0) {
+          cdcPointsList.add(
+            CdcPoint(
+              date: item.exam.examDate,
+              ageYears: itemAgeY,
+              heightCm: item.growth.heightCm!,
+              isCurrentExam: item.exam.id == exam.id,
+            ),
+          );
+        }
+      }
+
+      Uint8List? cdcChartBytes;
+      try {
+        final isBoy = patient.sex.toUpperCase() == 'M' || patient.sex.toUpperCase() == 'L';
+        final assetPath = isBoy ? 'assets/cdc/cdc_boys.jpg' : 'assets/cdc/cdc_girls.jpg';
+        final ByteData assetData = await rootBundle.load(assetPath);
+        final ui.Codec codec = await ui.instantiateImageCodec(assetData.buffer.asUint8List());
+        final ui.FrameInfo fi = await codec.getNextFrame();
+
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder);
+        const size = Size(1000, 1294);
+
+        final painter = CdcChartPainter(
+          image: fi.image,
+          currentAgeYears: ageYears,
+          points: cdcPointsList,
+          tpg: tpg,
+          realtimeTpg: realtimeTpg,
+          showAgeLine: true,
+          sex: patient.sex,
+        );
+        painter.paint(canvas, size);
+
+        final picture = recorder.endRecording();
+        final img = await picture.toImage(1000, 1294);
+        final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+        cdcChartBytes = byteData?.buffer.asUint8List();
+      } catch (e) {
+        debugPrint('Error generating CDC PDF chart image: $e');
+      }
+
+      cdc = ReportCdc(
+        ageYears: ageYears,
+        fatherHeightCm: fH,
+        motherHeightCm: mH,
+        tpg: tpg,
+        evaluation: eval,
+        chartImageBytes: cdcChartBytes,
+      );
+    }
+
     // Program stimulasi berbasis hasil KPSP pemeriksaan ini.
     // Jika tidak ada KPSP, default ke kelompok usia saat pemeriksaan.
     final stimulation = <ReportStimulationItem>[];
@@ -548,6 +765,8 @@ class ReportBuilder {
       vision: vision,
       cars: cars,
       denver: denver,
+      fenton: fenton,
+      cdc: cdc,
       stimulation: stimulation,
       growthOutOfRange: age.chronologicalMonths > 60,
       waterlow: assessment.waterlow,

@@ -130,6 +130,28 @@ class $PatientsTable extends Patients with TableInfo<$PatientsTable, Patient> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _fatherHeightCmMeta = const VerificationMeta(
+    'fatherHeightCm',
+  );
+  @override
+  late final GeneratedColumn<double> fatherHeightCm = GeneratedColumn<double>(
+    'father_height_cm',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _motherHeightCmMeta = const VerificationMeta(
+    'motherHeightCm',
+  );
+  @override
+  late final GeneratedColumn<double> motherHeightCm = GeneratedColumn<double>(
+    'mother_height_cm',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -164,6 +186,8 @@ class $PatientsTable extends Patients with TableInfo<$PatientsTable, Patient> {
     gestationalWeeks,
     isPremature,
     hasDownSyndrome,
+    fatherHeightCm,
+    motherHeightCm,
     notes,
     createdAt,
   ];
@@ -260,6 +284,24 @@ class $PatientsTable extends Patients with TableInfo<$PatientsTable, Patient> {
         ),
       );
     }
+    if (data.containsKey('father_height_cm')) {
+      context.handle(
+        _fatherHeightCmMeta,
+        fatherHeightCm.isAcceptableOrUnknown(
+          data['father_height_cm']!,
+          _fatherHeightCmMeta,
+        ),
+      );
+    }
+    if (data.containsKey('mother_height_cm')) {
+      context.handle(
+        _motherHeightCmMeta,
+        motherHeightCm.isAcceptableOrUnknown(
+          data['mother_height_cm']!,
+          _motherHeightCmMeta,
+        ),
+      );
+    }
     if (data.containsKey('notes')) {
       context.handle(
         _notesMeta,
@@ -325,6 +367,14 @@ class $PatientsTable extends Patients with TableInfo<$PatientsTable, Patient> {
         DriftSqlType.bool,
         data['${effectivePrefix}has_down_syndrome'],
       )!,
+      fatherHeightCm: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}father_height_cm'],
+      ),
+      motherHeightCm: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}mother_height_cm'],
+      ),
       notes: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
@@ -356,6 +406,8 @@ class Patient extends DataClass implements Insertable<Patient> {
   final int? gestationalWeeks;
   final bool isPremature;
   final bool hasDownSyndrome;
+  final double? fatherHeightCm;
+  final double? motherHeightCm;
   final String? notes;
   final DateTime createdAt;
   const Patient({
@@ -370,6 +422,8 @@ class Patient extends DataClass implements Insertable<Patient> {
     this.gestationalWeeks,
     required this.isPremature,
     required this.hasDownSyndrome,
+    this.fatherHeightCm,
+    this.motherHeightCm,
     this.notes,
     required this.createdAt,
   });
@@ -397,6 +451,12 @@ class Patient extends DataClass implements Insertable<Patient> {
     }
     map['is_premature'] = Variable<bool>(isPremature);
     map['has_down_syndrome'] = Variable<bool>(hasDownSyndrome);
+    if (!nullToAbsent || fatherHeightCm != null) {
+      map['father_height_cm'] = Variable<double>(fatherHeightCm);
+    }
+    if (!nullToAbsent || motherHeightCm != null) {
+      map['mother_height_cm'] = Variable<double>(motherHeightCm);
+    }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
@@ -427,6 +487,12 @@ class Patient extends DataClass implements Insertable<Patient> {
           : Value(gestationalWeeks),
       isPremature: Value(isPremature),
       hasDownSyndrome: Value(hasDownSyndrome),
+      fatherHeightCm: fatherHeightCm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fatherHeightCm),
+      motherHeightCm: motherHeightCm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(motherHeightCm),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
@@ -451,6 +517,8 @@ class Patient extends DataClass implements Insertable<Patient> {
       gestationalWeeks: serializer.fromJson<int?>(json['gestationalWeeks']),
       isPremature: serializer.fromJson<bool>(json['isPremature']),
       hasDownSyndrome: serializer.fromJson<bool>(json['hasDownSyndrome']),
+      fatherHeightCm: serializer.fromJson<double?>(json['fatherHeightCm']),
+      motherHeightCm: serializer.fromJson<double?>(json['motherHeightCm']),
       notes: serializer.fromJson<String?>(json['notes']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
@@ -470,6 +538,8 @@ class Patient extends DataClass implements Insertable<Patient> {
       'gestationalWeeks': serializer.toJson<int?>(gestationalWeeks),
       'isPremature': serializer.toJson<bool>(isPremature),
       'hasDownSyndrome': serializer.toJson<bool>(hasDownSyndrome),
+      'fatherHeightCm': serializer.toJson<double?>(fatherHeightCm),
+      'motherHeightCm': serializer.toJson<double?>(motherHeightCm),
       'notes': serializer.toJson<String?>(notes),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
@@ -487,6 +557,8 @@ class Patient extends DataClass implements Insertable<Patient> {
     Value<int?> gestationalWeeks = const Value.absent(),
     bool? isPremature,
     bool? hasDownSyndrome,
+    Value<double?> fatherHeightCm = const Value.absent(),
+    Value<double?> motherHeightCm = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     DateTime? createdAt,
   }) => Patient(
@@ -505,6 +577,12 @@ class Patient extends DataClass implements Insertable<Patient> {
         : this.gestationalWeeks,
     isPremature: isPremature ?? this.isPremature,
     hasDownSyndrome: hasDownSyndrome ?? this.hasDownSyndrome,
+    fatherHeightCm: fatherHeightCm.present
+        ? fatherHeightCm.value
+        : this.fatherHeightCm,
+    motherHeightCm: motherHeightCm.present
+        ? motherHeightCm.value
+        : this.motherHeightCm,
     notes: notes.present ? notes.value : this.notes,
     createdAt: createdAt ?? this.createdAt,
   );
@@ -531,6 +609,12 @@ class Patient extends DataClass implements Insertable<Patient> {
       hasDownSyndrome: data.hasDownSyndrome.present
           ? data.hasDownSyndrome.value
           : this.hasDownSyndrome,
+      fatherHeightCm: data.fatherHeightCm.present
+          ? data.fatherHeightCm.value
+          : this.fatherHeightCm,
+      motherHeightCm: data.motherHeightCm.present
+          ? data.motherHeightCm.value
+          : this.motherHeightCm,
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -550,6 +634,8 @@ class Patient extends DataClass implements Insertable<Patient> {
           ..write('gestationalWeeks: $gestationalWeeks, ')
           ..write('isPremature: $isPremature, ')
           ..write('hasDownSyndrome: $hasDownSyndrome, ')
+          ..write('fatherHeightCm: $fatherHeightCm, ')
+          ..write('motherHeightCm: $motherHeightCm, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -569,6 +655,8 @@ class Patient extends DataClass implements Insertable<Patient> {
     gestationalWeeks,
     isPremature,
     hasDownSyndrome,
+    fatherHeightCm,
+    motherHeightCm,
     notes,
     createdAt,
   );
@@ -587,6 +675,8 @@ class Patient extends DataClass implements Insertable<Patient> {
           other.gestationalWeeks == this.gestationalWeeks &&
           other.isPremature == this.isPremature &&
           other.hasDownSyndrome == this.hasDownSyndrome &&
+          other.fatherHeightCm == this.fatherHeightCm &&
+          other.motherHeightCm == this.motherHeightCm &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt);
 }
@@ -603,6 +693,8 @@ class PatientsCompanion extends UpdateCompanion<Patient> {
   final Value<int?> gestationalWeeks;
   final Value<bool> isPremature;
   final Value<bool> hasDownSyndrome;
+  final Value<double?> fatherHeightCm;
+  final Value<double?> motherHeightCm;
   final Value<String?> notes;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
@@ -618,6 +710,8 @@ class PatientsCompanion extends UpdateCompanion<Patient> {
     this.gestationalWeeks = const Value.absent(),
     this.isPremature = const Value.absent(),
     this.hasDownSyndrome = const Value.absent(),
+    this.fatherHeightCm = const Value.absent(),
+    this.motherHeightCm = const Value.absent(),
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -634,6 +728,8 @@ class PatientsCompanion extends UpdateCompanion<Patient> {
     this.gestationalWeeks = const Value.absent(),
     this.isPremature = const Value.absent(),
     this.hasDownSyndrome = const Value.absent(),
+    this.fatherHeightCm = const Value.absent(),
+    this.motherHeightCm = const Value.absent(),
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -652,6 +748,8 @@ class PatientsCompanion extends UpdateCompanion<Patient> {
     Expression<int>? gestationalWeeks,
     Expression<bool>? isPremature,
     Expression<bool>? hasDownSyndrome,
+    Expression<double>? fatherHeightCm,
+    Expression<double>? motherHeightCm,
     Expression<String>? notes,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
@@ -668,6 +766,8 @@ class PatientsCompanion extends UpdateCompanion<Patient> {
       if (gestationalWeeks != null) 'gestational_weeks': gestationalWeeks,
       if (isPremature != null) 'is_premature': isPremature,
       if (hasDownSyndrome != null) 'has_down_syndrome': hasDownSyndrome,
+      if (fatherHeightCm != null) 'father_height_cm': fatherHeightCm,
+      if (motherHeightCm != null) 'mother_height_cm': motherHeightCm,
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
@@ -686,6 +786,8 @@ class PatientsCompanion extends UpdateCompanion<Patient> {
     Value<int?>? gestationalWeeks,
     Value<bool>? isPremature,
     Value<bool>? hasDownSyndrome,
+    Value<double?>? fatherHeightCm,
+    Value<double?>? motherHeightCm,
     Value<String?>? notes,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
@@ -702,6 +804,8 @@ class PatientsCompanion extends UpdateCompanion<Patient> {
       gestationalWeeks: gestationalWeeks ?? this.gestationalWeeks,
       isPremature: isPremature ?? this.isPremature,
       hasDownSyndrome: hasDownSyndrome ?? this.hasDownSyndrome,
+      fatherHeightCm: fatherHeightCm ?? this.fatherHeightCm,
+      motherHeightCm: motherHeightCm ?? this.motherHeightCm,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
@@ -744,6 +848,12 @@ class PatientsCompanion extends UpdateCompanion<Patient> {
     if (hasDownSyndrome.present) {
       map['has_down_syndrome'] = Variable<bool>(hasDownSyndrome.value);
     }
+    if (fatherHeightCm.present) {
+      map['father_height_cm'] = Variable<double>(fatherHeightCm.value);
+    }
+    if (motherHeightCm.present) {
+      map['mother_height_cm'] = Variable<double>(motherHeightCm.value);
+    }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
@@ -770,6 +880,8 @@ class PatientsCompanion extends UpdateCompanion<Patient> {
           ..write('gestationalWeeks: $gestationalWeeks, ')
           ..write('isPremature: $isPremature, ')
           ..write('hasDownSyndrome: $hasDownSyndrome, ')
+          ..write('fatherHeightCm: $fatherHeightCm, ')
+          ..write('motherHeightCm: $motherHeightCm, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
@@ -3993,6 +4105,8 @@ typedef $$PatientsTableCreateCompanionBuilder =
       Value<int?> gestationalWeeks,
       Value<bool> isPremature,
       Value<bool> hasDownSyndrome,
+      Value<double?> fatherHeightCm,
+      Value<double?> motherHeightCm,
       Value<String?> notes,
       Value<DateTime> createdAt,
       Value<int> rowid,
@@ -4010,6 +4124,8 @@ typedef $$PatientsTableUpdateCompanionBuilder =
       Value<int?> gestationalWeeks,
       Value<bool> isPremature,
       Value<bool> hasDownSyndrome,
+      Value<double?> fatherHeightCm,
+      Value<double?> motherHeightCm,
       Value<String?> notes,
       Value<DateTime> createdAt,
       Value<int> rowid,
@@ -4099,6 +4215,16 @@ class $$PatientsTableFilterComposer
 
   ColumnFilters<bool> get hasDownSyndrome => $composableBuilder(
     column: $table.hasDownSyndrome,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get fatherHeightCm => $composableBuilder(
+    column: $table.fatherHeightCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get motherHeightCm => $composableBuilder(
+    column: $table.motherHeightCm,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4202,6 +4328,16 @@ class $$PatientsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get fatherHeightCm => $composableBuilder(
+    column: $table.fatherHeightCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get motherHeightCm => $composableBuilder(
+    column: $table.motherHeightCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get notes => $composableBuilder(
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
@@ -4262,6 +4398,16 @@ class $$PatientsTableAnnotationComposer
 
   GeneratedColumn<bool> get hasDownSyndrome => $composableBuilder(
     column: $table.hasDownSyndrome,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get fatherHeightCm => $composableBuilder(
+    column: $table.fatherHeightCm,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get motherHeightCm => $composableBuilder(
+    column: $table.motherHeightCm,
     builder: (column) => column,
   );
 
@@ -4336,6 +4482,8 @@ class $$PatientsTableTableManager
                 Value<int?> gestationalWeeks = const Value.absent(),
                 Value<bool> isPremature = const Value.absent(),
                 Value<bool> hasDownSyndrome = const Value.absent(),
+                Value<double?> fatherHeightCm = const Value.absent(),
+                Value<double?> motherHeightCm = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4351,6 +4499,8 @@ class $$PatientsTableTableManager
                 gestationalWeeks: gestationalWeeks,
                 isPremature: isPremature,
                 hasDownSyndrome: hasDownSyndrome,
+                fatherHeightCm: fatherHeightCm,
+                motherHeightCm: motherHeightCm,
                 notes: notes,
                 createdAt: createdAt,
                 rowid: rowid,
@@ -4368,6 +4518,8 @@ class $$PatientsTableTableManager
                 Value<int?> gestationalWeeks = const Value.absent(),
                 Value<bool> isPremature = const Value.absent(),
                 Value<bool> hasDownSyndrome = const Value.absent(),
+                Value<double?> fatherHeightCm = const Value.absent(),
+                Value<double?> motherHeightCm = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4383,6 +4535,8 @@ class $$PatientsTableTableManager
                 gestationalWeeks: gestationalWeeks,
                 isPremature: isPremature,
                 hasDownSyndrome: hasDownSyndrome,
+                fatherHeightCm: fatherHeightCm,
+                motherHeightCm: motherHeightCm,
                 notes: notes,
                 createdAt: createdAt,
                 rowid: rowid,

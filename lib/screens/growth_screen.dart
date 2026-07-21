@@ -7,6 +7,8 @@ import '../data/database.dart';
 import '../data/repository.dart';
 import '../modules/growth/growth_assessment.dart';
 import '../modules/growth/zscore_calculator.dart';
+import '../modules/cdc/cdc_calculator.dart';
+import '../modules/cdc/cdc_screen.dart';
 import 'growth_chart.dart';
 
 /// Layar input antropometri + hasil Z-score (Modul 3).
@@ -29,10 +31,14 @@ class _GrowthScreenState extends State<GrowthScreen> {
   final _weight = TextEditingController();
   final _height = TextEditingController();
   final _head = TextEditingController();
+  final _fatherHeight = TextEditingController();
+  final _motherHeight = TextEditingController();
   bool _lying = true;
 
   List<GrowthIndicatorResult> _results = const [];
   bool _computed = false;
+  TpgResult? _tpg;
+  RealtimeTpgResult? _realtimeTpg;
 
   AgeResult get _age => AgeCalculator.calculate(
         birthDate: widget.patient.birthDate,
@@ -58,6 +64,40 @@ class _GrowthScreenState extends State<GrowthScreen> {
       _lying = g.measuredLying;
       _compute();
     }
+    _initTPG();
+  }
+
+  void _initTPG() {
+    if (widget.patient.fatherHeightCm != null && widget.patient.fatherHeightCm! > 0) {
+      _fatherHeight.text = widget.patient.fatherHeightCm!.toStringAsFixed(1);
+    }
+    if (widget.patient.motherHeightCm != null && widget.patient.motherHeightCm! > 0) {
+      _motherHeight.text = widget.patient.motherHeightCm!.toStringAsFixed(1);
+    }
+    _recalculateTPG();
+  }
+
+  void _recalculateTPG() {
+    final fH = double.tryParse(_fatherHeight.text);
+    final mH = double.tryParse(_motherHeight.text);
+    final currentH = double.tryParse(_height.text);
+
+    final tpg = CdcCalculator.calculateTPG(
+      fatherHeightCm: fH,
+      motherHeightCm: mH,
+      sex: widget.patient.sex,
+    );
+
+    final realtime = CdcCalculator.calculateRealtimeTPG(
+      currentHeightCm: currentH,
+      ageMonths: _age.chronologicalMonths,
+      tpg: tpg,
+    );
+
+    setState(() {
+      _tpg = tpg;
+      _realtimeTpg = realtime;
+    });
   }
 
   @override
@@ -65,6 +105,8 @@ class _GrowthScreenState extends State<GrowthScreen> {
     _weight.dispose();
     _height.dispose();
     _head.dispose();
+    _fatherHeight.dispose();
+    _motherHeight.dispose();
     super.dispose();
   }
 
@@ -189,12 +231,13 @@ class _GrowthScreenState extends State<GrowthScreen> {
                 ageMonths: _age.chronologicalMonths,
                 heightCm: double.tryParse(_height.text.replaceAll(',', '.')),
               )),
+          _buildTpgSection(),
           if (_results.isNotEmpty) ...[
             const SizedBox(height: 12),
             FilledButton.tonalIcon(
               onPressed: _save,
               icon: const Icon(Icons.save),
-              label: const Text('Simpan Pengukuran'),
+              label: const Text('Simpan Pengukuran & TPG'),
             ),
           ],
         ],
@@ -213,11 +256,158 @@ class _GrowthScreenState extends State<GrowthScreen> {
       headCircumferenceCm: d.Value(p(_head)),
       measuredLying: d.Value(_lying),
     ));
+
+    final fH = p(_fatherHeight);
+    final mH = p(_motherHeight);
+    if (fH != widget.patient.fatherHeightCm || mH != widget.patient.motherHeightCm) {
+      final updatedPatient = widget.patient.copyWith(
+        fatherHeightCm: d.Value(fH),
+        motherHeightCm: d.Value(mH),
+      );
+      await repo.updatePatient(updatedPatient);
+    }
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pengukuran tersimpan')),
+      const SnackBar(content: Text('Pengukuran & Data TPG tersimpan')),
     );
     Navigator.of(context).pop();
+  }
+
+  Widget _buildTpgSection() {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(top: 16, bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.family_restroom, color: Colors.teal.shade800),
+                const SizedBox(width: 8),
+                Text(
+                  'Sub-Modul: Tinggi Potensi Genetik (TPG)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.teal.shade900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Hitung tinggi potensi genetik dewasa & evaluasi real-time tinggi badan anak saat ini.',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _fatherHeight,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'TB Ayah (cm)',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                    onChanged: (_) => _recalculateTPG(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _motherHeight,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'TB Ibu (cm)',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                    onChanged: (_) => _recalculateTPG(),
+                  ),
+                ),
+              ],
+            ),
+            if (_tpg != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _realtimeTpg?.isBelow ?? false ? Colors.red.shade50 : Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _realtimeTpg?.isBelow ?? false ? Colors.red.shade300 : Colors.teal.shade300,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TPG Dewasa (18–20 Thn): ${_tpg!.label}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Colors.teal.shade900,
+                      ),
+                    ),
+                    if (_realtimeTpg != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Rentang Ideal Usia Ini (${(_age.chronologicalMonths / 12.0).toStringAsFixed(1)} Thn): ${_realtimeTpg!.rangeLabel}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _realtimeTpg!.statusLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _realtimeTpg!.isBelow
+                              ? Colors.red.shade900
+                              : (_realtimeTpg!.isAbove ? Colors.orange.shade900 : Colors.green.shade900),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.show_chart, size: 16),
+                  label: const Text('Lihat Kurva CDC 2000 & Trajektori TPG'),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CdcScreen(
+                          patient: widget.patient,
+                          examination: Examination(
+                            id: widget.examinationId,
+                            patientId: widget.patient.id,
+                            examDate: widget.examDate,
+                            createdAt: DateTime.now(),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 

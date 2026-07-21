@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../data/repository.dart';
@@ -23,6 +25,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _projectIdController = TextEditingController();
   final _appIdController = TextEditingController();
   final _doctorNameController = TextEditingController();
+  final _doctorSipController = TextEditingController();
+  String _doctorSigType = 'qr_generated';
+  String? _customSigBase64;
   bool _isConnected = false;
 
   int _tapCount = 0;
@@ -93,7 +98,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : '1:728132917509:web:6b57eddad890cb960fbf6c';
 
     final docName = await ConfigStorage.getString('doctor_name') ?? '';
-    _doctorNameController.text = docName;
+    final docSip = await ConfigStorage.getString('doctor_sip') ?? '';
+    final sigType = await ConfigStorage.getString('doctor_signature_type') ?? 'qr_generated';
+    final sigBase64 = await ConfigStorage.getString('doctor_signature_base64');
+
+    if (mounted) {
+      setState(() {
+        _doctorNameController.text = docName;
+        _doctorSipController.text = docSip;
+        _doctorSigType = sigType;
+        _customSigBase64 = sigBase64;
+      });
+    }
+  }
+
+  Future<void> _saveDoctorConfig() async {
+    await ConfigStorage.setString('doctor_name', _doctorNameController.text.trim());
+    await ConfigStorage.setString('doctor_sip', _doctorSipController.text.trim());
+    await ConfigStorage.setString('doctor_signature_type', _doctorSigType);
+    if (_customSigBase64 != null) {
+      await ConfigStorage.setString('doctor_signature_base64', _customSigBase64!);
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Identitas Dokter & Tanda Tangan Digital berhasil disimpan!'),
+        backgroundColor: Colors.teal,
+      ),
+    );
+  }
+
+  Future<void> _pickCustomSignatureImage() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final bytes = result.files.single.bytes;
+        if (bytes != null) {
+          final base64Str = base64Encode(bytes);
+          setState(() {
+            _customSigBase64 = base64Str;
+            _doctorSigType = 'custom_image';
+          });
+          await _saveDoctorConfig();
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengunggah gambar: $e')),
+      );
+    }
   }
 
   @override
@@ -102,6 +159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _projectIdController.dispose();
     _appIdController.dispose();
     _doctorNameController.dispose();
+    _doctorSipController.dispose();
     _activationCodeController.dispose();
     super.dispose();
   }
@@ -738,6 +796,165 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // --- SEKSI 2: BACKUP MANUAL ---
               const Divider(),
               const SizedBox(height: 8),
+              // ─── Identitas Dokter & Tanda Tangan Digital ──────────────────────
+              Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.teal.shade50,
+                            child: Icon(Icons.badge, color: Colors.teal.shade800),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Identitas Dokter & Tanda Tangan Digital',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                                const Text(
+                                  'Pengesahan resmi hasil skrining pada laporan PDF',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _doctorNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Lengkap Dokter & Gelar',
+                          hintText: 'Contoh: dr. Budi Santoso, Sp.A',
+                          prefixIcon: Icon(Icons.person),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _doctorSipController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nomor SIP / STR',
+                          hintText: 'Contoh: SIP 503/1234/DISKES/2026',
+                          prefixIcon: Icon(Icons.card_membership),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Format Pengesahan / Tanda Tangan di PDF:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(
+                            value: 'qr_generated',
+                            label: Text('Auto QR Code Digital'),
+                            icon: Icon(Icons.qr_code_2),
+                          ),
+                          ButtonSegment(
+                            value: 'custom_image',
+                            label: Text('Upload Foto TTD'),
+                            icon: Icon(Icons.upload_file),
+                          ),
+                        ],
+                        selected: {_doctorSigType},
+                        onSelectionChanged: (set) {
+                          if (set.isNotEmpty) {
+                            setState(() => _doctorSigType = set.first);
+                            _saveDoctorConfig();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Preview Box Tanda Tangan Digital
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            if (_doctorSigType == 'qr_generated') ...[
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.teal.shade50,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(Icons.qr_code_2, size: 48, color: Colors.teal.shade800),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Auto-Generated QR Code', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    SizedBox(height: 2),
+                                    Text('QR Code verifikasi resmi dibuat otomatis per cetakan laporan PDF.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                  ],
+                                ),
+                              ),
+                            ] else ...[
+                              if (_customSigBase64 != null && _customSigBase64!.isNotEmpty)
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Image.memory(
+                                    base64Decode(_customSigBase64!),
+                                    height: 50,
+                                    fit: BoxFit.contain,
+                                  ),
+                                )
+                              else
+                                const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _pickCustomSignatureImage,
+                                  icon: const Icon(Icons.upload),
+                                  label: Text(_customSigBase64 != null ? 'Ganti Foto TTD' : 'Unggah Foto TTD (PNG/JPG)'),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _saveDoctorConfig,
+                          icon: const Icon(Icons.save),
+                          label: const Text('Simpan Identitas Dokter'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
                 child: Text(

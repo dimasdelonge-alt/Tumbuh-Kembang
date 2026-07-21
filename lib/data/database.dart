@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+// Drift v7 schema update for CDC & TPG
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -23,6 +24,9 @@ class Patients extends Table {
       boolean().withDefault(const Constant(false))();
   BoolColumn get hasDownSyndrome =>
       boolean().withDefault(const Constant(false))();
+
+  RealColumn get fatherHeightCm => real().nullable()();
+  RealColumn get motherHeightCm => real().nullable()();
 
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt =>
@@ -193,7 +197,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -219,6 +223,11 @@ class AppDatabase extends _$AppDatabase {
           // v5 -> v6: tambah tabel hasil Denver II.
           if (from < 6) {
             await m.createTable(denverResults);
+          }
+          // v6 -> v7: tambah kolom fatherHeightCm & motherHeightCm pada Patients.
+          if (from < 7) {
+            await m.addColumn(patients, patients.fatherHeightCm);
+            await m.addColumn(patients, patients.motherHeightCm);
           }
         },
       );

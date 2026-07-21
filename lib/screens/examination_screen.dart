@@ -25,6 +25,8 @@ import 'cars_screen.dart';
 import 'redleaf_screen.dart';
 import '../modules/redleaf/redleaf_data.dart';
 import '../modules/denver/denver_screen.dart';
+import '../modules/fenton/fenton_screen.dart';
+import '../modules/cdc/cdc_screen.dart';
 import '../utils/denver_license.dart';
 import 'stimulation_screen.dart';
 
@@ -168,12 +170,12 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         Text('Modul Pemeriksaan',
             style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        // 1. Antropometri
+        // 1. Antropometri & TPG
         _ModuleTile(
           icon: Icons.monitor_weight,
           color: Colors.indigo,
-          title: 'Pertumbuhan (Antropometri WHO)',
-          subtitle: 'BB, TB, Lingkar Kepala → Z-score & status gizi',
+          title: 'Pertumbuhan (Antropometri WHO & Sub-modul TPG)',
+          subtitle: 'BB, TB, LK, Z-score, Status Gizi & Tinggi Potensi Genetik (TPG)',
           onTap: () async {
             final id = await _ensureExam();
             if (!mounted) return;
@@ -182,6 +184,31 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                 patient: widget.patient,
                 examinationId: id,
                 examDate: _examDate,
+              ),
+            ));
+            setState(() {});
+          },
+        ),
+        const SizedBox(height: 8),
+
+        // 1b. Kurva Fenton 2013 (Khusus Bayi Prematur / Usia Gestasi 22-50 mgg)
+        _ModuleTile(
+          icon: Icons.child_friendly,
+          color: Colors.blue.shade700,
+          title: 'Kurva Fenton 2013 (Bayi Prematur)',
+          subtitle: 'Grafik pertumbuhan khusus bayi prematur (22–50 minggu usia gestasi PMA)',
+          onTap: () async {
+            final id = await _ensureExam();
+            if (!mounted) return;
+            await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => FentonScreen(
+                patient: widget.patient,
+                examination: widget.existing ?? Examination(
+                  id: id,
+                  patientId: widget.patient.id,
+                  examDate: _examDate,
+                  createdAt: DateTime.now(),
+                ),
               ),
             ));
             setState(() {});
@@ -410,7 +437,9 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
           data.screenings.isEmpty &&
           data.vision == null &&
           data.cars == null &&
-          data.denver == null) {
+          data.denver == null &&
+          data.fenton == null &&
+          data.cdc == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -514,6 +543,30 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                       onTap: () {
                         Navigator.pop(ctx);
                         PdfReportService.generateAndPrintDenverOnly(data);
+                      },
+                    ),
+
+                  // 3c. Fenton 2013 saja
+                  if (data.fenton != null)
+                    ListTile(
+                      leading: const Icon(Icons.child_friendly),
+                      title: const Text('Cetak Kurva Fenton 2013 Saja'),
+                      subtitle: const Text('Ringkasan kurva pertumbuhan prematur Fenton 2013'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        PdfReportService.generateAndPrintFentonOnly(data);
+                      },
+                    ),
+
+                  // 3d. CDC 2000 & TPG saja
+                  if (data.cdc != null)
+                    ListTile(
+                      leading: const Icon(Icons.family_restroom),
+                      title: const Text('Cetak Kurva CDC 2000 & TPG Saja'),
+                      subtitle: const Text('Ringkasan grafik CDC 2000 & Tinggi Potensi Genetik'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        PdfReportService.generateAndPrintCdcOnly(data);
                       },
                     ),
 
@@ -660,7 +713,9 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
         data.screenings.isNotEmpty ||
         data.vision != null ||
         data.cars != null ||
-        data.denver != null;
+        data.denver != null ||
+        data.fenton != null ||
+        data.cdc != null;
 
     if (!hasAny) {
       return Center(
@@ -953,6 +1008,84 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                 const Divider(),
                 Text(data.denver!.recommendation,
                     style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // --- FENTON 2013 ---
+          if (data.fenton != null) ...[
+            _sectionHeader(Icons.child_friendly, Colors.blue.shade700, 'Kurva Pertumbuhan Fenton 2013 (Prematur)'),
+            _resultCard(
+              color: Colors.blue.shade700,
+              children: [
+                _kvRow('Gestasi saat Lahir', '${data.fenton!.gestationalWeeksAtBirth} minggu'),
+                _kvRow('PMA Usia Uji', '${data.fenton!.pmaWeeks.toStringAsFixed(1)} minggu'),
+                _kvRow('Status PMA', data.fenton!.pmaStatusLabel),
+                if (data.fenton!.weightKg != null || data.fenton!.lengthCm != null || data.fenton!.headCircumferenceCm != null) ...[
+                  const Divider(),
+                  _kvRow('Hasil Pengukuran',
+                      'BB: ${data.fenton!.weightKg?.toStringAsFixed(2) ?? "-"} kg | '
+                      'PB: ${data.fenton!.lengthCm?.toStringAsFixed(1) ?? "-"} cm | '
+                      'LK: ${data.fenton!.headCircumferenceCm?.toStringAsFixed(1) ?? "-"} cm'),
+                ],
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.show_chart, size: 16),
+                    label: const Text('Buka Kurva Pertumbuhan Fenton'),
+                    onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => FentonScreen(
+                          patient: widget.patient,
+                          examination: Examination(
+                            id: widget.examId,
+                            patientId: widget.patient.id,
+                            examDate: widget.examDate,
+                            createdAt: DateTime.now(),
+                          ),
+                        ),
+                      ));
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // --- CDC 2000 & TPG ---
+          if (data.cdc != null) ...[
+            _sectionHeader(Icons.family_restroom, Colors.teal.shade800, 'Kurva CDC 2000 & Tinggi Potensi Genetik (TPG)'),
+            _resultCard(
+              color: Colors.teal.shade800,
+              children: [
+                _kvRow('Usia Uji', '${data.cdc!.ageYears.toStringAsFixed(1)} Tahun'),
+                if (data.cdc!.tpg != null)
+                  _kvRow('Tinggi Potensi Genetik', data.cdc!.tpg!.label),
+                _kvRow('Evaluasi Trajektori', data.cdc!.evaluation),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.show_chart, size: 16),
+                    label: const Text('Buka Kurva CDC 2000 & TPG'),
+                    onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => CdcScreen(
+                          patient: widget.patient,
+                          examination: Examination(
+                            id: widget.examId,
+                            patientId: widget.patient.id,
+                            examDate: widget.examDate,
+                            createdAt: DateTime.now(),
+                          ),
+                        ),
+                      ));
+                    },
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
