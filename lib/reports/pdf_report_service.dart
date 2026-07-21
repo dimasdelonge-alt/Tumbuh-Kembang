@@ -632,6 +632,20 @@ class PdfReportService {
   static String _safe(String s) =>
       s.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_');
 
+  /// Sanitasi teks Unicode agar kompatibel 100% dengan font Type1 (Helvetica) di PDF.
+  static String _clean(String text) {
+    if (text.isEmpty) return text;
+    return text
+        .replaceAll('–', '-')
+        .replaceAll('—', '-')
+        .replaceAll('•', '-')
+        .replaceAll('≥', '>=')
+        .replaceAll('≤', '<=')
+        .replaceAll('±', '+/-')
+        .replaceAll('×', 'x')
+        .replaceAll('°', ' deg');
+  }
+
   static Future<Uint8List> _build(
     ExamReportData data, {
     bool includeGrowth = true,
@@ -706,6 +720,12 @@ class PdfReportService {
             pw.SizedBox(height: 4),
             _sectionTitle('Kurva Pertumbuhan CDC 2000 & Tinggi Potensi Genetik (TPG)'),
             _cdcSection(data.cdc!),
+            pw.SizedBox(height: 12),
+          ],
+          if (data.nutrition != null) ...[
+            pw.SizedBox(height: 4),
+            _sectionTitle('Asuhan Nutrisi Pediatrik'),
+            _nutritionSection(data.nutrition!),
             pw.SizedBox(height: 12),
           ],
           if (includeStimulation && data.stimulation.isNotEmpty) ...[
@@ -1163,6 +1183,238 @@ class PdfReportService {
           ],
         ],
       ),
+    );
+  }
+
+  static pw.Widget _nutritionSection(ReportNutrition n) {
+    final borderColor = n.needsIntervention ? PdfColors.red200 : PdfColors.orange200;
+    final bgColor = n.needsIntervention ? PdfColors.red50 : PdfColors.orange50;
+    final titleColor = n.needsIntervention ? PdfColors.red900 : PdfColors.orange900;
+
+    // Group feeding rules by category
+    final categories = ['Jadwal', 'Lingkungan', 'Prosedur'];
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        // ── Bagian 1: Kebutuhan Nutrisi Harian ──
+        pw.Container(
+          padding: const pw.EdgeInsets.all(8),
+          decoration: pw.BoxDecoration(
+            color: bgColor,
+            borderRadius: pw.BorderRadius.circular(6),
+            border: pw.Border.all(color: borderColor, width: 0.8),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'Kebutuhan Nutrisi Harian (RDA Permenkes RI 28/2019 x BB Ideal)',
+                style: pw.TextStyle(
+                  fontSize: 9,
+                  fontWeight: pw.FontWeight.bold,
+                  color: titleColor,
+                ),
+              ),
+              pw.SizedBox(height: 6),
+              pw.Table(
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(2),
+                  1: const pw.FlexColumnWidth(3),
+                },
+                children: [
+                  _nutritionRow('Energi Target', '${n.targetEnergyKcal.toStringAsFixed(0)} kkal/hari'),
+                  _nutritionRow('Protein Target', '${n.targetProteinGram.toStringAsFixed(1)} g/hari'),
+                  _nutritionRow('Cairan Harian', '${n.dailyFluidMl.toStringAsFixed(0)} ml/hari (Holliday-Segar)'),
+                  _nutritionRow('BB Ideal (W_ideal)', '${n.idealWeightKg.toStringAsFixed(1)} kg'),
+                  _nutritionRow('Kelompok AKG', n.akgGroupLabel),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(4),
+                decoration: pw.BoxDecoration(
+                  color: n.needsIntervention ? PdfColors.red100 : PdfColors.green50,
+                  borderRadius: pw.BorderRadius.circular(4),
+                ),
+                child: pw.Text(
+                  _clean(n.interventionAdvice),
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: n.needsIntervention ? pw.FontWeight.bold : pw.FontWeight.normal,
+                    color: n.needsIntervention ? PdfColors.red900 : PdfColors.green900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        pw.SizedBox(height: 8),
+
+        // ── Bagian 2: Panduan Pemberian Makan & Resep Menu ──
+        pw.Container(
+          padding: const pw.EdgeInsets.all(8),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.green50,
+            borderRadius: pw.BorderRadius.circular(6),
+            border: pw.Border.all(color: PdfColors.green200, width: 0.8),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                _clean('Panduan Pemberian Makan: ${n.mpasiLabel}'),
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.green900),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Table(
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(2),
+                  1: const pw.FlexColumnWidth(3),
+                },
+                children: [
+                  _nutritionRow('Tekstur', n.mpasiTexture),
+                  _nutritionRow('Frekuensi', n.mpasiFrequency),
+                  _nutritionRow('Porsi', n.mpasiPortion),
+                ],
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text(_clean(n.mpasiNotes), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+              if (n.mpasiMenuExamples.isNotEmpty) ...[
+                pw.SizedBox(height: 6),
+                pw.Text(
+                  'Contoh Menu MPASI (Kemenkes RI 2023):',
+                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.green800),
+                ),
+                pw.SizedBox(height: 2),
+                ...n.mpasiMenuExamples.map((menu) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(left: 8, top: 1),
+                  child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('- ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.green700)),
+                      pw.Expanded(
+                        child: pw.Text(_clean(menu), style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey900)),
+                      ),
+                    ],
+                  ),
+                )),
+              ],
+            ],
+          ),
+        ),
+        pw.SizedBox(height: 8),
+
+        // ── Bagian 3: Suplementasi ──
+        pw.Container(
+          padding: const pw.EdgeInsets.all(8),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.purple50,
+            borderRadius: pw.BorderRadius.circular(6),
+            border: pw.Border.all(color: PdfColors.purple200, width: 0.8),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'Suplementasi (Rekomendasi IDAI)',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.purple900),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Table(
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(2),
+                  1: const pw.FlexColumnWidth(3),
+                },
+                children: [
+                  _nutritionRow('Zat Besi (Fe)', n.ironDose),
+                  _nutritionRow('Vitamin D', n.vitDDose),
+                ],
+              ),
+              if (n.ironNotes.isNotEmpty) ...[
+                pw.SizedBox(height: 3),
+                pw.Text(_clean('Catatan Fe: ${n.ironNotes}'), style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
+              ],
+              if (n.vitDNotes.isNotEmpty) ...[
+                pw.SizedBox(height: 2),
+                pw.Text(_clean('Catatan Vit D: ${n.vitDNotes}'), style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
+              ],
+            ],
+          ),
+        ),
+        pw.SizedBox(height: 8),
+
+        // ── Bagian 4: Basic Feeding Rules IDAI ──
+        if (n.feedingRules.isNotEmpty)
+          pw.Container(
+            padding: const pw.EdgeInsets.all(8),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.blue50,
+              borderRadius: pw.BorderRadius.circular(6),
+              border: pw.Border.all(color: PdfColors.blue200, width: 0.8),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Basic Feeding Rules (IDAI)',
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                ),
+                pw.SizedBox(height: 4),
+                ...categories.map((cat) {
+                  final rules = n.feedingRules.where((r) => r.category == cat).toList();
+                  if (rules.isEmpty) return pw.SizedBox();
+                  return pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        cat.toUpperCase(),
+                        style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800),
+                      ),
+                      ...rules.map((r) => pw.Padding(
+                        padding: const pw.EdgeInsets.only(left: 6, top: 2),
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Row(
+                              crossAxisAlignment: pw.CrossAxisAlignment.start,
+                              children: [
+                                pw.Text('${r.number}. ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blue700)),
+                                pw.Expanded(
+                                  child: pw.Text(_clean(r.title), style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900)),
+                                ),
+                              ],
+                            ),
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.only(left: 12),
+                              child: pw.Text(_clean(r.description), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700)),
+                            ),
+                          ],
+                        ),
+                      )),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  static pw.TableRow _nutritionRow(String label, String value) {
+    return pw.TableRow(
+      children: [
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 1),
+          child: pw.Text(_clean(label), style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+        ),
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 1),
+          child: pw.Text(_clean(value), style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey900)),
+        ),
+      ],
     );
   }
 

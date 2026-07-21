@@ -107,6 +107,7 @@ class GrowthAssessment {
           weightKg: weightKg,
           heightCm: heightCm,
           sex: sex,
+          ageMonths: age.chronologicalMonths,
         );
         results.add(GrowthIndicatorResult(
           indicator: GrowthIndicator.weightForLengthHeight,

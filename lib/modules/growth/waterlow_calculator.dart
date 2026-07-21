@@ -20,6 +20,13 @@ class WaterlowCalculator {
     required double weightKg,
     required double heightCm,
     required String sex, // 'L' for Male, 'P' for Female
+
+    /// Usia kronologis anak (bulan). Jika diberikan, Height Age akan dibatasi
+    /// maksimal ke usia kronologis — metode Waterlow hanya valid untuk anak
+    /// dengan tinggi di bawah median (stunting/HA < usia kronologis).
+    /// Untuk anak tinggi (HA > usia kronologis), W_ideal dihitung pada usia
+    /// kronologis agar tidak menghasilkan hasil yang menyesatkan.
+    int? ageMonths,
   }) {
     final statureTable = sex == 'L' ? CdcGrowthData.statureBoys : CdcGrowthData.statureGirls;
     final weightTable = sex == 'L' ? CdcGrowthData.weightBoys : CdcGrowthData.weightGirls;
@@ -41,6 +48,15 @@ class WaterlowCalculator {
           break;
         }
       }
+    }
+
+    // PENTING: Metode Waterlow dirancang untuk anak dengan stunting (HA < usia
+    // kronologis). Jika anak justru tinggi (HA > usia kronologis), menggunakan
+    // HA yang lebih besar akan membuat W_ideal terlalu tinggi sehingga anak
+    // terlihat "gizi buruk" padahal berat badannya normal untuk usianya.
+    // Solusi: cap HA ke usia kronologis jika HA > usia kronologis.
+    if (ageMonths != null && ha > ageMonths.toDouble()) {
+      ha = ageMonths.toDouble();
     }
 
     // 2. Determine Ideal Weight (W_ideal) at HA

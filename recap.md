@@ -39,7 +39,7 @@ penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
 
 ## Verifikasi terkini
 - `flutter analyze`: 0 error, 0 warning.
-- **105 unit test lolos** (`flutter test`).
+- **110 unit test lolos** (`flutter test`).
 - `flutter build apk --debug`: sukses. Skema DB versi **7**.
 - Versi aplikasi: **12.0.0+12**.
 
@@ -63,6 +63,14 @@ penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
   - **5–19 thn (WHO 2007 / AnthroPlus)** untuk TB/U & IMT/U dari paket `zscorer` (`wgsrData.csv`).
 - **Klasifikasi status gizi age-aware** (`nutrition_classifier.dart`): ambang IMT/U beda untuk 0–5 thn vs >5 thn WHO 2007.
 - `growth_assessment.dart` = SATU sumber kebenaran pipeline usia→ageDays→Z-score→status.
+
+### Asuhan Nutrisi Pediatrik / Pemenuhan Nutrisi — `modules/nutrition/`
+- **Kebutuhan Nutrisi Target**: Energi & Protein harian ($\text{RDA} \times W_{ideal}$) mengacu pada **Permenkes RI No. 28/2019 (AKG)**.
+- **Kebutuhan Cairan Harian**: Perhitungan otomatis dengan rumus **Holliday-Segar** ($100\text{ ml/kg}$ 10 kg pertama, $+50\text{ ml/kg}$ 10 kg kedua, $+20\text{ ml/kg}$ sisanya).
+- **Edukasi Pemberian Makan & MPASI**: Panduan tekstur, frekuensi, dan porsi per usia (konfirmasi **Kemenkes 2023**) serta **Basic Feeding Rules IDAI** (10 aturan dasar makan).
+- **Rekomendasi Suplementasi**: Dosis otomatis **Zat Besi (Fe)** (2 mg/kgBB/hari) & **Vitamin D** (400–600 IU/hari) sesuai acuan IDAI.
+- **Alert Intervensi Gizi**: Panduan penanganan medis/rujukan untuk kondisi Gizi Kurang atau Gizi Buruk (Waterlow/WHO).
+- **Integrasi UI & PDF**: Kartu ringkasan di `growth_screen.dart`, layar detail `nutrition_screen.dart`, dan cetakan Laporan PDF (`pdf_report_service.dart`).
 
 ### KPSP (Modul 4) — `modules/kpsp/`
 - 16 form usia (3–72 bln) lengkap, skoring (9–10 Sesuai, 7–8 Meragukan, <=6 Penyimpangan), analisis domain. (`kpsp_data.dart`, `kpsp_model.dart`, `kpsp_screen.dart`)
@@ -113,7 +121,7 @@ penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
 - **Cetak PDF**: Gambar kurva CDC 2000 + arsir TPG trajektori penuh + riwayat anak otomatis ter-render di PDF (termasuk opsi *"Cetak Kurva CDC 2000 & TPG Saja"*).
 
 ### Laporan & tren
-- **Laporan PDF** (Modul 16): identitas, usia, antropometri+Z-score, KPSP, skrining (KMME/M-CHAT/GPPH/SPPAHI), TDL, CARS, Denver II, **Fenton 2013**, **CDC 2000 & TPG**, kesimpulan red-flag, program stimulasi, **Tanda Tangan Digital (QR Code / Custom Image)**. (`reports/report_builder.dart`, `reports/pdf_report_service.dart`)
+- **Laporan PDF** (Modul 16): identitas, usia, antropometri+Z-score, KPSP, skrining (KMME/M-CHAT/GPPH/SPPAHI), TDL, CARS, Denver II, **Fenton 2013**, **CDC 2000 & TPG**, **Asuhan Nutrisi Pediatrik**, kesimpulan red-flag, program stimulasi, **Tanda Tangan Digital (QR Code / Custom Image)**. (`reports/report_builder.dart`, `reports/pdf_report_service.dart`)
 - **Anti-Orphan Container**: Mencegah blok tanda tangan terpisah sendirian di halaman kedua PDF.
 
 ## Skema DB (drift, v7) — `data/database.dart`
@@ -133,4 +141,6 @@ Patients (`fatherHeightCm`, `motherHeightCm`), Examinations, GrowthMeasurements,
 4. ✅ **Fenton 2013 Preterm Growth Chart Module** -> **Selesai.**
 5. ✅ **Identitas Dokter & Tanda Tangan Digital (Auto QR Code)** -> **Selesai.**
 6. ✅ **Kurva CDC 2000 & Tinggi Potensi Genetik (TPG) Module** -> **Selesai.**
-7. Pematangan UI/UX & uji coba lapangan oleh dokter.
+7. ✅ **Asuhan Nutrisi Pediatrik / Pemenuhan Nutrisi Module** -> **Selesai.**
+8. Pematangan UI/UX & uji coba lapangan oleh dokter.
+

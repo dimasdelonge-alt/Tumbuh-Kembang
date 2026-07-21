@@ -81,12 +81,30 @@ class CdcCalculator {
 
   /// Menghitung Rentang Tinggi Ideal Real-Time Anak Pada Usia Saat Ini
   /// dan Menilai Apakah Tinggi Anak Saat Ini Berada di Bawah/Sesuai Potensi Genetik.
+  ///
+  /// Catatan: Evaluasi ini menggunakan kurva CDC 2000 yang hanya valid untuk usia 2–20 tahun.
+  /// Untuk anak < 2 tahun, evaluasi real-time tidak dilakukan karena data CDC belum tersedia.
   static RealtimeTpgResult? calculateRealtimeTPG({
     required double? currentHeightCm,
     required int ageMonths,
     required TpgResult? tpg,
   }) {
     if (tpg == null) return null;
+
+    // CDC 2000 stature-for-age hanya tersedia untuk usia 2–20 tahun.
+    // Evaluasi real-time tidak valid untuk anak di bawah 2 tahun.
+    if (ageMonths < 24) {
+      return RealtimeTpgResult(
+        minExpectedCm: 0,
+        targetExpectedCm: 0,
+        maxExpectedCm: 0,
+        statusLabel: 'Evaluasi TPG real-time belum tersedia untuk usia di bawah 2 tahun '
+            '(kurva CDC 2000 dimulai dari usia 2 tahun). '
+            'TPG Dewasa tetap valid sebagai prediksi tinggi akhir.',
+        isBelow: false,
+        isAbove: false,
+      );
+    }
 
     final isBoy = tpg.sex == 'L';
     final ageYears = (ageMonths / 12.0).clamp(2.0, 20.0);

@@ -43,8 +43,9 @@ class CdcChartPainter extends CustomPainter {
   static const double _xAge20 = 0.820;
 
   // Koordinat relatif sumbu Y Stature (80 cm - 190 cm)
-  static const double _yStature80cm = 0.785;
-  static const double _yStature190cm = 0.155;
+  // Disesuaikan presisi agar pangkal usia 2.0 thn berada pas di atas garis 80cm (83-92cm)
+  static const double _yStature80cm = 0.695;
+  static const double _yStature190cm = 0.138;
 
   double _ageToX(double ageYears, double w) {
     final xNorm = _xAge2 + (ageYears - 2.0) / 18.0 * (_xAge20 - _xAge2);
@@ -241,13 +242,13 @@ class CdcChartPainter extends CustomPainter {
       );
       _drawSmallLabel(
         canvas,
-        Offset(lastMin.dx + 5, lastMin.dy + 2),
+        Offset(lastMin.dx + 5, lastMin.dy - 4),
         tpg!.minCm.toStringAsFixed(0),
         Colors.green.shade700,
       );
       _drawSmallLabel(
         canvas,
-        Offset(lastMax.dx + 5, lastMax.dy - 10),
+        Offset(lastMax.dx + 5, lastMax.dy - 4),
         tpg!.maxCm.toStringAsFixed(0),
         Colors.green.shade700,
       );

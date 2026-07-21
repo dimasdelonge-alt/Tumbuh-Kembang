@@ -6,9 +6,12 @@ import '../core/age_calculator.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import '../modules/growth/growth_assessment.dart';
+import '../modules/growth/nutrition_classifier.dart';
 import '../modules/growth/zscore_calculator.dart';
 import '../modules/cdc/cdc_calculator.dart';
 import '../modules/cdc/cdc_screen.dart';
+import '../modules/nutrition/nutrition_calculator.dart';
+import '../modules/nutrition/nutrition_screen.dart';
 import 'growth_chart.dart';
 
 /// Layar input antropometri + hasil Z-score (Modul 3).
@@ -232,6 +235,7 @@ class _GrowthScreenState extends State<GrowthScreen> {
                 heightCm: double.tryParse(_height.text.replaceAll(',', '.')),
               )),
           _buildTpgSection(),
+          _buildNutritionSection(),
           if (_results.isNotEmpty) ...[
             const SizedBox(height: 12),
             FilledButton.tonalIcon(
@@ -271,7 +275,6 @@ class _GrowthScreenState extends State<GrowthScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Pengukuran & Data TPG tersimpan')),
     );
-    Navigator.of(context).pop();
   }
 
   Widget _buildTpgSection() {
@@ -348,7 +351,7 @@ class _GrowthScreenState extends State<GrowthScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'TPG Dewasa (18–20 Thn): ${_tpg!.label}',
+                      'TPG Dewasa (18\u201320 Thn): ${_tpg!.label}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -357,15 +360,19 @@ class _GrowthScreenState extends State<GrowthScreen> {
                     ),
                     if (_realtimeTpg != null) ...[
                       const SizedBox(height: 4),
-                      Text(
-                        'Rentang Ideal Usia Ini (${(_age.chronologicalMonths / 12.0).toStringAsFixed(1)} Thn): ${_realtimeTpg!.rangeLabel}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade900,
+                      // Untuk anak < 2 tahun, hanya tampilkan pesan informatif
+                      // (tanpa rangeLabel yang salah karena CDC belum berlaku)
+                      if (_age.chronologicalMonths >= 24) ...[
+                        Text(
+                          'Rentang Ideal Usia Ini (${(_age.chronologicalMonths / 12.0).toStringAsFixed(1)} Thn): ${_realtimeTpg!.rangeLabel}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade900,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
+                        const SizedBox(height: 4),
+                      ],
                       Text(
                         _realtimeTpg!.statusLabel,
                         style: TextStyle(
@@ -373,39 +380,219 @@ class _GrowthScreenState extends State<GrowthScreen> {
                           fontWeight: FontWeight.bold,
                           color: _realtimeTpg!.isBelow
                               ? Colors.red.shade900
-                              : (_realtimeTpg!.isAbove ? Colors.orange.shade900 : Colors.green.shade900),
+                              : (_realtimeTpg!.isAbove ? Colors.orange.shade900 : Colors.blue.shade900),
                         ),
                       ),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.show_chart, size: 16),
-                  label: const Text('Lihat Kurva CDC 2000 & Trajektori TPG'),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => CdcScreen(
-                          patient: widget.patient,
-                          examination: Examination(
-                            id: widget.examinationId,
-                            patientId: widget.patient.id,
-                            examDate: widget.examDate,
-                            createdAt: DateTime.now(),
+              // Tombol CDC chart hanya untuk usia >= 2 tahun
+              if (_age.chronologicalMonths >= 24) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.show_chart, size: 16),
+                    label: const Text('Lihat Kurva CDC 2000 & Trajektori TPG'),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => CdcScreen(
+                            patient: widget.patient,
+                            examination: Examination(
+                              id: widget.examinationId,
+                              patientId: widget.patient.id,
+                              examDate: widget.examDate,
+                              createdAt: DateTime.now(),
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
+              ],
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNutritionSection() {
+    final w = double.tryParse(_weight.text.replaceAll(',', '.'));
+    final h = double.tryParse(_height.text.replaceAll(',', '.'));
+
+    if (w == null || h == null || w <= 0 || h <= 0 || !_computed) {
+      return const SizedBox.shrink();
+    }
+
+    // Ekstrak status gizi WHO BB/TB dari hasil GrowthAssessment.
+    // Ini adalah standar Kemenkes RI 2010 yang konsisten dengan tampilan antropometri.
+    // Untuk anak > 5 tahun, weightForLengthHeight di-_results menggunakan Waterlow
+    // (growth_assessment.dart), sehingga tetap konsisten di semua usia.
+    final whoStatus = _results
+        .where((r) => r.indicator == GrowthIndicator.weightForLengthHeight)
+        .map((r) => r.status)
+        .whereType<NutritionStatus>()
+        .firstOrNull;
+
+    final nutrition = NutritionCalculator.calculate(
+      weightKg: w,
+      heightCm: h,
+      ageMonths: _age.chronologicalMonths,
+      sex: widget.patient.sex,
+      whoNutritionStatus: whoStatus,
+    );
+
+    if (nutrition == null) return const SizedBox.shrink();
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(top: 16, bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.restaurant, color: Colors.orange.shade800),
+                const SizedBox(width: 8),
+                Text(
+                  'Sub-Modul: Pemenuhan Nutrisi',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Kebutuhan nutrisi harian berdasarkan RDA × BB Ideal.',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: nutrition.needsIntervention
+                    ? Colors.red.shade50
+                    : Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: nutrition.needsIntervention
+                      ? Colors.red.shade300
+                      : Colors.orange.shade300,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _nutritionKvRow(
+                    Icons.local_fire_department,
+                    'Energi Target',
+                    nutrition.energyLabel,
+                    Colors.red.shade700,
+                  ),
+                  _nutritionKvRow(
+                    Icons.egg,
+                    'Protein Target',
+                    nutrition.proteinLabel,
+                    Colors.brown.shade700,
+                  ),
+                  _nutritionKvRow(
+                    Icons.water_drop,
+                    'Cairan Harian',
+                    nutrition.fluidLabel,
+                    Colors.blue.shade700,
+                  ),
+                  _nutritionKvRow(
+                    Icons.monitor_weight,
+                    'BB Ideal',
+                    nutrition.idealWeightLabel,
+                    Colors.teal.shade700,
+                  ),
+                ],
+              ),
+            ),
+            if (nutrition.needsIntervention) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.red.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber, color: Colors.red.shade800, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        nutrition.interventionAdvice,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red.shade900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.restaurant_menu, size: 16),
+                label: const Text('Lihat Detail Asuhan Nutrisi'),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => NutritionScreen(
+                        requirement: nutrition,
+                        ageMonths: _age.chronologicalMonths,
+                        weightKg: w,
+                        heightCm: h,
+                        patientName: widget.patient.name,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _nutritionKvRow(IconData icon, String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(label, style: const TextStyle(fontSize: 11)),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

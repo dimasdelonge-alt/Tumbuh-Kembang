@@ -22,6 +22,8 @@ import '../modules/fenton/fenton_calculator.dart';
 import '../modules/fenton/fenton_chart_painter.dart';
 import '../modules/cdc/cdc_calculator.dart';
 import '../modules/cdc/cdc_chart_painter.dart';
+import '../modules/nutrition/nutrition_calculator.dart';
+import '../modules/nutrition/nutrition_data.dart' as nutrition_data;
 
 /// Satu baris hasil antropometri untuk laporan.
 class ReportGrowthRow {
@@ -207,6 +209,52 @@ class ReportCdc {
   });
 }
 
+/// Data asuhan nutrisi untuk laporan.
+class ReportNutrition {
+  final double idealWeightKg;
+  final double heightAgeMonths;
+  final double targetEnergyKcal;
+  final double targetProteinGram;
+  final double dailyFluidMl;
+  final String akgGroupLabel;
+  final String mpasiLabel;
+  final String mpasiTexture;
+  final String mpasiFrequency;
+  final String mpasiPortion;
+  final String mpasiNotes;
+  final List<String> mpasiMenuExamples;
+  final String interventionAdvice;
+  final bool needsIntervention;
+  final String ironDose;
+  final String vitDDose;
+  final String ironNotes;
+  final String vitDNotes;
+  /// Basic Feeding Rules IDAI (nomor, kategori, judul, deskripsi).
+  final List<({int number, String category, String title, String description})> feedingRules;
+
+  ReportNutrition({
+    required this.idealWeightKg,
+    required this.heightAgeMonths,
+    required this.targetEnergyKcal,
+    required this.targetProteinGram,
+    required this.dailyFluidMl,
+    required this.akgGroupLabel,
+    required this.mpasiLabel,
+    required this.mpasiTexture,
+    required this.mpasiFrequency,
+    required this.mpasiPortion,
+    required this.mpasiNotes,
+    this.mpasiMenuExamples = const [],
+    required this.interventionAdvice,
+    required this.needsIntervention,
+    required this.ironDose,
+    required this.vitDDose,
+    this.ironNotes = '',
+    this.vitDNotes = '',
+    this.feedingRules = const [],
+  });
+}
+
 /// Seluruh data yang dibutuhkan untuk merender satu laporan pemeriksaan.
 class ExamReportData {
   final Patient patient;
@@ -221,6 +269,7 @@ class ExamReportData {
   final ReportFenton? fenton;
   final ReportCdc? cdc;
   final WaterlowResult? waterlow;
+  final ReportNutrition? nutrition;
 
   /// Cara pengukuran tinggi: true=berbaring (PB), false=berdiri (TB).
   final bool measuredLying;
@@ -243,6 +292,7 @@ class ExamReportData {
     this.denver,
     this.fenton,
     this.cdc,
+    this.nutrition,
     required this.stimulation,
     required this.growthOutOfRange,
     required this.waterlow,
@@ -755,6 +805,54 @@ class ReportBuilder {
       }
     }
 
+    // Asuhan Nutrisi Pediatrik
+    ReportNutrition? nutrition;
+    if (g != null && g.weightKg != null && g.heightCm != null) {
+      final whoStatus = assessment.results
+          .where((r) => r.indicator == GrowthIndicator.weightForLengthHeight)
+          .map((r) => r.status)
+          .whereType<NutritionStatus>()
+          .firstOrNull;
+
+      final nr = NutritionCalculator.calculate(
+        weightKg: g.weightKg!,
+        heightCm: g.heightCm!,
+        ageMonths: age.chronologicalMonths,
+        sex: patient.sex,
+        whoNutritionStatus: whoStatus,
+      );
+      if (nr != null) {
+        nutrition = ReportNutrition(
+          idealWeightKg: nr.idealWeightKg,
+          heightAgeMonths: nr.heightAgeMonths,
+          targetEnergyKcal: nr.targetEnergyKcal,
+          targetProteinGram: nr.targetProteinGram,
+          dailyFluidMl: nr.dailyFluidMl,
+          akgGroupLabel: nr.akgEntry.label,
+          mpasiLabel: nr.mpasiGuidance.label,
+          mpasiTexture: nr.mpasiGuidance.texture,
+          mpasiFrequency: nr.mpasiGuidance.frequency,
+          mpasiPortion: nr.mpasiGuidance.portion,
+          mpasiNotes: nr.mpasiGuidance.notes,
+          mpasiMenuExamples: nr.mpasiGuidance.menuExamples,
+          interventionAdvice: nr.interventionAdvice,
+          needsIntervention: nr.needsIntervention,
+          ironDose: nr.ironSupp.dose,
+          vitDDose: nr.vitDSupp.dose,
+          ironNotes: nr.ironSupp.notes,
+          vitDNotes: nr.vitDSupp.notes,
+          feedingRules: nutrition_data.feedingRules
+              .map((r) => (
+                    number: r.number,
+                    category: r.category,
+                    title: r.title,
+                    description: r.description,
+                  ))
+              .toList(),
+        );
+      }
+    }
+
     return ExamReportData(
       patient: patient,
       examDate: exam.examDate,
@@ -767,6 +865,7 @@ class ReportBuilder {
       denver: denver,
       fenton: fenton,
       cdc: cdc,
+      nutrition: nutrition,
       stimulation: stimulation,
       growthOutOfRange: age.chronologicalMonths > 60,
       waterlow: assessment.waterlow,
