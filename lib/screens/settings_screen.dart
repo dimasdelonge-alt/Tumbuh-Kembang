@@ -801,7 +801,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               const Center(
                 child: Text(
-                  'Versi Aplikasi 1.1.0 (Real-time Cloud Sync)',
+                  'Versi Aplikasi 11.0.0 (Denver II Module)',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ),

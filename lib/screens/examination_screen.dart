@@ -409,12 +409,13 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
           data.kpsp == null &&
           data.screenings.isEmpty &&
           data.vision == null &&
-          data.cars == null) {
+          data.cars == null &&
+          data.denver == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text(
-                  'Belum ada hasil untuk dilaporkan. Isi antropometri atau KPSP dulu.')),
+                  'Belum ada hasil untuk dilaporkan. Isi modul di tab pertama dulu.')),
         );
         return;
       }
@@ -501,6 +502,18 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                       onTap: () {
                         Navigator.pop(ctx);
                         PdfReportService.generateAndPrintKpspOnly(data);
+                      },
+                    ),
+
+                  // 3b. Denver II saja
+                  if (data.denver != null)
+                    ListTile(
+                      leading: const Icon(Icons.alt_route),
+                      title: const Text('Cetak Denver II Saja'),
+                      subtitle: const Text('Ringkasan hasil skrining perkembangan Denver II'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        PdfReportService.generateAndPrintDenverOnly(data);
                       },
                     ),
 
@@ -646,7 +659,8 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
         data.kpsp != null ||
         data.screenings.isNotEmpty ||
         data.vision != null ||
-        data.cars != null;
+        data.cars != null ||
+        data.denver != null;
 
     if (!hasAny) {
       return Center(
@@ -914,6 +928,30 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                 ],
                 const Divider(),
                 Text(data.kpsp!.recommendation,
+                    style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // --- DENVER II ---
+          if (data.denver != null) ...[
+            _sectionHeader(Icons.alt_route, Colors.blue.shade800, 'Denver II (Skrining Perkembangan)'),
+            _resultCard(
+              color: data.denver!.delaysCount > 0 || data.denver!.cautionsCount >= 2
+                  ? Colors.red
+                  : (data.denver!.cautionsCount == 1 ? Colors.orange : Colors.green),
+              children: [
+                _kvRow('Usia Uji', '${data.denver!.ageInMonths.toStringAsFixed(1)} bulan${data.denver!.usedCorrectedAge ? " (Koreksi Prematur)" : ""}'),
+                _kvRow('Keterlambatan (Delay)', '${data.denver!.delaysCount} item', valueColor: data.denver!.delaysCount > 0 ? Colors.red : null),
+                _kvRow('Peringatan (Caution)', '${data.denver!.cautionsCount} item', valueColor: data.denver!.cautionsCount > 0 ? Colors.orange : null),
+                _kvRow('Hasil Skrining', data.denver!.globalResultLabel,
+                    valueColor: data.denver!.delaysCount > 0 || data.denver!.cautionsCount >= 2
+                        ? Colors.red
+                        : Colors.green,
+                    bold: true),
+                const Divider(),
+                Text(data.denver!.recommendation,
                     style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
               ],
             ),

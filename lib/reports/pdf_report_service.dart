@@ -110,6 +110,24 @@ class PdfReportService {
     );
   }
 
+  /// Cetak Laporan Denver II Saja.
+  static Future<void> generateAndPrintDenverOnly(ExamReportData data) async {
+    final bytes = await _build(
+      data,
+      includeGrowth: false,
+      includeKpsp: false,
+      includeScreenings: false,
+      includeVision: false,
+      includeCars: false,
+      includeStimulation: false,
+    );
+    await _presentPdf(
+      bytes,
+      'Laporan_DenverII_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
+    );
+  }
+
   /// Cetak Laporan Skrining & Redleaf Checklist Saja.
   static Future<void> generateAndPrintScreeningsOnly(ExamReportData data) async {
     final bytes = await _build(
@@ -1047,6 +1065,9 @@ class PdfReportService {
     if (data.kpsp != null &&
         data.kpsp!.category != KpspResultCategory.sesuai) {
       flags.add('KPSP ${data.kpsp!.category.label}');
+    }
+    if (data.denver != null && (data.denver!.delaysCount > 0 || data.denver!.cautionsCount >= 2)) {
+      flags.add('Denver II: ${data.denver!.globalResultLabel}');
     }
     for (final s in data.screenings) {
       if (s.severity > 0) flags.add('${s.name}: ${s.levelLabel}');
