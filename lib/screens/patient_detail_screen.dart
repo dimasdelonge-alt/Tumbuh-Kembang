@@ -46,6 +46,42 @@ class _DetailView extends StatefulWidget {
 }
 
 class _DetailViewState extends State<_DetailView> {
+  Future<void> _confirmDeletePatient() async {
+    final patient = widget.patient;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Pasien?'),
+        content: Text(
+          'Data pasien "${patient.name}" beserta SELURUH riwayat '
+          'pemeriksaan (pertumbuhan, KPSP, skrining, dll) akan '
+          'dihapus permanen.\n\nTindakan ini tidak bisa dibatalkan.\n\nLanjutkan?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final repo = context.read<AppRepository>();
+    await repo.deletePatient(patient.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pasien "${patient.name}" dihapus.')),
+      );
+      Navigator.of(context).pop(); // Kembali ke dashboard
+    }
+  }
+
   Future<void> _confirmDeleteExam(Examination exam) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -115,6 +151,11 @@ class _DetailViewState extends State<_DetailView> {
                 builder: (_) => PatientFormScreen(patient: patient),
               ),
             ),
+          ),
+          IconButton(
+            tooltip: 'Hapus Pasien',
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            onPressed: _confirmDeletePatient,
           ),
         ],
       ),

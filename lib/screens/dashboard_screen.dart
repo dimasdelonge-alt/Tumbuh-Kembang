@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../app_state.dart';
 import '../core/age_calculator.dart';
 import '../data/database.dart';
+import '../data/repository.dart';
 import 'patient_form_screen.dart';
 import 'patient_detail_screen.dart';
 import 'fast_screening_form_screen.dart';
@@ -152,6 +153,40 @@ class _PatientCard extends StatelessWidget {
   final Patient patient;
   const _PatientCard({required this.patient});
 
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Pasien?'),
+        content: Text(
+          'Data pasien "${patient.name}" beserta SELURUH riwayat '
+          'pemeriksaan (pertumbuhan, KPSP, skrining, dll) akan '
+          'dihapus permanen.\n\nTindakan ini tidak bisa dibatalkan.\n\nLanjutkan?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final repo = context.read<AppRepository>();
+    await repo.deletePatient(patient.id);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pasien "${patient.name}" dihapus.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final age = AgeCalculator.calculate(
@@ -187,6 +222,7 @@ class _PatientCard extends StatelessWidget {
             builder: (_) => PatientDetailScreen(patientId: patient.id),
           ),
         ),
+        onLongPress: () => _confirmDelete(context),
       ),
     );
   }
