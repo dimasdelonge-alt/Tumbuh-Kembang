@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../core/age_calculator.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
+import '../widgets/app_date_picker.dart';
 import '../modules/kpsp/kpsp_model.dart';
 import '../modules/screening/instrument.dart';
 import '../modules/screening/data/kmme_data.dart';
@@ -29,6 +30,7 @@ import '../modules/fenton/fenton_screen.dart';
 import '../modules/cdc/cdc_screen.dart';
 import '../utils/denver_license.dart';
 import 'stimulation_screen.dart';
+import '../modules/nutrition/nutrition_module_screen.dart';
 
 /// Hub satu pemeriksaan/kunjungan: pilih tanggal lalu kerjakan modul
 /// (antropometri & KPSP). Membuat baris Examination bila belum ada.
@@ -191,7 +193,23 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         ),
         const SizedBox(height: 8),
 
-        // 1b. Kurva Fenton 2013 (Khusus Bayi Prematur / Usia Gestasi 22-50 mgg)
+        // 1b. Nutrisi & Meal Plan Pediatrik
+        _ModuleTile(
+          icon: Icons.restaurant_menu,
+          color: Colors.green.shade700,
+          title: 'Nutrisi & Meal Plan Pediatrik',
+          subtitle: 'Kebutuhan kalori, protein, cairan & rencana makan harian/mingguan',
+          onTap: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => NutritionModuleScreen(
+                initialPatient: widget.patient,
+              ),
+            ));
+          },
+        ),
+        const SizedBox(height: 8),
+
+        // 1c. Kurva Fenton 2013 (Khusus Bayi Prematur / Usia Gestasi 22-50 mgg)
         _ModuleTile(
           icon: Icons.child_friendly,
           color: Colors.blue.shade700,
@@ -407,12 +425,12 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showAppDatePicker(
       context: context,
       initialDate: _examDate,
       firstDate: widget.patient.birthDate,
       lastDate: DateTime.now(),
-      locale: const Locale('id', 'ID'),
+      initialDatePickerMode: DatePickerMode.year,
     );
     if (picked != null) setState(() => _examDate = picked);
   }

@@ -627,18 +627,18 @@ class ReportBuilder {
       }
     }
 
-    // CDC 2000 & Tinggi Potensi Genetik (TPG) (2 - 20 Tahun)
+    // CDC 2000 & Tinggi Potensi Genetik (TPG) (2 - 20 Tahun atau bila TPG terisi)
     ReportCdc? cdc;
     final ageYears = age.chronologicalMonths / 12.0;
-    if (ageYears >= 2.0 && ageYears <= 20.0) {
-      final fH = patient.fatherHeightCm;
-      final mH = patient.motherHeightCm;
-      final tpg = CdcCalculator.calculateTPG(
-        fatherHeightCm: fH,
-        motherHeightCm: mH,
-        sex: patient.sex,
-      );
+    final fH = patient.fatherHeightCm;
+    final mH = patient.motherHeightCm;
+    final tpg = CdcCalculator.calculateTPG(
+      fatherHeightCm: fH,
+      motherHeightCm: mH,
+      sex: patient.sex,
+    );
 
+    if ((ageYears >= 2.0 && ageYears <= 20.0) || tpg != null) {
       final growth = await repo.getGrowthForExam(exam.id);
       final currentH = growth?.heightCm ?? 0.0;
       final realtimeTpg = CdcCalculator.calculateRealtimeTPG(
@@ -646,7 +646,7 @@ class ReportBuilder {
         ageMonths: age.chronologicalMonths,
         tpg: tpg,
       );
-      final eval = realtimeTpg?.statusLabel ?? 'TPG: ${tpg?.label ?? "-"}';
+      final eval = realtimeTpg?.statusLabel ?? (tpg != null ? 'TPG: ${tpg.label}' : 'Pemeriksaan Kurva CDC 2000');
 
       // Load semua riwayat pertumbuhan CDC
       final history = await repo.growthHistory(patient.id);
@@ -675,34 +675,36 @@ class ReportBuilder {
       }
 
       Uint8List? cdcChartBytes;
-      try {
-        final isBoy = patient.sex.toUpperCase() == 'M' || patient.sex.toUpperCase() == 'L';
-        final assetPath = isBoy ? 'assets/cdc/cdc_boys.jpg' : 'assets/cdc/cdc_girls.jpg';
-        final ByteData assetData = await rootBundle.load(assetPath);
-        final ui.Codec codec = await ui.instantiateImageCodec(assetData.buffer.asUint8List());
-        final ui.FrameInfo fi = await codec.getNextFrame();
+      if (ageYears >= 2.0 && ageYears <= 20.0) {
+        try {
+          final isBoy = patient.sex.toUpperCase() == 'M' || patient.sex.toUpperCase() == 'L';
+          final assetPath = isBoy ? 'assets/cdc/cdc_boys.jpg' : 'assets/cdc/cdc_girls.jpg';
+          final ByteData assetData = await rootBundle.load(assetPath);
+          final ui.Codec codec = await ui.instantiateImageCodec(assetData.buffer.asUint8List());
+          final ui.FrameInfo fi = await codec.getNextFrame();
 
-        final recorder = ui.PictureRecorder();
-        final canvas = Canvas(recorder);
-        const size = Size(1000, 1294);
+          final recorder = ui.PictureRecorder();
+          final canvas = Canvas(recorder);
+          const size = Size(1000, 1294);
 
-        final painter = CdcChartPainter(
-          image: fi.image,
-          currentAgeYears: ageYears,
-          points: cdcPointsList,
-          tpg: tpg,
-          realtimeTpg: realtimeTpg,
-          showAgeLine: true,
-          sex: patient.sex,
-        );
-        painter.paint(canvas, size);
+          final painter = CdcChartPainter(
+            image: fi.image,
+            currentAgeYears: ageYears,
+            points: cdcPointsList,
+            tpg: tpg,
+            realtimeTpg: realtimeTpg,
+            showAgeLine: true,
+            sex: patient.sex,
+          );
+          painter.paint(canvas, size);
 
-        final picture = recorder.endRecording();
-        final img = await picture.toImage(1000, 1294);
-        final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-        cdcChartBytes = byteData?.buffer.asUint8List();
-      } catch (e) {
-        debugPrint('Error generating CDC PDF chart image: $e');
+          final picture = recorder.endRecording();
+          final img = await picture.toImage(1000, 1294);
+          final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+          cdcChartBytes = byteData?.buffer.asUint8List();
+        } catch (e) {
+          debugPrint('Error generating CDC PDF chart image: $e');
+        }
       }
 
       cdc = ReportCdc(
@@ -825,9 +827,8 @@ class ReportBuilder {
         sex: patient.sex,
         whoNutritionStatus: whoStatus,
       );
-      if (nr != null) {
-        nutrition = ReportNutrition(
-          idealWeightKg: nr.idealWeightKg,
+      nutrition = ReportNutrition(
+          idealWeightKg: nr.idealWeightKg ?? g.weightKg!,
           heightAgeMonths: nr.heightAgeMonths,
           targetEnergyKcal: nr.targetEnergyKcal,
           targetProteinGram: nr.targetProteinGram,
@@ -855,7 +856,6 @@ class ReportBuilder {
               .toList(),
         );
       }
-    }
 
     return ExamReportData(
       patient: patient,

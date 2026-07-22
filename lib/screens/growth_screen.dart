@@ -11,7 +11,7 @@ import '../modules/growth/zscore_calculator.dart';
 import '../modules/cdc/cdc_calculator.dart';
 import '../modules/cdc/cdc_screen.dart';
 import '../modules/nutrition/nutrition_calculator.dart';
-import '../modules/nutrition/nutrition_screen.dart';
+import '../modules/nutrition/nutrition_module_screen.dart';
 import 'growth_chart.dart';
 
 /// Layar input antropometri + hasil Z-score (Modul 3).
@@ -446,8 +446,6 @@ class _GrowthScreenState extends State<GrowthScreen> {
       whoNutritionStatus: whoStatus,
     );
 
-    if (nutrition == null) return const SizedBox.shrink();
-
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(top: 16, bottom: 8),
@@ -556,12 +554,8 @@ class _GrowthScreenState extends State<GrowthScreen> {
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => NutritionScreen(
-                        requirement: nutrition,
-                        ageMonths: _age.chronologicalMonths,
-                        weightKg: w,
-                        heightCm: h,
-                        patientName: widget.patient.name,
+                      builder: (_) => NutritionModuleScreen(
+                        initialPatient: widget.patient,
                       ),
                     ),
                   );

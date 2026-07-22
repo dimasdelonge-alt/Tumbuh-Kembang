@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/age_calculator.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
+import '../modules/nutrition/nutrition_module_screen.dart';
 import 'patient_form_screen.dart';
 import 'examination_screen.dart';
 import 'longitudinal_screen.dart';
@@ -53,9 +54,8 @@ class _DetailViewState extends State<_DetailView> {
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Pasien?'),
         content: Text(
-          'Data pasien "${patient.name}" beserta SELURUH riwayat '
-          'pemeriksaan (pertumbuhan, KPSP, skrining, dll) akan '
-          'dihapus permanen.\n\nTindakan ini tidak bisa dibatalkan.\n\nLanjutkan?',
+          'Data pasien "${patient.name}" akan dipindahkan ke Tempat Sampah.\n\n'
+          'Anda bisa mengembalikan data dari Tempat Sampah di menu Pengaturan.',
         ),
         actions: [
           TextButton(
@@ -76,7 +76,17 @@ class _DetailViewState extends State<_DetailView> {
     await repo.deletePatient(patient.id);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pasien "${patient.name}" dihapus.')),
+        SnackBar(
+          content: Text('Pasien "${patient.name}" dipindahkan ke Sampah.'),
+          action: SnackBarAction(
+            label: 'UNDO',
+            textColor: Colors.yellow,
+            onPressed: () async {
+              await repo.restorePatient(patient.id);
+            },
+          ),
+          duration: const Duration(seconds: 5),
+        ),
       );
       Navigator.of(context).pop(); // Kembali ke dashboard
     }
@@ -90,8 +100,7 @@ class _DetailViewState extends State<_DetailView> {
         content: Text(
           'Pemeriksaan tanggal ${AgeCalculator.formatDate(exam.examDate)}'
           '${exam.examinerNote != null ? " (${exam.examinerNote})" : ""}'
-          ' beserta seluruh data hasil (pertumbuhan, KPSP, skrining, dll) '
-          'akan dihapus permanen.\n\nLanjutkan?',
+          ' akan dipindahkan ke Tempat Sampah.',
         ),
         actions: [
           TextButton(
@@ -114,8 +123,16 @@ class _DetailViewState extends State<_DetailView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Pemeriksaan ${AgeCalculator.formatDate(exam.examDate)} dihapus.',
+            'Pemeriksaan ${AgeCalculator.formatDate(exam.examDate)} dipindahkan ke Sampah.',
           ),
+          action: SnackBarAction(
+            label: 'UNDO',
+            textColor: Colors.yellow,
+            onPressed: () async {
+              await repo.restoreExamination(exam.id);
+            },
+          ),
+          duration: const Duration(seconds: 5),
         ),
       );
     }
@@ -135,6 +152,15 @@ class _DetailViewState extends State<_DetailView> {
       appBar: AppBar(
         title: Text(patient.name),
         actions: [
+          IconButton(
+            tooltip: 'Nutrisi & Meal Plan',
+            icon: const Icon(Icons.restaurant_menu, color: Colors.teal),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => NutritionModuleScreen(initialPatient: patient),
+              ),
+            ),
+          ),
           IconButton(
             tooltip: 'Tren / Longitudinal',
             icon: const Icon(Icons.trending_up),

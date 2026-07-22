@@ -1129,10 +1129,12 @@ class PdfReportService {
           if (f.chartImageBytes != null) ...[
             pw.SizedBox(height: 8),
             pw.Center(
-              child: pw.Image(
-                pw.MemoryImage(f.chartImageBytes!),
-                height: 310,
-                fit: pw.BoxFit.contain,
+              child: pw.ConstrainedBox(
+                constraints: const pw.BoxConstraints(maxHeight: 280),
+                child: pw.Image(
+                  pw.MemoryImage(f.chartImageBytes!),
+                  fit: pw.BoxFit.contain,
+                ),
               ),
             ),
           ],
@@ -1174,10 +1176,12 @@ class PdfReportService {
           if (c.chartImageBytes != null) ...[
             pw.SizedBox(height: 8),
             pw.Center(
-              child: pw.Image(
-                pw.MemoryImage(c.chartImageBytes!),
-                height: 330,
-                fit: pw.BoxFit.contain,
+              child: pw.ConstrainedBox(
+                constraints: const pw.BoxConstraints(maxHeight: 290),
+                child: pw.Image(
+                  pw.MemoryImage(c.chartImageBytes!),
+                  fit: pw.BoxFit.contain,
+                ),
               ),
             ),
           ],

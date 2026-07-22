@@ -30,6 +30,9 @@ Future<void> main() async {
   // Coba inisialisasi sinkronisasi cloud jika konfigurasi sudah tersimpan
   await syncService.initialize();
 
+  // Auto-clean: hapus permanen item di tempat sampah yang > 30 hari
+  await repo.autoCleanTrash();
+
   runApp(TumbangApp(repo: repo, syncService: syncService));
 }
 

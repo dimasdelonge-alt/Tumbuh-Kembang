@@ -3,11 +3,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../data/repository.dart';
+import '../data/database.dart';
 import '../services/backup_service.dart';
 import '../services/sync_service.dart';
 import '../utils/file_helper.dart';
 import '../utils/config_storage.dart';
 import '../utils/denver_license.dart';
+import 'trash_screen.dart';
 
 /// Halaman Pengaturan untuk mengelola data (Backup/Restore & Sinkronisasi Cloud).
 class SettingsScreen extends StatefulWidget {
@@ -1011,6 +1013,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   onTap: _isProcessing ? null : () => _importBackup(context),
                 ),
+              ),
+              const SizedBox(height: 12),
+
+              // Card Tempat Sampah
+              StreamBuilder<List<Patient>>(
+                stream: context.read<AppRepository>().watchDeletedPatients(),
+                builder: (context, patSnap) {
+                  return StreamBuilder<List<Examination>>(
+                    stream: context.read<AppRepository>().watchDeletedExaminations(),
+                    builder: (context, examSnap) {
+                      final patCount = patSnap.data?.length ?? 0;
+                      final examCount = examSnap.data?.length ?? 0;
+                      final totalTrash = patCount + examCount;
+
+                      return Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          leading: Badge(
+                            isLabelVisible: totalTrash > 0,
+                            label: Text('$totalTrash'),
+                            backgroundColor: Colors.red,
+                            child: const CircleAvatar(
+                              backgroundColor: Colors.grey,
+                              foregroundColor: Colors.white,
+                              child: Icon(Icons.delete_outline),
+                            ),
+                          ),
+                          title: const Text(
+                            'Tempat Sampah',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            totalTrash == 0
+                                ? 'Kosong'
+                                : '$patCount pasien, $examCount pemeriksaan',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const TrashScreen()),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 24),
 

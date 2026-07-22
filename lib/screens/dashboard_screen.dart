@@ -5,6 +5,7 @@ import '../app_state.dart';
 import '../core/age_calculator.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
+import '../modules/nutrition/nutrition_module_screen.dart';
 import 'patient_form_screen.dart';
 import 'patient_detail_screen.dart';
 import 'fast_screening_form_screen.dart';
@@ -57,6 +58,16 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       appBar: AppBar(
         title: const Text('Skrining Tumbuh Kembang'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.restaurant_menu),
+            tooltip: 'Nutrisi & Meal Plan',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NutritionModuleScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Pengaturan',
@@ -159,9 +170,8 @@ class _PatientCard extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Pasien?'),
         content: Text(
-          'Data pasien "${patient.name}" beserta SELURUH riwayat '
-          'pemeriksaan (pertumbuhan, KPSP, skrining, dll) akan '
-          'dihapus permanen.\n\nTindakan ini tidak bisa dibatalkan.\n\nLanjutkan?',
+          'Data pasien "${patient.name}" akan dipindahkan ke Tempat Sampah.\n\n'
+          'Anda bisa mengembalikan data dari Tempat Sampah di menu Pengaturan.',
         ),
         actions: [
           TextButton(
@@ -182,7 +192,17 @@ class _PatientCard extends StatelessWidget {
     await repo.deletePatient(patient.id);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pasien "${patient.name}" dihapus.')),
+        SnackBar(
+          content: Text('Pasien "${patient.name}" dipindahkan ke Sampah.'),
+          action: SnackBarAction(
+            label: 'UNDO',
+            textColor: Colors.yellow,
+            onPressed: () async {
+              await repo.restorePatient(patient.id);
+            },
+          ),
+          duration: const Duration(seconds: 5),
+        ),
       );
     }
   }

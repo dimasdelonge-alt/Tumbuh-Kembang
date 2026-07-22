@@ -32,6 +32,9 @@ class Patients extends Table {
   DateTimeColumn get createdAt =>
       dateTime().withDefault(currentDateAndTime)();
 
+  /// Null = aktif. Non-null = soft-deleted (tanggal penghapusan).
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -48,6 +51,9 @@ class Examinations extends Table {
   TextColumn get examinerNote => text().nullable()();
   DateTimeColumn get createdAt =>
       dateTime().withDefault(currentDateAndTime)();
+
+  /// Null = aktif. Non-null = soft-deleted (tanggal penghapusan).
+  DateTimeColumn get deletedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -197,7 +203,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -228,6 +234,11 @@ class AppDatabase extends _$AppDatabase {
           if (from < 7) {
             await m.addColumn(patients, patients.fatherHeightCm);
             await m.addColumn(patients, patients.motherHeightCm);
+          }
+          // v7 -> v8: tambah kolom deletedAt pada Patients & Examinations (soft delete).
+          if (from < 8) {
+            await m.addColumn(patients, patients.deletedAt);
+            await m.addColumn(examinations, examinations.deletedAt);
           }
         },
       );

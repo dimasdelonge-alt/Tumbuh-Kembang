@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../core/age_calculator.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
+import '../widgets/app_date_picker.dart';
 import 'examination_screen.dart';
 
 /// Form skrining cepat (tanpa registrasi pasien formal).
@@ -281,12 +282,12 @@ class _DatePickerField extends StatelessWidget {
     return InkWell(
       onTap: () async {
         final now = DateTime.now();
-        final picked = await showDatePicker(
+        final picked = await showAppDatePicker(
           context: context,
           initialDate: value ?? now,
           firstDate: DateTime(now.year - 19),
           lastDate: now,
-          locale: const Locale('id', 'ID'),
+          initialDatePickerMode: DatePickerMode.year,
         );
         if (picked != null) onPick(picked);
       },

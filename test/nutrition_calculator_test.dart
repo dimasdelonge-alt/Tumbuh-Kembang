@@ -1,78 +1,66 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tumbang/modules/growth/nutrition_classifier.dart';
 import 'package:tumbang/modules/nutrition/nutrition_calculator.dart';
-import 'package:tumbang/modules/nutrition/nutrition_data.dart';
 
 void main() {
-  group('NutritionCalculator Tests', () {
+  group('PediatricNutritionCalculator Tests (AAP Handbook 2011)', () {
+    test('EER WHO equation for male under 3 years', () {
+      // 18 months male, 11 kg -> (60.9 * 11) - 54 = 669.9 - 54 = 615.9 kcal
+      final eer = PediatricNutritionCalculator.calculateEerWho(
+        weightKg: 11.0,
+        ageYears: 1.5,
+        sex: 'L',
+      );
+      expect(eer, closeTo(615.9, 0.1));
+    });
+
+    test('EER WHO equation for female 3-10 years', () {
+      // 5 years female, 18 kg -> (22.5 * 18) + 499 = 405 + 499 = 904 kcal
+      final eer = PediatricNutritionCalculator.calculateEerWho(
+        weightKg: 18.0,
+        ageYears: 5.0,
+        sex: 'P',
+      );
+      expect(eer, closeTo(904.0, 0.1));
+    });
+
+    test('Protein RDA per kg requirements by age group', () {
+      expect(PediatricNutritionCalculator.getProteinRdaPerKg(4.0), equals(1.52)); // < 6 months
+      expect(PediatricNutritionCalculator.getProteinRdaPerKg(9.0), equals(1.20)); // 7-12 months
+      expect(PediatricNutritionCalculator.getProteinRdaPerKg(24.0), equals(1.05)); // 1-3 years
+      expect(PediatricNutritionCalculator.getProteinRdaPerKg(72.0), equals(0.95)); // 4-13 years
+    });
+
     test('Holliday-Segar fluid calculation', () {
-      expect(NutritionCalculator.hollidaySegar(5.0), equals(500.0));
-      expect(NutritionCalculator.hollidaySegar(10.0), equals(1000.0));
-      expect(NutritionCalculator.hollidaySegar(15.0), equals(1250.0));
-      expect(NutritionCalculator.hollidaySegar(25.0), equals(1600.0));
+      // 8 kg -> 8 * 100 = 800 mL
+      expect(PediatricNutritionCalculator.calculateHollidaySegarFluid(8.0), equals(800.0));
+
+      // 15 kg -> 1000 + (5 * 50) = 1250 mL
+      expect(PediatricNutritionCalculator.calculateHollidaySegarFluid(15.0), equals(1250.0));
+
+      // 25 kg -> 1500 + (5 * 20) = 1600 mL
+      expect(PediatricNutritionCalculator.calculateHollidaySegarFluid(25.0), equals(1600.0));
     });
 
-    test('AKG table lookup per age and sex', () {
-      final akgBaby = findAkg(4, 'L');
-      expect(akgBaby?.label, equals('0–5 bulan'));
-      expect(akgBaby?.energyKcal, equals(550));
-
-      final akgToddler = findAkg(24, 'P');
-      expect(akgToddler?.label, equals('1–3 tahun'));
-      expect(akgToddler?.energyKcal, equals(1350));
-
-      final akgBoy12 = findAkg(130, 'L');
-      expect(akgBoy12?.label, contains('10–12 tahun (L)'));
-
-      final akgGirl12 = findAkg(130, 'P');
-      expect(akgGirl12?.label, contains('10–12 tahun (P)'));
-    });
-
-    test('MPASI guidance per age', () {
-      final m6 = findMpasiGuidance(4);
-      expect(m6.texture, contains('ASI Eksklusif'));
-
-      final m8 = findMpasiGuidance(7);
-      expect(m8.texture, contains('Bubur kental'));
-
-      final m10 = findMpasiGuidance(10);
-      expect(m10.texture, contains('dicincang'));
-
-      final m18 = findMpasiGuidance(18);
-      expect(m18.texture, contains('Makanan keluarga'));
-    });
-
-    test('Full Nutrition calculation for 2-year-old boy', () {
-      final result = NutritionCalculator.calculate(
-        weightKg: 12.0,
-        heightCm: 86.0,
-        ageMonths: 24,
+    test('Full Nutrition Calculation for normal vs malnourished child', () {
+      final resNormal = PediatricNutritionCalculator.calculate(
+        weightKg: 10.0,
+        heightCm: 75.0,
+        ageMonths: 12.0,
         sex: 'L',
       );
+      expect(resNormal.eerKcal, greaterThan(500));
+      expect(resNormal.needsCatchUp, isFalse);
 
-      expect(result, isNotNull);
-      expect(result!.idealWeightKg, greaterThan(11.0));
-      expect(result.idealWeightKg, lessThan(13.0));
-      expect(result.targetEnergyKcal, greaterThan(1000));
-      expect(result.targetProteinGram, greaterThan(15));
-      expect(result.dailyFluidMl, closeTo(1133.5, 5.0));
-      expect(result.mpasiGuidance.label, equals('≥2 Tahun'));
-      expect(result.ironSupp.name, contains('Zat Besi'));
-      expect(result.vitDSupp.dose, equals('600 IU/hari'));
-    });
-
-    test('Nutrition calculation for malnourished child triggers intervention', () {
-      final result = NutritionCalculator.calculate(
-        weightKg: 7.0, // sangat kurus untuk TB 86 cm
-        heightCm: 86.0,
-        ageMonths: 24,
+      final resMalnourished = PediatricNutritionCalculator.calculate(
+        weightKg: 7.5,
+        heightCm: 75.0,
+        ageMonths: 12.0,
         sex: 'L',
+        idealWeightKg: 9.5,
+        isMalnourished: true,
       );
-
-      expect(result, isNotNull);
-      expect(result!.needsIntervention, isTrue);
-      expect(result.nutritionStatus, equals(NutritionStatus.severeWasting));
-      expect(result.interventionAdvice, contains('GIZI BURUK'));
+      expect(resMalnourished.needsCatchUp, isTrue);
+      expect(resMalnourished.catchUpEnergyKcal, greaterThan(resMalnourished.eerKcal));
     });
   });
 }

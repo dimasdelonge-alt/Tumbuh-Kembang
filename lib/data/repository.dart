@@ -19,6 +19,7 @@ class AppRepository {
 
   Stream<List<Patient>> watchPatients() {
     return (db.select(db.patients)
+          ..where((p) => p.deletedAt.isNull())
           ..orderBy([(p) => OrderingTerm(expression: p.name)]))
         .watch();
   }
@@ -26,7 +27,9 @@ class AppRepository {
   Future<List<Patient>> searchPatients(String query) {
     final q = '%$query%';
     return (db.select(db.patients)
-          ..where((p) => p.name.like(q) | p.medicalRecordNo.like(q))
+          ..where((p) =>
+              p.deletedAt.isNull() &
+              (p.name.like(q) | p.medicalRecordNo.like(q)))
           ..orderBy([(p) => OrderingTerm(expression: p.name)]))
         .get();
   }
@@ -56,10 +59,70 @@ class AppRepository {
     }
   }
 
+  /// Soft delete: set deletedAt = now. Data tetap ada di database.
   Future<void> deletePatient(String id) async {
+    final now = DateTime.now();
+    await (db.update(db.patients)..where((p) => p.id.equals(id)))
+        .write(PatientsCompanion(deletedAt: Value(now)));
+    // Juga soft-delete semua examinations milik pasien ini
+    await (db.update(db.examinations)..where((e) => e.patientId.equals(id)))
+        .write(ExaminationsCompanion(deletedAt: Value(now)));
+    if (syncService != null) {
+      final item = await getPatient(id);
+      if (item != null) unawaited(syncService!.uploadPatient(item));
+    }
+  }
+
+  /// Restore pasien dari tempat sampah.
+  Future<void> restorePatient(String id) async {
+    await (db.update(db.patients)..where((p) => p.id.equals(id)))
+        .write(const PatientsCompanion(deletedAt: Value(null)));
+    // Restore juga semua examinations milik pasien ini
+    await (db.update(db.examinations)..where((e) => e.patientId.equals(id)))
+        .write(const ExaminationsCompanion(deletedAt: Value(null)));
+    if (syncService != null) {
+      final item = await getPatient(id);
+      if (item != null) unawaited(syncService!.uploadPatient(item));
+    }
+  }
+
+  /// Hapus permanen pasien beserta seluruh data terkait (cascade).
+  Future<void> permanentlyDeletePatient(String id) async {
     await (db.delete(db.patients)..where((p) => p.id.equals(id))).go();
     if (syncService != null) {
       unawaited(syncService!.deletePatientRemote(id));
+    }
+  }
+
+  /// Watch pasien yang ada di tempat sampah (soft deleted).
+  Stream<List<Patient>> watchDeletedPatients() {
+    return (db.select(db.patients)
+          ..where((p) => p.deletedAt.isNotNull())
+          ..orderBy([(p) => OrderingTerm(
+              expression: p.deletedAt, mode: OrderingMode.desc)]))
+        .watch();
+  }
+
+  /// Hapus permanen semua pasien yang sudah di-soft-delete > 30 hari.
+  Future<int> autoCleanTrash() async {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+    final expired = await (db.select(db.patients)
+          ..where((p) => p.deletedAt.isNotNull() &
+              p.deletedAt.isSmallerThanValue(cutoff)))
+        .get();
+    for (final p in expired) {
+      await permanentlyDeletePatient(p.id);
+    }
+    return expired.length;
+  }
+
+  /// Hapus permanen SEMUA item di tempat sampah.
+  Future<void> emptyTrash() async {
+    final deleted = await (db.select(db.patients)
+          ..where((p) => p.deletedAt.isNotNull()))
+        .get();
+    for (final p in deleted) {
+      await permanentlyDeletePatient(p.id);
     }
   }
 
@@ -67,7 +130,7 @@ class AppRepository {
 
   Stream<List<Examination>> watchExaminations(String patientId) {
     return (db.select(db.examinations)
-          ..where((e) => e.patientId.equals(patientId))
+          ..where((e) => e.patientId.equals(patientId) & e.deletedAt.isNull())
           ..orderBy([
             (e) => OrderingTerm(
                 expression: e.examDate, mode: OrderingMode.desc)
@@ -87,11 +150,41 @@ class AppRepository {
     return id;
   }
 
+  /// Soft delete pemeriksaan.
   Future<void> deleteExamination(String id) async {
+    await (db.update(db.examinations)..where((e) => e.id.equals(id)))
+        .write(ExaminationsCompanion(deletedAt: Value(DateTime.now())));
+    if (syncService != null) {
+      final item = await getExamination(id);
+      if (item != null) unawaited(syncService!.uploadExamination(item));
+    }
+  }
+
+  /// Restore pemeriksaan dari tempat sampah.
+  Future<void> restoreExamination(String id) async {
+    await (db.update(db.examinations)..where((e) => e.id.equals(id)))
+        .write(const ExaminationsCompanion(deletedAt: Value(null)));
+    if (syncService != null) {
+      final item = await getExamination(id);
+      if (item != null) unawaited(syncService!.uploadExamination(item));
+    }
+  }
+
+  /// Hapus permanen pemeriksaan.
+  Future<void> permanentlyDeleteExamination(String id) async {
     await (db.delete(db.examinations)..where((e) => e.id.equals(id))).go();
     if (syncService != null) {
       unawaited(syncService!.deleteExaminationRemote(id));
     }
+  }
+
+  /// Watch pemeriksaan yang ada di tempat sampah.
+  Stream<List<Examination>> watchDeletedExaminations() {
+    return (db.select(db.examinations)
+          ..where((e) => e.deletedAt.isNotNull())
+          ..orderBy([(e) => OrderingTerm(
+              expression: e.deletedAt, mode: OrderingMode.desc)]))
+        .watch();
   }
 
   Future<Examination?> getExamination(String id) {
