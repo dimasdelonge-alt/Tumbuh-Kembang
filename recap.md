@@ -1,15 +1,10 @@
-flutter # RECAP — Aplikasi Skrining Tumbuh Kembang Anak
+# RECAP — Aplikasi Skrining Tumbuh Kembang Anak
 
-Dokumen ini ringkasan lengkap proyek agar sesi chat baru langsung punya konteks
-penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
+Dokumen ini ringkasan lengkap proyek agar sesi chat baru langsung punya konteks penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
 
 ## Konteks proyek
-- Aplikasi dipesan seorang **dokter spesialis anak** untuk skrining tumbuh
-  kembang anak. Dokter mengirim PRD lengkap + folder materi PDF.
-- **Prinsip yang dipegang ketat:** data medis SELALU dari sumber terverifikasi
-  (tabel WHO resmi, PDF Kemenkes/dokter). TIDAK PERNAH mengarang koefisien,
-  norma, atau konten klinis. Bila data tak tersedia/terverifikasi, fitur
-  ditunda dan ditanyakan ke dokter — bukan ditebak.
+- Aplikasi dipesan seorang **dokter spesialis anak** untuk skrining tumbuh kembang anak. Dokter mengirim PRD lengkap + folder materi PDF.
+- **Prinsip yang dipegang ketat:** data medis SELALU dari sumber terverifikasi (tabel WHO resmi, PDF Kemenkes/dokter). TIDAK PERNAH mengarang koefisien, norma, atau konten klinis. Bila data tak tersedia/terverifikasi, fitur ditunda dan ditanyakan ke dokter — bukan ditebak.
 
 ## Stack teknis
 - **Flutter** (Android utama, Web sekunder), offline-first.
@@ -20,22 +15,15 @@ penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
 - **Web hosting:** GitHub Pages → `https://dimasdelonge-alt.github.io/Tumbuh-Kembang/`
   - Build: `flutter build web --pwa-strategy none --base-href "/Tumbuh-Kembang/"`
   - Deploy: init git di `build/web/`, force push ke branch `gh-pages`.
-- **Catatan build penting:** `path_provider_foundation` di-pin ke **2.4.4** di
-  `dependency_overrides` (pubspec.yaml). Versi >=2.5.0 menarik `objective_c`
-  yang punya native build hook & membuat `build_runner` gagal. Jangan naikkan.
-- **Catatan web penting:** `SharedPreferences` TIDAK boleh dipakai langsung di
-  web (plugin registration gagal → `MissingPluginException`). Gunakan
-  `ConfigStorage` (`lib/utils/config_storage.dart`) yang pakai conditional
-  import: `window.localStorage` di web, `SharedPreferences` di mobile.
+- **Catatan build penting:** `path_provider_foundation` di-pin ke **2.4.4** di `dependency_overrides` (pubspec.yaml). Versi >=2.5.0 menarik `objective_c` yang punya native build hook & membuat `build_runner` gagal. Jangan naikkan.
+- **Catatan web penting:** `SharedPreferences` TIDAK boleh dipakai langsung di web (plugin registration gagal → `MissingPluginException`). Gunakan `ConfigStorage` (`lib/utils/config_storage.dart`) yang pakai conditional import: `window.localStorage` di web, `SharedPreferences` di mobile.
 - Codegen drift: `dart run build_runner build`. Setelah ubah skema DB, regen.
 
 ## Lokasi materi dokter (sumber data)
 `C:\Users\Administrator\Downloads\Compressed\screening`
 - Folder klaster usia (Neonatal, Bayi-Balita, Usia Sekolah, Remaja) + file di root.
-- File kunci: `BUKU PEDOMAN SDIDTK revisi 28032022 (1) (2) - Copy.pdf` (root),
-  KPSP, M-CHAT, KMME, TDD/TDL, GPPH, CARS (+interpretasi), Denver II, SPPAHI, Fenton 2013, CDC 2000.
-- Ekstraksi PDF: pakai Python `pypdf`, skrip di
-  `C:\Users\ADMINI~1\AppData\Local\Temp\kilo\extract_pdf.py`.
+- File kunci: `BUKU PEDOMAN SDIDTK revisi 28032022 (1) (2) - Copy.pdf` (root), KPSP, M-CHAT, KMME, TDD/TDL, GPPH, CARS (+interpretasi), Denver II, SPPAHI, Fenton 2013, CDC 2000.
+- Ekstraksi PDF: pakai Python `pypdf`, skrip di `C:\Users\ADMINI~1\AppData\Local\Temp\kilo\extract_pdf.py`.
 
 ## Verifikasi terkini
 - `flutter analyze`: 0 error, 0 warning.
@@ -63,14 +51,16 @@ penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
   - **5–19 thn (WHO 2007 / AnthroPlus)** untuk TB/U & IMT/U dari paket `zscorer` (`wgsrData.csv`).
 - **Klasifikasi status gizi age-aware** (`nutrition_classifier.dart`): ambang IMT/U beda untuk 0–5 thn vs >5 thn WHO 2007.
 - `growth_assessment.dart` = SATU sumber kebenaran pipeline usia→ageDays→Z-score→status.
+- **UX Form Pertumbuhan (`growth_screen.dart`)**: Menghapus `Navigator.pop()` otomatis saat tombol "Simpan Pengukuran & TPG" ditekan agar layar tetap terbuka dan pengguna bisa langsung meninjau Z-score, kurva CDC 2000, atau detail asuhan nutrisi.
 
 ### Asuhan Nutrisi Pediatrik / Pemenuhan Nutrisi — `modules/nutrition/`
-- **Kebutuhan Nutrisi Target**: Energi & Protein harian ($\text{RDA} \times W_{ideal}$) mengacu pada **Permenkes RI No. 28/2019 (AKG)**.
+- **Kebutuhan Nutrisi Target**: Energi & Protein harian ($\text{RDA} \times W_{ideal}$) mengacu pada **Permenkes RI No. 28/2019 (AKG)**. Status BB/TB diselaraskan secara konsisten dengan standar WHO/Kemenkes RI.
 - **Kebutuhan Cairan Harian**: Perhitungan otomatis dengan rumus **Holliday-Segar** ($100\text{ ml/kg}$ 10 kg pertama, $+50\text{ ml/kg}$ 10 kg kedua, $+20\text{ ml/kg}$ sisanya).
-- **Edukasi Pemberian Makan & MPASI**: Panduan tekstur, frekuensi, dan porsi per usia (konfirmasi **Kemenkes 2023**) serta **Basic Feeding Rules IDAI** (10 aturan dasar makan).
+- **Edukasi Pemberian Makan & MPASI**: Panduan tekstur, frekuensi, dan porsi per usia serta **Contoh Ide Resep MPASI Kaya Protein Hewani (Buku Resep Lokal Kemenkes RI 2023)** dan **Basic Feeding Rules IDAI** (10 aturan dasar makan).
 - **Rekomendasi Suplementasi**: Dosis otomatis **Zat Besi (Fe)** (2 mg/kgBB/hari) & **Vitamin D** (400–600 IU/hari) sesuai acuan IDAI.
 - **Alert Intervensi Gizi**: Panduan penanganan medis/rujukan untuk kondisi Gizi Kurang atau Gizi Buruk (Waterlow/WHO).
 - **Integrasi UI & PDF**: Kartu ringkasan di `growth_screen.dart`, layar detail `nutrition_screen.dart`, dan cetakan Laporan PDF (`pdf_report_service.dart`).
+- **Sanitasi Font PDF**: Modul cetak PDF dilengkapi Unicode sanitizer (`_clean` helper) untuk mengeliminasi karakter non-ASCII (`–`, `—`, `•`, `≥`, `≤`) agar tidak terjadi glitch kotak ber-tanda X pada engine font Helvetica bawaan.
 
 ### KPSP (Modul 4) — `modules/kpsp/`
 - 16 form usia (3–72 bln) lengkap, skoring (9–10 Sesuai, 7–8 Meragukan, <=6 Penyimpangan), analisis domain. (`kpsp_data.dart`, `kpsp_model.dart`, `kpsp_screen.dart`)
@@ -108,20 +98,22 @@ penuh tanpa kehilangan riwayat. Baca ini dulu sebelum melanjutkan.
 - **Render PDF**: Gambar kurva Fenton resolusi tinggi beserta titik & garis tren otomatis masuk ke cetakan PDF.
 
 ### Kurva CDC 2000 & Tinggi Potensi Genetik (TPG) — `modules/cdc/`
-- Kurva pertumbuhan tinggi badan CDC 2000 untuk anak usia 2–20 tahun (`cdc_boys.jpg` & `cdc_girls.jpg`).
+- Kurva pertumbuhan tinggi & berat badan CDC 2000 untuk anak usia 2–20 tahun (`cdc_boys.jpg` & `cdc_girls.jpg`).
 - **Kalkulator TPG (`cdc_calculator.dart`)**:
   - Anak Laki-Laki: `((TB Ibu + 13) + TB Ayah) / 2` $\pm 8.5\text{ cm}$
   - Anak Perempuan: `((TB Ayah - 13) + TB Ibu) / 2` $\pm 8.5\text{ cm}$
-  - Evaluasi real-time status TPG dengan **interpolasi linier median CDC** yang presisi pada usia pecahan.
-- **Arsir Area Potensi Genetik & Trajektori Penuh (`cdc_chart_painter.dart`, `cdc_screen.dart`)**:
-  - Auto-fill data TB Ayah & Ibu langsung dari Database Pasien saat membuka Kurva CDC.
-  - Mengarsir area trajektori TPG ($\text{TPG} \pm 8.5\text{ cm}$) secara penuh sepanjang usia 2 hingga 20 tahun dengan area hijau transparan, garis batas min/max, dan garis target solid.
-  - Memplot titik & garis trajektori pertumbuhan tinggi anak real-time dan historis lintas kunjungan.
+  - Evaluasi real-time TPG dikhususkan untuk usia 2–20 tahun (anak < 2 tahun menampilkan pesan informatif bahwa CDC berlaku mulai 2 tahun).
+- **Plotting Ganda Interaktif & Presisi Tinggi (`cdc_chart_painter.dart`, `cdc_screen.dart`)**:
+  - **Tinggi Badan (Stature-for-Age)**: Diplot di kurva atas dengan titik/garis **Biru Tua** (`115.0 cm`).
+  - **Berat Badan (Weight-for-Age)**: Diplot di kurva bawah dengan titik/garis **Oranye** (`15.0 kg`). Pemetaan skala Y bawah menggunakan rumus *piecewise grid-matched* (10–35 kg & 35–105 kg) yang 100% sejajar dengan angka grid poster CDC.
+  - **Garis Usia Vertikal (Red Age Line)**: Diperpanjang menembus grafik atas (Stature) hingga grafik bawah (Weight).
+  - **Arsir Area Potensi Genetik**: Area TPG ($\text{TPG} \pm 8.5\text{ cm}$) diarsir hijau transparan dengan garis batas min/max dan target solid.
+  - **Keterbacaan Label TPG**: Angka label batas TPG (`175` & `158`) berwarna **Merah Marun (`Colors.red.shade900`)** dengan efek *white outline shadow* agar tetap kontras dan mudah dibaca di layar PWA/smartphone vertikal.
 - **Penyimpanan DB**: Kolom `fatherHeightCm` & `motherHeightCm` pada tabel `Patients` (Skema DB v7).
-- **Cetak PDF**: Gambar kurva CDC 2000 + arsir TPG trajektori penuh + riwayat anak otomatis ter-render di PDF (termasuk opsi *"Cetak Kurva CDC 2000 & TPG Saja"*).
+- **Cetak PDF**: Gambar kurva CDC 2000 + plotting ganda + arsir TPG trajektori penuh + riwayat anak otomatis ter-render di PDF.
 
 ### Laporan & tren
-- **Laporan PDF** (Modul 16): identitas, usia, antropometri+Z-score, KPSP, skrining (KMME/M-CHAT/GPPH/SPPAHI), TDL, CARS, Denver II, **Fenton 2013**, **CDC 2000 & TPG**, **Asuhan Nutrisi Pediatrik**, kesimpulan red-flag, program stimulasi, **Tanda Tangan Digital (QR Code / Custom Image)**. (`reports/report_builder.dart`, `reports/pdf_report_service.dart`)
+- **Laporan PDF** (Modul 16): identitas, usia, antropometri+Z-score, KPSP, skrining (KMME/M-CHAT/GPPH/SPPAHI), TDL, CARS, Denver II, **Fenton 2013**, **CDC 2000 & TPG**, **Asuhan Nutrisi Pediatrik (Resep MPASI Kemenkes 2023)**, kesimpulan red-flag, program stimulasi, **Tanda Tangan Digital (QR Code / Custom Image)**. (`reports/report_builder.dart`, `reports/pdf_report_service.dart`)
 - **Anti-Orphan Container**: Mencegah blok tanda tangan terpisah sendirian di halaman kedua PDF.
 
 ## Skema DB (drift, v7) — `data/database.dart`
@@ -140,7 +132,6 @@ Patients (`fatherHeightCm`, `motherHeightCm`), Examinations, GrowthMeasurements,
 3. ✅ **Denver II Module** -> **Selesai.**
 4. ✅ **Fenton 2013 Preterm Growth Chart Module** -> **Selesai.**
 5. ✅ **Identitas Dokter & Tanda Tangan Digital (Auto QR Code)** -> **Selesai.**
-6. ✅ **Kurva CDC 2000 & Tinggi Potensi Genetik (TPG) Module** -> **Selesai.**
-7. ✅ **Asuhan Nutrisi Pediatrik / Pemenuhan Nutrisi Module** -> **Selesai.**
+6. ✅ **Kurva CDC 2000 & Tinggi Potensi Genetik (TPG) Module (Stature & Weight Plotting)** -> **Selesai.**
+7. ✅ **Asuhan Nutrisi Pediatrik & Ide Resep MPASI Kemenkes 2023** -> **Selesai.**
 8. Pematangan UI/UX & uji coba lapangan oleh dokter.
-

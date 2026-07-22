@@ -2,22 +2,24 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'cdc_calculator.dart';
 
-/// Data point pengukuran tinggi anak pada usia tertentu (dalam tahun).
+/// Data point pengukuran tinggi dan berat anak pada usia tertentu (dalam tahun).
 class CdcPoint {
   final DateTime date;
   final double ageYears;
-  final double heightCm;
+  final double? heightCm;
+  final double? weightKg;
   final bool isCurrentExam;
 
   CdcPoint({
     required this.date,
     required this.ageYears,
-    required this.heightCm,
+    this.heightCm,
+    this.weightKg,
     this.isCurrentExam = false,
   });
 }
 
-/// Painter untuk memplot titik tinggi anak serta mengarsir jalur/garis tren Tinggi Potensi Genetik (TPG)
+/// Painter untuk memplot titik tinggi dan berat anak serta mengarsir jalur/garis tren Tinggi Potensi Genetik (TPG)
 /// di atas Kurva Pertumbuhan CDC 2000 (Usia 2-20 Tahun).
 class CdcChartPainter extends CustomPainter {
   final ui.Image? image;
@@ -43,9 +45,20 @@ class CdcChartPainter extends CustomPainter {
   static const double _xAge20 = 0.820;
 
   // Koordinat relatif sumbu Y Stature (80 cm - 190 cm)
-  // Disesuaikan presisi agar pangkal usia 2.0 thn berada pas di atas garis 80cm (83-92cm)
   static const double _yStature80cm = 0.695;
   static const double _yStature190cm = 0.138;
+
+  // Koordinat relatif sumbu Y Weight (10 kg - 105 kg)
+  // Grid 10–35 kg berada di rentang Y 0.906 s/d 0.715 pada poster CDC.
+  static double _weightToY(double weightKg, double h) {
+    double yNorm;
+    if (weightKg <= 35.0) {
+      yNorm = 0.906 - ((weightKg - 10.0) / 25.0) * (0.906 - 0.715);
+    } else {
+      yNorm = 0.715 - ((weightKg - 35.0) / 70.0) * (0.715 - 0.585);
+    }
+    return yNorm * h;
+  }
 
   double _ageToX(double ageYears, double w) {
     final xNorm = _xAge2 + (ageYears - 2.0) / 18.0 * (_xAge20 - _xAge2);
@@ -91,9 +104,10 @@ class CdcChartPainter extends CustomPainter {
         ..strokeWidth = 2.0
         ..style = PaintingStyle.stroke;
 
+      // Perpanjang garis vertikal merah melewati grafik tinggi (Stature) dan berat (Weight)
       canvas.drawLine(
         Offset(xPos, 0.05 * h),
-        Offset(xPos, 0.82 * h),
+        Offset(xPos, 0.92 * h),
         ageLinePaint,
       );
 
@@ -135,22 +149,26 @@ class CdcChartPainter extends CustomPainter {
       }
     }
 
-    // 4. Hubungkan Titik Pengukuran Tinggi Badan Pasien (Polyline)
+    // 4a. Hubungkan Titik Pengukuran Tinggi Badan Pasien (Polyline Biru)
     final sortedPoints = List<CdcPoint>.from(points)
       ..sort((a, b) => a.ageYears.compareTo(b.ageYears));
 
-    final validOffsets = <Offset>[];
+    final validHeightOffsets = <Offset>[];
     for (final p in sortedPoints) {
-      if (p.ageYears >= 2.0 && p.ageYears <= 20.0 && p.heightCm > 0) {
-        validOffsets.add(Offset(_ageToX(p.ageYears, w), _heightToY(p.heightCm, h)));
+      if (p.ageYears >= 2.0 &&
+          p.ageYears <= 20.0 &&
+          p.heightCm != null &&
+          p.heightCm! > 0) {
+        validHeightOffsets.add(
+            Offset(_ageToX(p.ageYears, w), _heightToY(p.heightCm!, h)));
       }
     }
 
-    if (validOffsets.length >= 2) {
+    if (validHeightOffsets.length >= 2) {
       final Path path = Path();
-      path.moveTo(validOffsets.first.dx, validOffsets.first.dy);
-      for (int i = 1; i < validOffsets.length; i++) {
-        path.lineTo(validOffsets[i].dx, validOffsets[i].dy);
+      path.moveTo(validHeightOffsets.first.dx, validHeightOffsets.first.dy);
+      for (int i = 1; i < validHeightOffsets.length; i++) {
+        path.lineTo(validHeightOffsets[i].dx, validHeightOffsets[i].dy);
       }
 
       final Paint linePaint = Paint()
@@ -163,16 +181,68 @@ class CdcChartPainter extends CustomPainter {
       canvas.drawPath(path, linePaint);
     }
 
-    // 5. Gambar Titik Pengukuran (Dots)
+    // 4b. Hubungkan Titik Pengukuran Berat Badan Pasien (Polyline Oranye)
+    final validWeightOffsets = <Offset>[];
     for (final p in sortedPoints) {
-      if (p.ageYears >= 2.0 && p.ageYears <= 20.0 && p.heightCm > 0) {
-        final Offset pt = Offset(_ageToX(p.ageYears, w), _heightToY(p.heightCm, h));
+      if (p.ageYears >= 2.0 &&
+          p.ageYears <= 20.0 &&
+          p.weightKg != null &&
+          p.weightKg! > 0) {
+        validWeightOffsets.add(
+            Offset(_ageToX(p.ageYears, w), _weightToY(p.weightKg!, h)));
+      }
+    }
+
+    if (validWeightOffsets.length >= 2) {
+      final Path path = Path();
+      path.moveTo(validWeightOffsets.first.dx, validWeightOffsets.first.dy);
+      for (int i = 1; i < validWeightOffsets.length; i++) {
+        path.lineTo(validWeightOffsets[i].dx, validWeightOffsets[i].dy);
+      }
+
+      final Paint linePaint = Paint()
+        ..color = Colors.deepOrange.shade800
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+
+      canvas.drawPath(path, linePaint);
+    }
+
+    // 5a. Gambar Titik Pengukuran Tinggi (Dots Biru)
+    for (final p in sortedPoints) {
+      if (p.ageYears >= 2.0 &&
+          p.ageYears <= 20.0 &&
+          p.heightCm != null &&
+          p.heightCm! > 0) {
+        final Offset pt =
+            Offset(_ageToX(p.ageYears, w), _heightToY(p.heightCm!, h));
 
         _drawPoint(
           canvas: canvas,
           position: pt,
           color: Colors.blue.shade900,
-          label: '${p.heightCm.toStringAsFixed(1)} cm',
+          label: '${p.heightCm!.toStringAsFixed(1)} cm',
+          isCurrent: p.isCurrentExam,
+        );
+      }
+    }
+
+    // 5b. Gambar Titik Pengukuran Berat (Dots Oranye)
+    for (final p in sortedPoints) {
+      if (p.ageYears >= 2.0 &&
+          p.ageYears <= 20.0 &&
+          p.weightKg != null &&
+          p.weightKg! > 0) {
+        final Offset pt =
+            Offset(_ageToX(p.ageYears, w), _weightToY(p.weightKg!, h));
+
+        _drawPoint(
+          canvas: canvas,
+          position: pt,
+          color: Colors.deepOrange.shade800,
+          label: '${p.weightKg!.toStringAsFixed(1)} kg',
           isCurrent: p.isCurrentExam,
         );
       }
@@ -244,13 +314,13 @@ class CdcChartPainter extends CustomPainter {
         canvas,
         Offset(lastMin.dx + 5, lastMin.dy - 4),
         tpg!.minCm.toStringAsFixed(0),
-        Colors.green.shade700,
+        Colors.red.shade900,
       );
       _drawSmallLabel(
         canvas,
         Offset(lastMax.dx + 5, lastMax.dy - 4),
         tpg!.maxCm.toStringAsFixed(0),
-        Colors.green.shade700,
+        Colors.red.shade900,
       );
     }
   }
@@ -294,8 +364,12 @@ class CdcChartPainter extends CustomPainter {
       text: text,
       style: TextStyle(
         color: color,
-        fontSize: 8,
+        fontSize: 9.5,
         fontWeight: FontWeight.bold,
+        shadows: const [
+          Shadow(color: Colors.white, blurRadius: 3),
+          Shadow(color: Colors.white, blurRadius: 3),
+        ],
       ),
     );
     final TextPainter tp = TextPainter(

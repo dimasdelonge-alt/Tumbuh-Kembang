@@ -658,12 +658,16 @@ class ReportBuilder {
           examDate: item.exam.examDate,
         );
         final itemAgeY = itemAgeRes.chronologicalMonths / 12.0;
-        if (item.growth.heightCm != null && item.growth.heightCm! > 0) {
+        final h = item.growth.heightCm;
+        final w = item.growth.weightKg;
+
+        if ((h != null && h > 0) || (w != null && w > 0)) {
           cdcPointsList.add(
             CdcPoint(
               date: item.exam.examDate,
               ageYears: itemAgeY,
-              heightCm: item.growth.heightCm!,
+              heightCm: h,
+              weightKg: w,
               isCurrentExam: item.exam.id == exam.id,
             ),
           );
