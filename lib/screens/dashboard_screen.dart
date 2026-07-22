@@ -112,7 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   ListView.separated(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
                     itemCount: registeredPatients.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _PatientCard(patient: registeredPatients[i]),
                   ),
 
@@ -125,7 +125,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   ListView.separated(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
                     itemCount: anonymousPatients.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _PatientCard(patient: anonymousPatients[i]),
                   ),
               ],
