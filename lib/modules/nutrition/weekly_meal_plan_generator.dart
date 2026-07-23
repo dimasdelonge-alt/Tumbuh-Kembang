@@ -138,6 +138,12 @@ class WeeklyMealPlanGenerator {
         textureGuide = 'Tekstur: Makanan Keluarga Utuh';
       }
 
+      final isWeaned = ageMonths >= 24.0;
+      final afternoonSnackTitle = isWeaned ? 'Snack Sore Sehat' : 'Snack Sore / ASI';
+      final afternoonSnackDesc = isWeaned ? '$snackDetail atau Susu UHT / Pasturisasi.' : '$snackDetail atau ASI / Susu segar.';
+      final bedtimeTitle = isWeaned ? 'Susu UHT / Pasturisasi' : 'ASI / Susu Malam';
+      final bedtimeDesc = isWeaned ? 'Susu UHT / Pasturisasi / Susu Segar (max 200 mL).' : 'ASI atau Susu UHT / Formula lunak (max 200 mL).';
+
       return SingleDayMealPlan(
         dayName: dayName,
         theme: theme,
@@ -166,8 +172,8 @@ class WeeklyMealPlanGenerator {
           DailyMealSession(
             time: '15:30',
             sessionName: 'Selingan Sore',
-            menuName: 'Snack Sore / ASI',
-            description: '$snackDetail atau ASI / Susu segar.',
+            menuName: afternoonSnackTitle,
+            description: afternoonSnackDesc,
             portionUrt: portionSnack,
           ),
           DailyMealSession(
@@ -180,8 +186,8 @@ class WeeklyMealPlanGenerator {
           DailyMealSession(
             time: '20:30',
             sessionName: 'Sebelum Tidur',
-            menuName: 'ASI / Susu Malam',
-            description: 'ASI atau Susu UHT / Formula lunak (max 200 mL).',
+            menuName: bedtimeTitle,
+            description: bedtimeDesc,
             portionUrt: '1 gelas (150-200 mL)',
           ),
         ],

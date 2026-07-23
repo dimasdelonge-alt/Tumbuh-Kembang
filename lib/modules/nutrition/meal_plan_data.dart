@@ -176,7 +176,46 @@ class MealPlanRepository {
           recommendation: 'Sebelum tidur malam.',
         ),
       ];
-    } else { // 12+ bulan (Anak & Balita)
+    } else if (ageMonths < 24.0) { // 12-23 bulan (1-2 thn)
+      return const [
+        MealScheduleItem(
+          time: '07:00',
+          title: 'Makan Pagi (Makanan Keluarga Cincang)',
+          category: 'Utama',
+          recommendation: 'Nasi tim/lunak + lauk protein hewani (ayam/telur/ikan) + sayur.',
+        ),
+        MealScheduleItem(
+          time: '09:30',
+          title: 'Selingan Pagi',
+          category: 'Selingan',
+          recommendation: 'Buah segar, puding susu, atau roti gandum.',
+        ),
+        MealScheduleItem(
+          time: '12:00',
+          title: 'Makan Siang (Makanan Keluarga Cincang)',
+          category: 'Utama',
+          recommendation: 'Nasi lunak 3/4 mangkuk + lauk hewani + kuah sayur.',
+        ),
+        MealScheduleItem(
+          time: '15:30',
+          title: 'Selingan Sore',
+          category: 'Selingan',
+          recommendation: 'Snack sehat (pisang bakar, bola tahu daging, susu uht/ASI).',
+        ),
+        MealScheduleItem(
+          time: '18:00',
+          title: 'Makan Malam (Makanan Keluarga Cincang)',
+          category: 'Utama',
+          recommendation: 'Nasi lunak + protein hewani + sayur.',
+        ),
+        MealScheduleItem(
+          time: '20:30',
+          title: 'Susu / ASI Malam',
+          category: 'ASI/Susu',
+          recommendation: '1 gelas susu segar / UHT / ASI (max 400 mL/hari).',
+        ),
+      ];
+    } else { // 24+ bulan (2-5 thn+) - ASI disapih
       return const [
         MealScheduleItem(
           time: '07:00',
@@ -188,19 +227,19 @@ class MealPlanRepository {
           time: '09:30',
           title: 'Selingan Pagi',
           category: 'Selingan',
-          recommendation: 'Buah segar, puding susu, atau roti gandum.',
+          recommendation: 'Buah segar, puding susu, atau biskuit sehat.',
         ),
         MealScheduleItem(
           time: '12:00',
           title: 'Makan Siang (Makanan Keluarga)',
           category: 'Utama',
-          recommendation: 'Nasi lengkap 1 porsi keluarga + lauk hewani + kuah sayur.',
+          recommendation: 'Nasi lengkap 1 porsi piring makan + lauk hewani + sayur.',
         ),
         MealScheduleItem(
           time: '15:30',
           title: 'Selingan Sore',
           category: 'Selingan',
-          recommendation: 'Snack sehat (pisang bakar, bola tahu daging, susu uht/ASI).',
+          recommendation: 'Snack sehat (pisang bakar, bola tahu daging, puding buah).',
         ),
         MealScheduleItem(
           time: '18:00',
@@ -210,9 +249,9 @@ class MealPlanRepository {
         ),
         MealScheduleItem(
           time: '20:30',
-          title: 'Susu / ASI Malam',
-          category: 'ASI/Susu',
-          recommendation: '1 gelas susu segar / UHT (max 400-500 mL/hari).',
+          title: 'Susu UHT / Pasturisasi Sebelum Tidur',
+          category: 'Susu',
+          recommendation: '1 gelas susu segar / UHT (max 400 mL/hari).',
         ),
       ];
     }
