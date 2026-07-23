@@ -817,7 +817,8 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
         .where((i) => _selectedFruitNames.contains(i.name))
         .toList();
 
-    await WeeklyMealPlanPdfBuilder.shareWeeklyMealPlanPdf(
+    WeeklyMealPlanPdfBuilder.showPdfPreview(
+      context: context,
       patient: dummyPatient,
       nutResult: nutResult,
       weeklyPlan: weeklyPlan,

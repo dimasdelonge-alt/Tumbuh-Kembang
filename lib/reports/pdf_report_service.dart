@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -22,10 +23,29 @@ import '../utils/config_storage.dart';
 class PdfReportService {
   static final _dateFmt = DateFormat('d MMMM yyyy', 'id_ID');
 
-  /// Bagikan PDF lewat share sheet (WhatsApp, Bluetooth, Files, Print, dll).
-  static Future<void> _presentPdf(Uint8List bytes, String name) async {
+  /// Membuka pratinjau PDF interaktif (preview dulu sebelum simpan/share).
+  static void _presentPdf(BuildContext context, Uint8List bytes, String name) {
     final filename = name.endsWith('.pdf') ? name : '$name.pdf';
-    await Printing.sharePdf(bytes: bytes, filename: filename);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: Text('Pratinjau PDF'),
+            backgroundColor: Colors.teal.shade800,
+            foregroundColor: Colors.white,
+          ),
+          body: PdfPreview(
+            build: (format) async => bytes,
+            allowPrinting: true,
+            allowSharing: true,
+            canChangeOrientation: false,
+            canChangePageFormat: false,
+            pdfFileName: filename,
+            previewPageMargin: const EdgeInsets.all(12),
+          ),
+        ),
+      ),
+    );
   }
 
   /// Bullet point digambar (bukan glyph font) agar tidak jadi kotak/X saat print.
@@ -68,17 +88,19 @@ class PdfReportService {
   }
 
   /// Render PDF Komprehensif (Gabungan Semua Modul & Hasil).
-  static Future<void> generateAndPrint(ExamReportData data) async {
+  static Future<void> generateAndPrint(ExamReportData data, {BuildContext? context}) async {
     final bytes = await _build(data);
-    await _presentPdf(
-      bytes,
-      'Laporan_Gabungan_${_safe(data.patient.name)}_'
-      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
-    );
+    final filename = 'Laporan_Gabungan_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf';
+    if (context != null && context.mounted) {
+      _presentPdf(context, bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 
   /// Cetak Laporan Antropometri & Status Gizi Saja.
-  static Future<void> generateAndPrintGrowthOnly(ExamReportData data) async {
+  static Future<void> generateAndPrintGrowthOnly(ExamReportData data, {BuildContext? context}) async {
     final bytes = await _build(
       data,
       includeKpsp: false,
@@ -87,15 +109,17 @@ class PdfReportService {
       includeCars: false,
       includeStimulation: false,
     );
-    await _presentPdf(
-      bytes,
-      'Laporan_Antropometri_${_safe(data.patient.name)}_'
-      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
-    );
+    final filename = 'Laporan_Antropometri_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf';
+    if (context != null && context.mounted) {
+      _presentPdf(context, bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 
   /// Cetak Laporan KPSP Saja.
-  static Future<void> generateAndPrintKpspOnly(ExamReportData data) async {
+  static Future<void> generateAndPrintKpspOnly(ExamReportData data, {BuildContext? context}) async {
     final bytes = await _build(
       data,
       includeGrowth: false,
@@ -104,15 +128,17 @@ class PdfReportService {
       includeCars: false,
       includeStimulation: false,
     );
-    await _presentPdf(
-      bytes,
-      'Laporan_KPSP_${_safe(data.patient.name)}_'
-      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
-    );
+    final filename = 'Laporan_KPSP_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf';
+    if (context != null && context.mounted) {
+      _presentPdf(context, bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 
   /// Cetak Laporan Denver II Saja.
-  static Future<void> generateAndPrintDenverOnly(ExamReportData data) async {
+  static Future<void> generateAndPrintDenverOnly(ExamReportData data, {BuildContext? context}) async {
     final bytes = await _build(
       data,
       includeGrowth: false,
@@ -122,15 +148,17 @@ class PdfReportService {
       includeCars: false,
       includeStimulation: false,
     );
-    await _presentPdf(
-      bytes,
-      'Laporan_DenverII_${_safe(data.patient.name)}_'
-      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
-    );
+    final filename = 'Laporan_DenverII_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf';
+    if (context != null && context.mounted) {
+      _presentPdf(context, bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 
   /// Cetak Laporan Fenton 2013 Saja.
-  static Future<void> generateAndPrintFentonOnly(ExamReportData data) async {
+  static Future<void> generateAndPrintFentonOnly(ExamReportData data, {BuildContext? context}) async {
     final bytes = await _build(
       data,
       includeGrowth: false,
@@ -140,15 +168,17 @@ class PdfReportService {
       includeCars: false,
       includeStimulation: false,
     );
-    await _presentPdf(
-      bytes,
-      'Laporan_Fenton2013_${_safe(data.patient.name)}_'
-      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
-    );
+    final filename = 'Laporan_Fenton2013_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf';
+    if (context != null && context.mounted) {
+      _presentPdf(context, bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 
   /// Cetak Laporan CDC 2000 & TPG Saja.
-  static Future<void> generateAndPrintCdcOnly(ExamReportData data) async {
+  static Future<void> generateAndPrintCdcOnly(ExamReportData data, {BuildContext? context}) async {
     final bytes = await _build(
       data,
       includeGrowth: false,
@@ -158,15 +188,17 @@ class PdfReportService {
       includeCars: false,
       includeStimulation: false,
     );
-    await _presentPdf(
-      bytes,
-      'Laporan_CDC2000_TPG_${_safe(data.patient.name)}_'
-      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
-    );
+    final filename = 'Laporan_CDC2000_TPG_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf';
+    if (context != null && context.mounted) {
+      _presentPdf(context, bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 
   /// Cetak Laporan Skrining & Redleaf Checklist Saja.
-  static Future<void> generateAndPrintScreeningsOnly(ExamReportData data) async {
+  static Future<void> generateAndPrintScreeningsOnly(ExamReportData data, {BuildContext? context}) async {
     final bytes = await _build(
       data,
       includeGrowth: false,
@@ -175,11 +207,13 @@ class PdfReportService {
       includeCars: false,
       includeStimulation: false,
     );
-    await _presentPdf(
-      bytes,
-      'Laporan_Skrining_${_safe(data.patient.name)}_'
-      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf',
-    );
+    final filename = 'Laporan_Skrining_${_safe(data.patient.name)}_'
+      '${DateFormat('yyyyMMdd').format(data.examDate)}.pdf';
+    if (context != null && context.mounted) {
+      _presentPdf(context, bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 
   /// Cetak panduan stimulasi khusus untuk orang tua berdasarkan domain KPSP yang kurang.
@@ -188,13 +222,16 @@ class PdfReportService {
     required int ageMonths,
     required KpspInterpretation interp,
     KpspDomain? filterDomain,
+    BuildContext? context,
   }) async {
     final bytes = await _buildStimulationPdf(patient, ageMonths, interp, filterDomain);
     final domainSuffix = filterDomain != null ? '_${filterDomain.label}' : '_Semua_Stimulasi';
-    await _presentPdf(
-      bytes,
-      'Panduan_Stimulasi_${_safe(patient.name)}$domainSuffix.pdf',
-    );
+    final filename = 'Panduan_Stimulasi_${_safe(patient.name)}$domainSuffix.pdf';
+    if (context != null && context.mounted) {
+      _presentPdf(context, bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 
   /// Cetak panduan stimulasi Redleaf khusus untuk orang tua.
@@ -204,6 +241,7 @@ class PdfReportService {
     required Map<String, bool> checkedItems,
     DateTime? examDate,
     int? childAgeMonths,
+    BuildContext? context,
   }) async {
     final bytes = await _buildRedleafStimulationPdf(
       patient,
@@ -212,10 +250,12 @@ class PdfReportService {
       examDate ?? DateTime.now(),
       childAgeMonths,
     );
-    await _presentPdf(
-      bytes,
-      'Panduan_Stimulasi_Redleaf_${_safe(patient.name)}_${ageGroup.name}.pdf',
-    );
+    final filename = 'Panduan_Stimulasi_Redleaf_${_safe(patient.name)}_${ageGroup.name}.pdf';
+    if (context != null && context.mounted) {
+      _presentPdf(context, bytes, filename);
+    } else {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+    }
   }
 
   static Future<Uint8List> _buildRedleafStimulationPdf(
@@ -374,19 +414,28 @@ class PdfReportService {
               ),
             );
           }),
-
-          pw.SizedBox(height: 20),
-          // Signature
-          sigWidget,
         ],
-        footer: (context) => pw.Container(
-          alignment: pw.Alignment.centerRight,
-          margin: const pw.EdgeInsets.only(top: 8),
-          child: pw.Text(
-            'Halaman ${context.pageNumber} dari ${context.pagesCount}',
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
-          ),
-        ),
+        footer: (context) {
+          final isLastPage = context.pageNumber == context.pagesCount;
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              if (isLastPage) ...[
+                pw.SizedBox(height: 12),
+                sigWidget,
+                pw.SizedBox(height: 8),
+              ],
+              pw.Container(
+                alignment: pw.Alignment.centerRight,
+                margin: const pw.EdgeInsets.only(top: 4),
+                child: pw.Text(
+                  'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
 
@@ -593,36 +642,45 @@ class PdfReportService {
               ],
             ),
           ),
-          
-          pw.SizedBox(height: 32),
-          // Tanda tangan dokter
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.end,
+        ],
+        footer: (context) {
+          final isLastPage = context.pageNumber == context.pagesCount;
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  pw.Text('Dokter Pemeriksa,', style: const pw.TextStyle(fontSize: 9)),
-                  pw.SizedBox(height: 35),
-                  if (doctorName.isNotEmpty) ...[
-                    pw.Text(doctorName, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 2),
+              if (isLastPage) ...[
+                pw.SizedBox(height: 16),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Text('Dokter Pemeriksa,', style: const pw.TextStyle(fontSize: 9)),
+                        pw.SizedBox(height: 35),
+                        if (doctorName.isNotEmpty) ...[
+                          pw.Text(doctorName, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                          pw.SizedBox(height: 2),
+                        ],
+                        pw.Container(width: 140, child: pw.Divider(thickness: 0.8)),
+                        pw.Text('Tanda Tangan & Stempel', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
+                      ],
+                    ),
                   ],
-                  pw.Container(width: 140, child: pw.Divider(thickness: 0.8)),
-                  pw.Text('Tanda Tangan & Stempel', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700)),
-                ],
+                ),
+                pw.SizedBox(height: 8),
+              ],
+              pw.Container(
+                alignment: pw.Alignment.centerRight,
+                margin: const pw.EdgeInsets.only(top: 4),
+                child: pw.Text(
+                  'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                ),
               ),
             ],
-          ),
-        ],
-        footer: (context) => pw.Container(
-          alignment: pw.Alignment.centerRight,
-          margin: const pw.EdgeInsets.only(top: 8),
-          child: pw.Text(
-            'Halaman ${context.pageNumber} dari ${context.pagesCount}',
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
-          ),
-        ),
+          );
+        },
       ),
     );
 
@@ -734,25 +792,29 @@ class PdfReportService {
             ...data.stimulation.map(_stimulationSection),
           ],
           pw.SizedBox(height: 12),
-          pw.Container(
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                _conclusion(data),
-                pw.SizedBox(height: 16),
-                sigWidget,
-              ],
-            ),
-          ),
+          _conclusion(data),
         ],
-        footer: (context) => pw.Container(
-          alignment: pw.Alignment.centerRight,
-          margin: const pw.EdgeInsets.only(top: 8),
-          child: pw.Text(
-            'Halaman ${context.pageNumber} dari ${context.pagesCount}',
-            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey),
-          ),
-        ),
+        footer: (context) {
+          final isLastPage = context.pageNumber == context.pagesCount;
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              if (isLastPage) ...[
+                pw.SizedBox(height: 12),
+                sigWidget,
+                pw.SizedBox(height: 8),
+              ],
+              pw.Container(
+                alignment: pw.Alignment.centerRight,
+                margin: const pw.EdgeInsets.only(top: 4),
+                child: pw.Text(
+                  'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+                  style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
 

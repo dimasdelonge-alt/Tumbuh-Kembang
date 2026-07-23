@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -326,7 +327,7 @@ class MealPlanPdfBuilder {
     return doc.save();
   }
 
-  /// Bagikan / Print PDF Meal Plan via HP/Desktop
+  /// Bagikan / Print PDF Meal Plan via HP/Desktop (dengan preview jika context tersedia)
   static Future<void> shareMealPlanPdf({
     required Patient patient,
     required NutritionCalculationResult nutResult,
@@ -334,6 +335,7 @@ class MealPlanPdfBuilder {
     required PortionGuide portionGuide,
     required List<MpasiRecipe> recipes,
     String? customNote,
+    BuildContext? context,
   }) async {
     final pdfBytes = await buildPdf(
       patient: patient,
@@ -344,6 +346,29 @@ class MealPlanPdfBuilder {
       customNote: customNote,
     );
     final filename = 'Meal_Plan_${patient.name.replaceAll(' ', '_')}.pdf';
-    await Printing.sharePdf(bytes: pdfBytes, filename: filename);
+    if (context != null && context.mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            appBar: AppBar(
+              title: Text('Pratinjau PDF Meal Plan (${patient.name})'),
+              backgroundColor: Colors.teal.shade800,
+              foregroundColor: Colors.white,
+            ),
+            body: PdfPreview(
+              build: (format) async => pdfBytes,
+              allowPrinting: true,
+              allowSharing: true,
+              canChangeOrientation: false,
+              canChangePageFormat: false,
+              pdfFileName: filename,
+              previewPageMargin: const EdgeInsets.all(12),
+            ),
+          ),
+        ),
+      );
+    } else {
+      await Printing.sharePdf(bytes: pdfBytes, filename: filename);
+    }
   }
 }

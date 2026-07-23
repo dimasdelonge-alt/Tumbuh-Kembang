@@ -523,7 +523,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                         'Semua hasil pemeriksaan + lampiran stimulasi jadi 1 file PDF'),
                     onTap: () {
                       Navigator.pop(ctx);
-                      PdfReportService.generateAndPrint(data);
+                      PdfReportService.generateAndPrint(data, context: context);
                     },
                   ),
                   const Divider(),
@@ -536,7 +536,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                       subtitle: const Text('Tabel BB, TB, LK, Z-Score & Status Gizi'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        PdfReportService.generateAndPrintGrowthOnly(data);
+                        PdfReportService.generateAndPrintGrowthOnly(data, context: context);
                       },
                     ),
 
@@ -548,7 +548,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                       subtitle: const Text('Hasil skrining KPSP & Rincian per Domain'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        PdfReportService.generateAndPrintKpspOnly(data);
+                        PdfReportService.generateAndPrintKpspOnly(data, context: context);
                       },
                     ),
 
@@ -560,7 +560,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                       subtitle: const Text('Ringkasan hasil skrining perkembangan Denver II'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        PdfReportService.generateAndPrintDenverOnly(data);
+                        PdfReportService.generateAndPrintDenverOnly(data, context: context);
                       },
                     ),
 
@@ -572,7 +572,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                       subtitle: const Text('Ringkasan kurva pertumbuhan prematur Fenton 2013'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        PdfReportService.generateAndPrintFentonOnly(data);
+                        PdfReportService.generateAndPrintFentonOnly(data, context: context);
                       },
                     ),
 
@@ -584,7 +584,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                       subtitle: const Text('Ringkasan grafik CDC 2000 & Tinggi Potensi Genetik'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        PdfReportService.generateAndPrintCdcOnly(data);
+                        PdfReportService.generateAndPrintCdcOnly(data, context: context);
                       },
                     ),
 
@@ -596,7 +596,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                       subtitle: const Text('Modul Redleaf, TDL, CARS, KMME, M-CHAT, dll'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        PdfReportService.generateAndPrintScreeningsOnly(data);
+                        PdfReportService.generateAndPrintScreeningsOnly(data, context: context);
                       },
                     ),
 
@@ -618,6 +618,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                             recommendation: data.kpsp!.recommendation,
                             failedByDomain: data.kpsp!.failedByDomain,
                           ),
+                          context: context,
                         );
                       },
                     ),
@@ -650,6 +651,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
                         checkedItems: checkedMap,
                         examDate: exam.examDate,
                         childAgeMonths: _age.chronologicalMonths,
+                        context: context,
                       );
                     },
                   ),
@@ -949,6 +951,7 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                                 failedByDomain: data.kpsp!.failedByDomain,
                               ),
                               filterDomain: e.key,
+                              context: context,
                             );
                           },
                         ),
@@ -972,6 +975,7 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                             recommendation: data.kpsp!.recommendation,
                             failedByDomain: data.kpsp!.failedByDomain,
                           ),
+                          context: context,
                         );
                       },
                     ),
@@ -994,6 +998,7 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                             recommendation: data.kpsp!.recommendation,
                             failedByDomain: data.kpsp!.failedByDomain,
                           ),
+                          context: context,
                         );
                       },
                     ),

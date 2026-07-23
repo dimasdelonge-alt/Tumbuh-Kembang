@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -66,161 +67,275 @@ class WeeklyMealPlanPdfBuilder {
     final veggies = selectedVeggies ?? FoodExchangeRepository.veggiesList.take(3).toList();
     final fruits = selectedFruits ?? FoodExchangeRepository.fruitsList.take(3).toList();
 
+    // Helper: small page-number footer
+    pw.Widget pageFooter(pw.Context ctx, int pageNum, int totalPages) {
+      return pw.Container(
+        alignment: pw.Alignment.centerRight,
+        child: pw.Text(
+          'Halaman $pageNum / $totalPages',
+          style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey600),
+        ),
+      );
+    }
+
+    // Helper: mini header for continuation pages
+    pw.Widget miniHeader() {
+      return pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: pw.BoxDecoration(
+          color: PdfColors.teal800,
+          borderRadius: pw.BorderRadius.circular(4),
+        ),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+              _clean('RENCANA MAKAN SEMINGGU - ${patient.name}'),
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            ),
+            pw.Text(
+              _clean(_dateFmt.format(now)),
+              style: pw.TextStyle(fontSize: 8, color: PdfColors.teal100),
+            ),
+          ],
+        ),
+      );
+    }
+
+    const pageMargin = pw.EdgeInsets.all(24);
+    const totalPages = 3;
+
+    // ========================
+    // HALAMAN 1: Header + Info + SENIN, SELASA, RABU
+    // ========================
     doc.addPage(
-      pw.MultiPage(
+      pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(24),
+        margin: pageMargin,
         build: (pw.Context context) {
-          return [
-            // --- HEADER KLINIK ---
-            pw.Container(
-              padding: const pw.EdgeInsets.all(10),
-              decoration: pw.BoxDecoration(
-                color: PdfColors.teal800,
-                borderRadius: pw.BorderRadius.circular(6),
-              ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        _clean('RENCANA & JADWAL MAKAN SEMINGGU (7 HARI: SENIN - MINGGU)'),
-                        style: pw.TextStyle(
-                          fontSize: 12,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.white,
-                        ),
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // --- HEADER KLINIK ---
+              pw.Container(
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.teal800,
+                  borderRadius: pw.BorderRadius.circular(6),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Expanded(
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            _clean('RENCANA & JADWAL MAKAN SEMINGGU (7 HARI: SENIN - MINGGU)'),
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.white,
+                            ),
+                          ),
+                          pw.SizedBox(height: 2),
+                          pw.Text(
+                            _clean('Asuhan Nutrisi Pediatrik & Tabel Matriks Bahan Makanan Penukar Setara'),
+                            style: pw.TextStyle(fontSize: 8.5, color: PdfColors.teal50),
+                          ),
+                        ],
                       ),
-                      pw.SizedBox(height: 2),
-                      pw.Text(
-                        _clean('Asuhan Nutrisi Pediatrik & Tabel Matriks Bahan Makanan Penukar Setara'),
-                        style: pw.TextStyle(fontSize: 8.5, color: PdfColors.teal50),
-                      ),
-                    ],
-                  ),
-                  pw.Text(
-                    _clean(_dateFmt.format(now)),
-                    style: pw.TextStyle(fontSize: 9, color: PdfColors.white),
-                  ),
-                ],
+                    ),
+                    pw.Text(
+                      _clean(_dateFmt.format(now)),
+                      style: pw.TextStyle(fontSize: 9, color: PdfColors.white),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            pw.SizedBox(height: 8),
+              pw.SizedBox(height: 6),
 
-            // --- IDENTITAS & TARGET GIZI ---
-            pw.Container(
-              padding: const pw.EdgeInsets.all(8),
-              decoration: pw.BoxDecoration(
-                color: PdfColors.grey100,
-                borderRadius: pw.BorderRadius.circular(4),
-                border: pw.Border.all(color: PdfColors.grey300),
+              // --- IDENTITAS & TARGET GIZI ---
+              pw.Container(
+                padding: const pw.EdgeInsets.all(8),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.grey100,
+                  borderRadius: pw.BorderRadius.circular(4),
+                  border: pw.Border.all(color: PdfColors.grey300),
+                ),
+                child: pw.Row(
+                  children: [
+                    pw.Expanded(
+                      flex: 5,
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(_clean('Nama Anak: ${patient.name}'), style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(_clean('Usia: ${age.chronologicalLabel} (${patient.sex == 'L' ? 'Laki-laki' : 'Perempuan'})'), style: const pw.TextStyle(fontSize: 8.5)),
+                          pw.Text(_clean('Berat: ${nutResult.weightKg} kg  |  Tinggi: ${nutResult.heightCm} cm'), style: const pw.TextStyle(fontSize: 8.5)),
+                        ],
+                      ),
+                    ),
+                    pw.Container(width: 1, height: 35, color: PdfColors.grey400),
+                    pw.SizedBox(width: 8),
+                    pw.Expanded(
+                      flex: 5,
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(_clean('Target Kalori: ${nutResult.eerKcal.round()} kcal/hari'), style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
+                          pw.Text(_clean('Target Protein: ${nutResult.proteinGrams.toStringAsFixed(1)} g/hari'), style: const pw.TextStyle(fontSize: 8.5)),
+                          pw.Text(_clean('Cairan Pemeliharaan: ${nutResult.fluidMl.round()} mL/hari'), style: const pw.TextStyle(fontSize: 8.5)),
+                          if (nutResult.needsCatchUp)
+                            pw.Text(_clean('Catch-up Growth: ${nutResult.catchUpEnergyKcal?.round()} kcal/hari'), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.deepOrange900)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: pw.Row(
+              pw.SizedBox(height: 6),
+
+              miniHeader(),
+              pw.SizedBox(height: 6),
+
+              pw.Text(
+                _clean('MATRIKS JADWAL MENU MAKAN 7 HARI (SENIN - MINGGU)'),
+                style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+              ),
+              pw.SizedBox(height: 4),
+
+              // SENIN, SELASA, RABU (3 hari)
+              ...weeklyPlan.take(3).map((dayPlan) => _buildDayPlanTable(dayPlan)),
+
+              pw.Spacer(),
+              pageFooter(context, 1, totalPages),
+            ],
+          );
+        },
+      ),
+    );
+
+    // ========================
+    // HALAMAN 2: KAMIS, JUMAT, SABTU
+    // ========================
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: pageMargin,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              miniHeader(),
+              pw.SizedBox(height: 6),
+
+              pw.Text(
+                _clean('MATRIKS JADWAL MENU MAKAN 7 HARI (SENIN - MINGGU) - Lanjutan'),
+                style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+              ),
+              pw.SizedBox(height: 4),
+
+              // KAMIS, JUMAT, SABTU (3 hari)
+              ...weeklyPlan.skip(3).take(3).map((dayPlan) => _buildDayPlanTable(dayPlan)),
+
+              pw.Spacer(),
+              pageFooter(context, 2, totalPages),
+            ],
+          );
+        },
+      ),
+    );
+
+    // ========================
+    // HALAMAN 3: MINGGU + TABEL PENUKAR + FEEDING RULES + TTD
+    // ========================
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: pageMargin,
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              miniHeader(),
+              pw.SizedBox(height: 6),
+
+              pw.Text(
+                _clean('MATRIKS JADWAL MENU MAKAN 7 HARI (SENIN - MINGGU) - Lanjutan'),
+                style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+              ),
+              pw.SizedBox(height: 4),
+
+              // MINGGU (1 hari)
+              _buildDayPlanTable(weeklyPlan.last),
+
+              pw.SizedBox(height: 10),
+
+              // --- TABEL MATRIKS BAHAN MAKANAN PENUKAR SETARA ---
+              pw.Text(
+                _clean('TABEL MATRIKS BAHAN MAKANAN PENUKAR SETARA (DAPAT SALING DIGANTI)'),
+                style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+              ),
+              pw.SizedBox(height: 4),
+
+              _buildExchangeMatrixTable(
+                carbs: carbs,
+                animals: animals,
+                plants: plants,
+                veggies: veggies,
+                fruits: fruits,
+              ),
+
+              pw.SizedBox(height: 10),
+
+              // --- ATURAN MAKAN & TTD DOKTER ---
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Expanded(
-                    flex: 5,
+                    flex: 6,
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text(_clean('Nama Anak: ${patient.name}'), style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
-                        pw.Text(_clean('Usia: ${age.chronologicalLabel} (${patient.sex == 'L' ? 'Laki-laki' : 'Perempuan'})'), style: const pw.TextStyle(fontSize: 8.5)),
-                        pw.Text(_clean('Berat: ${nutResult.weightKg} kg  |  Tinggi: ${nutResult.heightCm} cm'), style: const pw.TextStyle(fontSize: 8.5)),
-                      ],
-                    ),
-                  ),
-                  pw.Container(width: 1, height: 35, color: PdfColors.grey400),
-                  pw.SizedBox(width: 8),
-                  pw.Expanded(
-                    flex: 5,
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(_clean('Target Kalori: ${nutResult.eerKcal.round()} kcal/hari'), style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
-                        pw.Text(_clean('Target Protein: ${nutResult.proteinGrams.toStringAsFixed(1)} g/hari'), style: const pw.TextStyle(fontSize: 8.5)),
-                        pw.Text(_clean('Cairan Pemeliharaan: ${nutResult.fluidMl.round()} mL/hari'), style: const pw.TextStyle(fontSize: 8.5)),
-                        if (nutResult.needsCatchUp)
-                          pw.Text(_clean('Catch-up Growth: ${nutResult.catchUpEnergyKcal?.round()} kcal/hari'), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.deepOrange900)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 8),
-
-            // --- TABEL MATRIKS JADWAL MEAL PLAN 7 HARI (SENIN S/D MINGGU) ---
-            pw.Text(
-              _clean('MATRIKS JADWAL MENU MAKAN 7 HARI (SENIN - MINGGU)'),
-              style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
-            ),
-            pw.SizedBox(height: 4),
-
-            ...weeklyPlan.map((dayPlan) => _buildDayPlanTable(dayPlan)),
-
-            pw.SizedBox(height: 10),
-
-            // --- TABEL MATRIKS BAHAN MAKANAN PENUKAR SETARA (DAPAT SALING DIGANTI) ---
-            pw.Text(
-              _clean('TABEL MATRIKS BAHAN MAKANAN PENUKAR SETARA (DAPAT SALING DIGANTI)'),
-              style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
-            ),
-            pw.SizedBox(height: 4),
-
-            _buildExchangeMatrixTable(
-              carbs: carbs,
-              animals: animals,
-              plants: plants,
-              veggies: veggies,
-              fruits: fruits,
-            ),
-
-            pw.SizedBox(height: 10),
-
-            // --- ATURAN MAKAN & TTD DOKTER ---
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Expanded(
-                  flex: 6,
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(_clean('PRINSIP ATURAN PEMBERIAN MAKAN (FEEDING RULES)'), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
-                      pw.SizedBox(height: 2),
-                      pw.Text(_clean('1. Jadwal Terstruktur: Berikan makanan utama & selingan pada jam teratur (jarak 2-3 jam).'), style: const pw.TextStyle(fontSize: 7)),
-                      pw.Text(_clean('2. Utamakan Protein Hewani (telur/hati/daging/ikan) di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
-                      pw.Text(_clean('3. Lingkungan Menyenangkan: Makan bersama di meja makan tanpa TV/HP, max 30 menit.'), style: const pw.TextStyle(fontSize: 7)),
-                      if (customNote != null && customNote.isNotEmpty) ...[
+                        pw.Text(_clean('PRINSIP ATURAN PEMBERIAN MAKAN (FEEDING RULES)'), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
                         pw.SizedBox(height: 2),
-                        pw.Text(_clean('Catatan Dokter: $customNote'), style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
+                        pw.Text(_clean('1. Jadwal Terstruktur: Berikan makanan utama & selingan pada jam teratur (jarak 2-3 jam).'), style: const pw.TextStyle(fontSize: 7)),
+                        pw.Text(_clean('2. Utamakan Protein Hewani (telur/hati/daging/ikan) di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
+                        pw.Text(_clean('3. Lingkungan Menyenangkan: Makan bersama di meja makan tanpa TV/HP, max 30 menit.'), style: const pw.TextStyle(fontSize: 7)),
+                        if (customNote != null && customNote.isNotEmpty) ...[
+                          pw.SizedBox(height: 2),
+                          pw.Text(_clean('Catatan Dokter: $customNote'), style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                pw.SizedBox(width: 10),
-                pw.Expanded(
-                  flex: 4,
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.center,
-                    children: [
-                      pw.Text(_clean('Dokter Spesialis Anak'), style: const pw.TextStyle(fontSize: 8)),
-                      pw.SizedBox(height: 2),
-                      if (sigType == 'custom_image' && sigBase64 != null && sigBase64.isNotEmpty)
-                        pw.Image(pw.MemoryImage(base64Decode(sigBase64)), height: 30, fit: pw.BoxFit.contain)
-                      else
-                        pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: 'MEALWEEK-${patient.id}-${now.millisecondsSinceEpoch}', width: 30, height: 30),
-                      pw.SizedBox(height: 2),
-                      pw.Text(_clean(docName), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
-                      if (docSip.isNotEmpty)
-                        pw.Text(_clean(docSip), style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
-                    ],
+                  pw.SizedBox(width: 10),
+                  pw.Expanded(
+                    flex: 4,
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Text(_clean('Dokter Spesialis Anak'), style: const pw.TextStyle(fontSize: 8)),
+                        pw.SizedBox(height: 2),
+                        if (sigType == 'custom_image' && sigBase64 != null && sigBase64.isNotEmpty)
+                          pw.Image(pw.MemoryImage(base64Decode(sigBase64)), height: 30, fit: pw.BoxFit.contain)
+                        else
+                          pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: 'MEALWEEK-${patient.id}-${now.millisecondsSinceEpoch}', width: 30, height: 30),
+                        pw.SizedBox(height: 2),
+                        pw.Text(_clean(docName), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                        if (docSip.isNotEmpty)
+                          pw.Text(_clean(docSip), style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ];
+                ],
+              ),
+
+              pw.Spacer(),
+              pageFooter(context, 3, totalPages),
+            ],
+          );
         },
       ),
     );
@@ -229,59 +344,66 @@ class WeeklyMealPlanPdfBuilder {
   }
 
   /// Membuat tabel matriks 4-kolom per hari yang rapi & bergaris
+  /// Membuat tabel matriks 4-kolom per hari yang rapi & bergaris (tidak akan terpisah antar halaman)
   static pw.Widget _buildDayPlanTable(SingleDayMealPlan dayPlan) {
     return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 6),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.teal700, width: 0.5),
-        borderRadius: pw.BorderRadius.circular(3),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
+      margin: const pw.EdgeInsets.only(bottom: 5),
+      child: pw.Table(
+        border: pw.TableBorder.all(color: PdfColors.teal700, width: 0.5),
         children: [
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            color: PdfColors.teal800,
-            child: pw.Text(
-              _clean('${dayPlan.dayName.toUpperCase()} — ${dayPlan.theme}'),
-              style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-            ),
+          // Row 0: Header Hari & Tema (100% Lebar)
+          pw.TableRow(
+            decoration: const pw.BoxDecoration(color: PdfColors.teal800),
+            children: [
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                child: pw.Text(
+                  _clean('${dayPlan.dayName.toUpperCase()} — ${dayPlan.theme}'),
+                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                ),
+              ),
+            ],
           ),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.3),
-            columnWidths: const {
-              0: pw.FlexColumnWidth(1.1), // Waktu
-              1: pw.FlexColumnWidth(2.1), // Sesi
-              2: pw.FlexColumnWidth(4.8), // Menu & Deskripsi
-              3: pw.FlexColumnWidth(2.0), // Takaran Porsi
-            },
-            children: dayPlan.sessions.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final s = entry.value;
-              final isEven = idx % 2 == 0;
-              return pw.TableRow(
-                decoration: pw.BoxDecoration(color: isEven ? PdfColors.white : PdfColors.grey50),
-                children: [
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.all(3),
-                    child: pw.Text(_clean(s.time), style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.all(3),
-                    child: pw.Text(_clean(s.sessionName), style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.all(3),
-                    child: pw.Text(_clean('${s.menuName}: ${s.description}'), style: const pw.TextStyle(fontSize: 6.5)),
-                  ),
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.all(3),
-                    child: pw.Text(_clean(s.portionUrt), style: pw.TextStyle(fontSize: 6.5, color: PdfColors.grey900, fontWeight: pw.FontWeight.bold)),
-                  ),
-                ],
-              );
-            }).toList(),
+          // Row 1: Tabel Matriks 4-Kolom Sesi Makan
+          pw.TableRow(
+            children: [
+              pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.3),
+                columnWidths: const {
+                  0: pw.FlexColumnWidth(1.1), // Waktu
+                  1: pw.FlexColumnWidth(2.1), // Sesi
+                  2: pw.FlexColumnWidth(4.8), // Menu & Deskripsi
+                  3: pw.FlexColumnWidth(2.0), // Takaran Porsi
+                },
+                children: dayPlan.sessions.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final s = entry.value;
+                  final isEven = idx % 2 == 0;
+                  return pw.TableRow(
+                    decoration: pw.BoxDecoration(color: isEven ? PdfColors.white : PdfColors.grey50),
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(3),
+                        child: pw.Text(_clean(s.time), style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold)),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(3),
+                        child: pw.Text(_clean(s.sessionName), style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(3),
+                        child: pw.Text(_clean('${s.menuName}: ${s.description}'), style: const pw.TextStyle(fontSize: 6.5)),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(3),
+                        child: pw.Text(_clean(s.portionUrt), style: pw.TextStyle(fontSize: 6.5, color: PdfColors.grey900, fontWeight: pw.FontWeight.bold)),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ],
           ),
         ],
       ),
@@ -418,6 +540,60 @@ class WeeklyMealPlanPdfBuilder {
           ],
         ),
       ],
+    );
+  }
+
+  /// Tampilkan Preview PDF Interaktif (Preview dulu sebelum simpan/share)
+  static void showPdfPreview({
+    required BuildContext context,
+    required Patient patient,
+    required NutritionCalculationResult nutResult,
+    required List<SingleDayMealPlan> weeklyPlan,
+    List<FoodExchangeItem>? selectedCarbs,
+    List<FoodExchangeItem>? selectedAnimalProteins,
+    List<FoodExchangeItem>? selectedPlantProteins,
+    List<FoodExchangeItem>? selectedVeggies,
+    List<FoodExchangeItem>? selectedFruits,
+    FoodExchangeItem? selectedCarb,
+    FoodExchangeItem? selectedAnimalProtein,
+    FoodExchangeItem? selectedPlantProtein,
+    String? customNote,
+  }) {
+    final title = 'Pratinjau PDF Meal Plan (${patient.name})';
+    final filename = 'Meal_Plan_Seminggu_${patient.name.replaceAll(' ', '_')}.pdf';
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: Text(title),
+            backgroundColor: Colors.teal.shade800,
+            foregroundColor: Colors.white,
+          ),
+          body: PdfPreview(
+            build: (format) => buildPdf(
+              patient: patient,
+              nutResult: nutResult,
+              weeklyPlan: weeklyPlan,
+              selectedCarbs: selectedCarbs,
+              selectedAnimalProteins: selectedAnimalProteins,
+              selectedPlantProteins: selectedPlantProteins,
+              selectedVeggies: selectedVeggies,
+              selectedFruits: selectedFruits,
+              selectedCarb: selectedCarb,
+              selectedAnimalProtein: selectedAnimalProtein,
+              selectedPlantProtein: selectedPlantProtein,
+              customNote: customNote,
+            ),
+            allowPrinting: true,
+            allowSharing: true,
+            canChangeOrientation: false,
+            canChangePageFormat: false,
+            pdfFileName: filename,
+            previewPageMargin: const EdgeInsets.all(12),
+          ),
+        ),
+      ),
     );
   }
 

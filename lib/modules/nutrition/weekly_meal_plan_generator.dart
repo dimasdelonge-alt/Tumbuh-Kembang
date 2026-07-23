@@ -105,26 +105,37 @@ class WeeklyMealPlanGenerator {
       final currentFruit = fruits[index % fruits.length];
 
       final carbName = currentCarb.name;
-      final carbUrt = currentCarb.displayUrt;
 
       final theme = '${t.$2} (${currentCarb.name} & ${currentVeg.name})';
       final mainDish = 'Menu Utama: $carbName + ${currentAnimal.name} + Sayur ${currentVeg.name}';
-      final animalDetail = '${t.$3} / ${currentAnimal.name} (${currentAnimal.displayUrt})';
-      final plantDetail = '${t.$4} / ${currentPlant.name} (${currentPlant.displayUrt})';
-      final snackDetail = 'Puree / Potongan Buah ${currentFruit.name} (${currentFruit.displayUrt})';
+      final animalDetail = '${t.$3} / ${currentAnimal.name}';
+      final plantDetail = '${t.$4} / ${currentPlant.name}';
+      final snackDetail = 'Puree / Potongan Buah ${currentFruit.name}';
 
       String portionMain;
       String portionSnack;
+      String textureGuide;
 
-      if (ageMonths < 9.0) { // 6-8 bulan (Lumat)
-        portionMain = '2-3 sdm bubur lumat ($carbName $carbUrt + Sayur ${currentVeg.name} ${currentVeg.displayUrt})';
-        portionSnack = '2 sdt puree buah ${currentFruit.name} (${currentFruit.displayUrt})';
-      } else if (ageMonths < 12.0) { // 9-11 bulan (Cincang/Lembik)
-        portionMain = '1/2 mangkuk tim cincang ($carbName $carbUrt + Sayur ${currentVeg.name} ${currentVeg.displayUrt})';
-        portionSnack = '1-2 potong finger food buah ${currentFruit.name} (${currentFruit.displayUrt})';
-      } else { // 12+ bulan (Makanan Keluarga)
-        portionMain = '1 porsi makanan ($carbName $carbUrt) + 1 ptg lauk (${currentAnimal.name} ${currentAnimal.displayUrt}) + Sayur ${currentVeg.name} (${currentVeg.displayUrt})';
-        portionSnack = '1 potong buah segar ${currentFruit.name} (${currentFruit.displayUrt})';
+      if (ageMonths < 6.0) { // < 6 bulan (ASI/Formula Eksklusif)
+        portionMain = 'ASI Eksklusif / Formula (on demand)';
+        portionSnack = 'ASI / Formula';
+        textureGuide = 'Cair (ASI / Susu)';
+      } else if (ageMonths < 9.0) { // 6-8 bulan (Lumat / Puree)
+        portionMain = '2-3 sdm bubur lumat (~25g $carbName + 10-15g ${currentAnimal.name} + Sayur ${currentVeg.name} lumat)';
+        portionSnack = '2-3 sdt puree buah ${currentFruit.name}';
+        textureGuide = 'Tekstur: Lumat Halus / Saring (Puree)';
+      } else if (ageMonths < 12.0) { // 9-11 bulan (Cincang / Lembik)
+        portionMain = '1/2 mangkuk (125 mL) tim cincang (~50g $carbName + 15-20g ${currentAnimal.name} + Sayur ${currentVeg.name} cincang)';
+        portionSnack = '1-2 potong finger food buah ${currentFruit.name}';
+        textureGuide = 'Tekstur: Lembik / Cincang Halus (Mashed/Chopped)';
+      } else if (ageMonths < 24.0) { // 12-23 bulan (1-2 Tahun: Makanan Keluarga Cincang)
+        portionMain = '3/4 mangkuk (175 mL) makanan cincang (~75g $carbName + 30g ${currentAnimal.name} + Sayur ${currentVeg.name})';
+        portionSnack = '1 potong buah segar ${currentFruit.name}';
+        textureGuide = 'Tekstur: Makanan Keluarga Cincang Kasar / Potong Kecil';
+      } else { // 24+ bulan (2-5 Tahun: Makanan Keluarga Utuh)
+        portionMain = '1 porsi piring makan ($carbName [${currentCarb.displayUrt}] + ${currentAnimal.name} [${currentAnimal.displayUrt}] + Sayur ${currentVeg.name} [${currentVeg.displayUrt}])';
+        portionSnack = '1 porsi buah segar ${currentFruit.name} [${currentFruit.displayUrt}]';
+        textureGuide = 'Tekstur: Makanan Keluarga Utuh';
       }
 
       return SingleDayMealPlan(
@@ -135,7 +146,7 @@ class WeeklyMealPlanGenerator {
             time: '07:00',
             sessionName: 'Makan Pagi',
             menuName: mainDish,
-            description: 'Bahan utama: $carbName + $animalDetail + $plantDetail + Sayur ${currentVeg.name} (${currentVeg.displayUrt}). Opsi penukar: ${currentAnimal.name} (${currentAnimal.displayUrt}).',
+            description: '$textureGuide. Bahan: $carbName + $animalDetail + $plantDetail + Sayur ${currentVeg.name}. Opsi penukar: ${currentAnimal.name}.',
             portionUrt: portionMain,
           ),
           DailyMealSession(
@@ -149,7 +160,7 @@ class WeeklyMealPlanGenerator {
             time: '12:00',
             sessionName: 'Makan Siang',
             menuName: mainDish,
-            description: 'Bahan utama: $carbName + $animalDetail + ${currentPlant.name} + Sayur ${currentVeg.name}. Kuah bening/santan gurih.',
+            description: '$textureGuide. Bahan: $carbName + $animalDetail + ${currentPlant.name} + Sayur ${currentVeg.name}. Kuah bening/santan gurih.',
             portionUrt: portionMain,
           ),
           DailyMealSession(
@@ -163,7 +174,7 @@ class WeeklyMealPlanGenerator {
             time: '18:00',
             sessionName: 'Makan Malam',
             menuName: mainDish,
-            description: 'Bahan utama: $carbName + $animalDetail + ${currentPlant.name}.',
+            description: '$textureGuide. Bahan: $carbName + $animalDetail + ${currentPlant.name}.',
             portionUrt: portionMain,
           ),
           DailyMealSession(

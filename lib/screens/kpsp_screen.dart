@@ -540,6 +540,7 @@ class _ResultDialog extends StatelessWidget {
       ageMonths: screeningMonths,
       interp: interp,
       filterDomain: domain,
+      context: context,
     );
   }
 
@@ -779,6 +780,7 @@ class _DevAgeSummaryDialog extends StatelessWidget {
       patient: patient,
       ageMonths: targetAge,
       interp: interp,
+      context: context,
     );
   }
 }
