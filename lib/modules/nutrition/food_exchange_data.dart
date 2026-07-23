@@ -21,6 +21,14 @@ class FoodExchangeItem {
     required this.carbs,
     this.notes,
   });
+
+  /// Format tampilan URT lengkap dengan berat gramasi (mis. "1 ptg sedang / 40g").
+  String get displayUrt {
+    if (urt.contains('g)') || urt.contains('gram') || urt.contains('mL') || urt.contains('mL)')) {
+      return urt;
+    }
+    return '$urt / ${grams.round()}g';
+  }
 }
 
 /// Master Data Bahan Makanan Penukar (Daftar Penukar Ahli Gizi / Kemenkes).
@@ -83,7 +91,41 @@ class FoodExchangeRepository {
     FoodExchangeItem(name: 'Kacang Tanah', group: 'Protein Nabati', grams: 15, urt: '2 sdm', calories: 75, protein: 5, fat: 3, carbs: 7),
   ];
 
-  // GOLONGAN IV: SAYURAN A (Kalori Sangat Rendah)
+  // GOLONGAN IV: SAYURAN A & B (1 Satuan = 100g / 1 gelas)
+  static const List<FoodExchangeItem> veggiesList = [
+    FoodExchangeItem(name: 'Wortel', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 50, protein: 3, fat: 0, carbs: 10, notes: 'Vit A+'),
+    FoodExchangeItem(name: 'Bayam', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 25, protein: 1, fat: 0, carbs: 5, notes: 'Fe+'),
+    FoodExchangeItem(name: 'Brokoli', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 50, protein: 3, fat: 0, carbs: 10, notes: 'Vit C+'),
+    FoodExchangeItem(name: 'Labu Siam / Labu Air', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 25, protein: 1, fat: 0, carbs: 5),
+    FoodExchangeItem(name: 'Buncis', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 50, protein: 3, fat: 0, carbs: 10),
+    FoodExchangeItem(name: 'Daun Katuk', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 50, protein: 3, fat: 0, carbs: 10, notes: 'Fe++'),
+    FoodExchangeItem(name: 'Kembang Kol', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 50, protein: 3, fat: 0, carbs: 10),
+    FoodExchangeItem(name: 'Tomat Segar', group: 'Sayuran', grams: 100, urt: '1 buah besar', calories: 25, protein: 1, fat: 0, carbs: 5, notes: 'Vit A+'),
+    FoodExchangeItem(name: 'Gambas (Oyong)', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 25, protein: 1, fat: 0, carbs: 5),
+    FoodExchangeItem(name: 'Kacang Panjang', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 50, protein: 3, fat: 0, carbs: 10),
+    FoodExchangeItem(name: 'Labu Kuning', group: 'Sayuran', grams: 100, urt: '1 gelas (100g)', calories: 50, protein: 3, fat: 0, carbs: 10, notes: 'Vit A++'),
+  ];
+
+  // GOLONGAN V: BUAH-BUAHAN (1 Satuan = 50 Kal, 12g Karbohidrat)
+  static const List<FoodExchangeItem> fruitsList = [
+    FoodExchangeItem(name: 'Pisang Ambon / Kepok', group: 'Buah', grams: 50, urt: '1 buah kecil', calories: 50, protein: 0, fat: 0, carbs: 12, notes: 'K+'),
+    FoodExchangeItem(name: 'Alpukat', group: 'Buah', grams: 60, urt: '1/2 buah besar', calories: 50, protein: 0, fat: 5, carbs: 12, notes: 'Lemak Sehat'),
+    FoodExchangeItem(name: 'Pepaya', group: 'Buah', grams: 110, urt: '1 ptg besar', calories: 50, protein: 0, fat: 0, carbs: 12, notes: 'Vit C+'),
+    FoodExchangeItem(name: 'Mangga Harum Manis', group: 'Buah', grams: 90, urt: '3/4 buah', calories: 50, protein: 0, fat: 0, carbs: 12, notes: 'Vit A+'),
+    FoodExchangeItem(name: 'Jeruk Manis', group: 'Buah', grams: 110, urt: '2 buah sedang', calories: 50, protein: 0, fat: 0, carbs: 12, notes: 'Vit C+'),
+    FoodExchangeItem(name: 'Buah Naga', group: 'Buah', grams: 100, urt: '1/2 buah', calories: 50, protein: 0, fat: 0, carbs: 12),
+    FoodExchangeItem(name: 'Melon / Semangka', group: 'Buah', grams: 190, urt: '1 ptg besar', calories: 50, protein: 0, fat: 0, carbs: 12),
+    FoodExchangeItem(name: 'Apel', group: 'Buah', grams: 85, urt: '1 buah kecil', calories: 50, protein: 0, fat: 0, carbs: 12),
+  ];
+
+  // GOLONGAN VI: SUSU & OLAHAN (1 Satuan = 125 Kal, 7g Protein)
+  static const List<FoodExchangeItem> milkList = [
+    FoodExchangeItem(name: 'Susu Sapi Segar / UHT', group: 'Susu', grams: 200, urt: '1 gelas (200 mL)', calories: 125, protein: 7, fat: 6, carbs: 10),
+    FoodExchangeItem(name: 'Susu Bubuk Full Cream', group: 'Susu', grams: 25, urt: '5 sdm', calories: 125, protein: 7, fat: 6, carbs: 10),
+    FoodExchangeItem(name: 'Keju Olahan', group: 'Susu', grams: 35, urt: '1 single slice', calories: 125, protein: 7, fat: 6, carbs: 0, notes: 'Ca+'),
+    FoodExchangeItem(name: 'Yogurt Plain', group: 'Susu', grams: 200, urt: '1 cup (200 mL)', calories: 125, protein: 7, fat: 6, carbs: 10),
+  ];
+
   static const List<String> veggiesFree = [
     'Bayam', 'Gambas (Oyong)', 'Ketimun', 'Tomat', 'Labu Air', 'Slada', 'Lobak', 'Jamur Kuping', 'Baligo'
   ];

@@ -157,11 +157,11 @@ class WeeklyMealPlanPdfBuilder {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     if (selectedCarb != null)
-                      pw.Text(_clean('Karbohidrat: ${selectedCarb.name} (${selectedCarb.urt})'), style: const pw.TextStyle(fontSize: 7.5)),
+                      pw.Text(_clean('Karbohidrat: ${selectedCarb.name} (${selectedCarb.displayUrt})'), style: const pw.TextStyle(fontSize: 7.5)),
                     if (selectedAnimalProtein != null)
-                      pw.Text(_clean('Protein Hewani: ${selectedAnimalProtein.name} (${selectedAnimalProtein.urt})'), style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                      pw.Text(_clean('Protein Hewani: ${selectedAnimalProtein.name} (${selectedAnimalProtein.displayUrt})'), style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
                     if (selectedPlantProtein != null)
-                      pw.Text(_clean('Protein Nabati: ${selectedPlantProtein.name} (${selectedPlantProtein.urt})'), style: const pw.TextStyle(fontSize: 7.5)),
+                      pw.Text(_clean('Protein Nabati: ${selectedPlantProtein.name} (${selectedPlantProtein.displayUrt})'), style: const pw.TextStyle(fontSize: 7.5)),
                   ],
                 ),
               ),

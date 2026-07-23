@@ -37,6 +37,8 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
   final Set<String> _selectedCarbsNames = {'Nasi Beras Giling', 'Kentang', 'Roti Putih'};
   final Set<String> _selectedAnimalNames = {'Daging Ayam tanpa Kulit', 'Telur Ayam', 'Ikan Segar (Kembung/Mas/Kakap)'};
   final Set<String> _selectedPlantNames = {'Tempe', 'Tahu'};
+  final Set<String> _selectedVegNames = {'Wortel', 'Bayam', 'Brokoli', 'Labu Siam / Labu Air'};
+  final Set<String> _selectedFruitNames = {'Pisang Ambon / Kepok', 'Alpukat', 'Pepaya'};
 
   @override
   void initState() {
@@ -113,12 +115,20 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
     final selectedPlantProteins = FoodExchangeRepository.plantProteinList
         .where((i) => _selectedPlantNames.contains(i.name))
         .toList();
+    final selectedVeggies = FoodExchangeRepository.veggiesList
+        .where((i) => _selectedVegNames.contains(i.name))
+        .toList();
+    final selectedFruits = FoodExchangeRepository.fruitsList
+        .where((i) => _selectedFruitNames.contains(i.name))
+        .toList();
 
     final weeklyPlan = WeeklyMealPlanGenerator.generate7DayPlan(
       ageMonths: _ageMonths,
       selectedCarbs: selectedCarbs.isNotEmpty ? selectedCarbs : null,
       selectedAnimalProteins: selectedAnimalProteins.isNotEmpty ? selectedAnimalProteins : null,
       selectedPlantProteins: selectedPlantProteins.isNotEmpty ? selectedPlantProteins : null,
+      selectedVeggies: selectedVeggies.isNotEmpty ? selectedVeggies : null,
+      selectedFruits: selectedFruits.isNotEmpty ? selectedFruits : null,
     );
 
     return Scaffold(
@@ -439,7 +449,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                     final isSelected = _selectedCarbsNames.contains(item.name);
                     return FilterChip(
                       selected: isSelected,
-                      label: Text('${item.name} (${item.urt})', style: const TextStyle(fontSize: 11)),
+                      label: Text('${item.name} (${item.displayUrt})', style: const TextStyle(fontSize: 11)),
                       selectedColor: Colors.teal.shade100,
                       checkmarkColor: Colors.teal.shade800,
                       onSelected: (selected) {
@@ -468,7 +478,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                     final isSelected = _selectedAnimalNames.contains(item.name);
                     return FilterChip(
                       selected: isSelected,
-                      label: Text('${item.name} (${item.urt})', style: const TextStyle(fontSize: 11)),
+                      label: Text('${item.name} (${item.displayUrt})', style: const TextStyle(fontSize: 11)),
                       selectedColor: Colors.amber.shade100,
                       checkmarkColor: Colors.amber.shade900,
                       onSelected: (selected) {
@@ -497,7 +507,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                     final isSelected = _selectedPlantNames.contains(item.name);
                     return FilterChip(
                       selected: isSelected,
-                      label: Text('${item.name} (${item.urt})', style: const TextStyle(fontSize: 11)),
+                      label: Text('${item.name} (${item.displayUrt})', style: const TextStyle(fontSize: 11)),
                       selectedColor: Colors.green.shade100,
                       checkmarkColor: Colors.green.shade900,
                       onSelected: (selected) {
@@ -514,13 +524,68 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                     );
                   }).toList(),
                 ),
+                const SizedBox(height: 10),
+
+                const Text('🥗 Sayuran Tersedia:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.teal)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: FoodExchangeRepository.veggiesList.map((item) {
+                    final isSelected = _selectedVegNames.contains(item.name);
+                    return FilterChip(
+                      selected: isSelected,
+                      label: Text('${item.name} (${item.displayUrt})', style: const TextStyle(fontSize: 11)),
+                      selectedColor: Colors.lightGreen.shade100,
+                      checkmarkColor: Colors.lightGreen.shade900,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedVegNames.add(item.name);
+                          } else {
+                            if (_selectedVegNames.length > 1) {
+                              _selectedVegNames.remove(item.name);
+                            }
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 10),
+
+                const Text('🍎 Buah-buahan Tersedia:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.teal)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: FoodExchangeRepository.fruitsList.map((item) {
+                    final isSelected = _selectedFruitNames.contains(item.name);
+                    return FilterChip(
+                      selected: isSelected,
+                      label: Text('${item.name} (${item.displayUrt})', style: const TextStyle(fontSize: 11)),
+                      selectedColor: Colors.orange.shade100,
+                      checkmarkColor: Colors.orange.shade900,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedFruitNames.add(item.name);
+                          } else {
+                            if (_selectedFruitNames.length > 1) {
+                              _selectedFruitNames.remove(item.name);
+                            }
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 12),
 
-        // Daftar 7 Hari
         ...weeklyPlan.map((dayPlan) {
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -530,14 +595,25 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                 foregroundColor: Colors.white,
                 child: Text(dayPlan.dayName.substring(0, 3), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
               ),
-              title: Text(dayPlan.dayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              subtitle: Text(dayPlan.theme, style: const TextStyle(fontSize: 12, color: Colors.teal)),
-              children: dayPlan.sessions.map((s) {
+              title: Text('${dayPlan.dayName}: ${dayPlan.theme}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: Text('${dayPlan.sessions.length} Waktu Makan', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              children: dayPlan.sessions.map((session) {
                 return ListTile(
                   dense: true,
-                  leading: Text(s.time, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  title: Text('${s.sessionName}: ${s.menuName}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text('${s.description}\n[Porsi: ${s.portionUrt}]'),
+                  leading: Chip(
+                    label: Text(session.time, style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                    backgroundColor: Colors.teal,
+                    padding: EdgeInsets.zero,
+                  ),
+                  title: Text('${session.sessionName} - ${session.menuName}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(session.description, style: const TextStyle(fontSize: 11)),
+                      const SizedBox(height: 2),
+                      Text('Porsi: ${session.portionUrt}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal.shade800)),
+                    ],
+                  ),
                 );
               }).toList(),
             ),
@@ -597,6 +673,9 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
         _exchangeSectionCard('Golongan II-B: Protein Hewani Sedang Lemak (75 Kal, 7g Protein, 5g Lemak)', FoodExchangeRepository.animalProteinMedFat, Colors.orange),
         _exchangeSectionCard('Golongan II-C: Protein Hewani Tinggi Lemak (150 Kal, 7g Protein, 13g Lemak)', FoodExchangeRepository.animalProteinHighFat, Colors.red),
         _exchangeSectionCard('Golongan III: Protein Nabati (75 Kal, 5g Protein, 3g Lemak, 7g KH)', FoodExchangeRepository.plantProteinList, Colors.green),
+        _exchangeSectionCard('Golongan IV: Sayuran A & B (25–50 Kal, 1–3g Protein, 100g/1 Gelas)', FoodExchangeRepository.veggiesList, Colors.lightGreen.shade700),
+        _exchangeSectionCard('Golongan V: Buah-buahan (50 Kal, 12g KH)', FoodExchangeRepository.fruitsList, Colors.deepOrange),
+        _exchangeSectionCard('Golongan VI: Susu & Olahan (125 Kal, 7g Protein)', FoodExchangeRepository.milkList, Colors.purple),
       ],
     );
   }
@@ -610,7 +689,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
           return ListTile(
             dense: true,
             title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('Berat: ${item.grams.round()}g | URT: ${item.urt} ${item.notes != null ? "(${item.notes})" : ""}'),
+            subtitle: Text('Ukuran / Berat: ${item.displayUrt} ${item.notes != null ? "(${item.notes})" : ""}'),
             trailing: Text('${item.calories.round()} Kal', style: const TextStyle(fontWeight: FontWeight.bold)),
           );
         }).toList(),

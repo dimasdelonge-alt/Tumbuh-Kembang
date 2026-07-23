@@ -10,6 +10,9 @@ void main() {
       expect(FoodExchangeRepository.animalProteinMedFat.isNotEmpty, isTrue);
       expect(FoodExchangeRepository.animalProteinHighFat.isNotEmpty, isTrue);
       expect(FoodExchangeRepository.plantProteinList.isNotEmpty, isTrue);
+      expect(FoodExchangeRepository.veggiesList.isNotEmpty, isTrue);
+      expect(FoodExchangeRepository.fruitsList.isNotEmpty, isTrue);
+      expect(FoodExchangeRepository.milkList.isNotEmpty, isTrue);
       expect(FoodExchangeRepository.veggiesFree.isNotEmpty, isTrue);
 
       final nasi = FoodExchangeRepository.carbsList.firstWhere((i) => i.name.contains('Nasi'));
