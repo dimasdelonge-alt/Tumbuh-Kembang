@@ -287,47 +287,76 @@ class WeeklyMealPlanPdfBuilder {
                 fruits: fruits,
               ),
 
-              pw.SizedBox(height: 10),
+              pw.SizedBox(height: 8),
 
-              // --- ATURAN MAKAN & TTD DOKTER ---
+              // --- ATURAN MAKAN (FEEDING RULES) ---
+              pw.Container(
+                padding: const pw.EdgeInsets.all(6),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.teal50,
+                  borderRadius: pw.BorderRadius.circular(3),
+                  border: pw.Border.all(color: PdfColors.teal200, width: 0.5),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(_clean('PRINSIP ATURAN PEMBERIAN MAKAN (FEEDING RULES)'), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
+                    pw.SizedBox(height: 2),
+                    pw.Text(_clean('1. Jadwal Terstruktur: Berikan makanan utama & selingan pada jam teratur (jarak 2-3 jam).'), style: const pw.TextStyle(fontSize: 7)),
+                    pw.Text(_clean('2. Utamakan Protein Hewani (telur/hati/daging/ikan) di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
+                    pw.Text(_clean('3. Lingkungan Menyenangkan: Makan bersama di meja makan tanpa TV/HP, max 30 menit.'), style: const pw.TextStyle(fontSize: 7)),
+                    if (customNote != null && customNote.isNotEmpty) ...[
+                      pw.SizedBox(height: 2),
+                      pw.Text(_clean('Catatan Dokter: $customNote'), style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
+                    ],
+                  ],
+                ),
+              ),
+
+              pw.SizedBox(height: 8),
+
+              // --- DAFTAR PUSTAKA ---
+              pw.Container(
+                padding: const pw.EdgeInsets.all(6),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.grey50,
+                  borderRadius: pw.BorderRadius.circular(3),
+                  border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(_clean('DAFTAR PUSTAKA / REFERENSI'), style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
+                    pw.SizedBox(height: 3),
+                    pw.Text(_clean('1. UKK Nutrisi & Penyakit Metabolik IDAI. Rekomendasi Praktik Pemberian Makan Berbasis Bukti pd Bayi & Batita di Indonesia. Jakarta: IDAI; 2023.'), style: const pw.TextStyle(fontSize: 6)),
+                    pw.Text(_clean('2. WHO. Complementary Feeding: Family Foods for Breastfed Children. Geneva: WHO; 2000.'), style: const pw.TextStyle(fontSize: 6)),
+                    pw.Text(_clean('3. Kementerian Kesehatan RI. Tabel Komposisi Pangan Indonesia (TKPI). Jakarta: Kemenkes RI; 2017.'), style: const pw.TextStyle(fontSize: 6)),
+                    pw.Text(_clean('4. UKK Nutrisi & Penyakit Metabolik IDAI. Buku Ajar Nutrisi Pediatrik dan Penyakit Metabolik Jilid I. Jakarta: IDAI; 2011.'), style: const pw.TextStyle(fontSize: 6)),
+                    pw.Text(_clean('5. Almatsier S. Penuntun Diet Anak, Ed. 3. Jakarta: Gramedia Pustaka Utama; 2015.'), style: const pw.TextStyle(fontSize: 6)),
+                  ],
+                ),
+              ),
+
+              pw.SizedBox(height: 8),
+
+              // --- TTD DOKTER ---
               pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisAlignment: pw.MainAxisAlignment.end,
                 children: [
-                  pw.Expanded(
-                    flex: 6,
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(_clean('PRINSIP ATURAN PEMBERIAN MAKAN (FEEDING RULES)'), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
-                        pw.SizedBox(height: 2),
-                        pw.Text(_clean('1. Jadwal Terstruktur: Berikan makanan utama & selingan pada jam teratur (jarak 2-3 jam).'), style: const pw.TextStyle(fontSize: 7)),
-                        pw.Text(_clean('2. Utamakan Protein Hewani (telur/hati/daging/ikan) di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
-                        pw.Text(_clean('3. Lingkungan Menyenangkan: Makan bersama di meja makan tanpa TV/HP, max 30 menit.'), style: const pw.TextStyle(fontSize: 7)),
-                        if (customNote != null && customNote.isNotEmpty) ...[
-                          pw.SizedBox(height: 2),
-                          pw.Text(_clean('Catatan Dokter: $customNote'), style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
-                        ],
-                      ],
-                    ),
-                  ),
-                  pw.SizedBox(width: 10),
-                  pw.Expanded(
-                    flex: 4,
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.center,
-                      children: [
-                        pw.Text(_clean('Dokter Spesialis Anak'), style: const pw.TextStyle(fontSize: 8)),
-                        pw.SizedBox(height: 2),
-                        if (sigType == 'custom_image' && sigBase64 != null && sigBase64.isNotEmpty)
-                          pw.Image(pw.MemoryImage(base64Decode(sigBase64)), height: 30, fit: pw.BoxFit.contain)
-                        else
-                          pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: 'MEALWEEK-${patient.id}-${now.millisecondsSinceEpoch}', width: 30, height: 30),
-                        pw.SizedBox(height: 2),
-                        pw.Text(_clean(docName), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
-                        if (docSip.isNotEmpty)
-                          pw.Text(_clean(docSip), style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
-                      ],
-                    ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.center,
+                    children: [
+                      pw.Text(_clean('Dokter Spesialis Anak'), style: const pw.TextStyle(fontSize: 8)),
+                      pw.SizedBox(height: 2),
+                      if (sigType == 'custom_image' && sigBase64 != null && sigBase64.isNotEmpty)
+                        pw.Image(pw.MemoryImage(base64Decode(sigBase64)), height: 30, fit: pw.BoxFit.contain)
+                      else
+                        pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: 'MEALWEEK-${patient.id}-${now.millisecondsSinceEpoch}', width: 30, height: 30),
+                      pw.SizedBox(height: 2),
+                      pw.Text(_clean(docName), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold)),
+                      if (docSip.isNotEmpty)
+                        pw.Text(_clean(docSip), style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700)),
+                    ],
                   ),
                 ],
               ),

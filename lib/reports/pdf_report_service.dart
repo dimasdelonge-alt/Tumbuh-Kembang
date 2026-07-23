@@ -414,6 +414,11 @@ class PdfReportService {
               ),
             );
           }),
+          pw.SizedBox(height: 6),
+          _buildReferencesWidget([
+            'Petty K. Developmental Milestones: Table of Children\'s Development. St. Paul: Redleaf Press; 2010.',
+            'Kementerian Kesehatan RI. Pedoman Pelaksanaan Stimulasi, Deteksi & Intervensi Dini Tumbuh Kembang Anak (SDIDTK). Jakarta: Kemenkes RI; 2022.',
+          ]),
         ],
         footer: (context) {
           final isLastPage = context.pageNumber == context.pagesCount;
@@ -642,6 +647,11 @@ class PdfReportService {
               ],
             ),
           ),
+          pw.SizedBox(height: 6),
+          _buildReferencesWidget([
+            'Kementerian Kesehatan RI. Pedoman Pelaksanaan Stimulasi, Deteksi & Intervensi Dini Tumbuh Kembang Anak (SDIDTK). Jakarta: Kemenkes RI; 2022.',
+            'UKK Tumbuh Kembang Pediatri Sosial IDAI. Buku Ajar Tumbuh Kembang Anak. Jakarta: IDAI; 2016.',
+          ]),
         ],
         footer: (context) {
           final isLastPage = context.pageNumber == context.pagesCount;
@@ -793,6 +803,16 @@ class PdfReportService {
           ],
           pw.SizedBox(height: 12),
           _conclusion(data),
+          pw.SizedBox(height: 6),
+          _buildReferencesWidget(_getReferencesForData(
+            data,
+            includeGrowth: includeGrowth,
+            includeKpsp: includeKpsp,
+            includeScreenings: includeScreenings,
+            includeVision: includeVision,
+            includeCars: includeCars,
+            includeStimulation: includeStimulation,
+          )),
         ],
         footer: (context) {
           final isLastPage = context.pageNumber == context.pagesCount;
@@ -1656,6 +1676,76 @@ class PdfReportService {
           ],
         ),
       ],
+    );
+  }
+
+  static List<String> _getReferencesForData(
+    ExamReportData data, {
+    bool includeGrowth = true,
+    bool includeKpsp = true,
+    bool includeScreenings = true,
+    bool includeVision = true,
+    bool includeCars = true,
+    bool includeStimulation = true,
+  }) {
+    final refs = <String>[];
+    if (includeGrowth && data.growthRows.isNotEmpty) {
+      refs.add('Kementerian Kesehatan RI. Permenkes No. 2 Tahun 2020 tentang Standar Antropometri Anak. Jakarta: Kemenkes RI; 2020.');
+      refs.add('WHO. WHO Child Growth Standards: Length/height, weight, & BMI-for-age. Geneva: World Health Organization; 2006.');
+    }
+    if (data.cdc != null || (includeGrowth && data.growthOutOfRange)) {
+      refs.add('CDC. 2000 CDC Growth Charts for the United States: Methods & Development. Vital Health Stat 11. 2002.');
+      refs.add('Waterlow JC. Classification and definition of protein-calorie malnutrition. Br Med J. 1972;3(5826):566-569.');
+    }
+    if (data.fenton != null) {
+      refs.add('Fenton TR, Kim JH. A systematic review & meta-analysis to revise the Fenton growth chart for preterm infants. BMC Pediatr. 2013;13:59.');
+    }
+    if (includeKpsp && data.kpsp != null) {
+      refs.add('Kementerian Kesehatan RI. Pedoman Pelaksanaan Stimulasi, Deteksi & Intervensi Dini Tumbuh Kembang Anak (SDIDTK). Jakarta: Kemenkes RI; 2022.');
+    }
+    if (data.denver != null) {
+      refs.add('Frankenburg WK, Dodds J, Archer P, et al. Denver II Screening Manual. Denver: Denver Developmental Materials; 1990.');
+    }
+    if (includeScreenings && data.screenings.isNotEmpty) {
+      refs.add('Petty K. Developmental Milestones: Table of Children\'s Development. St. Paul: Redleaf Press; 2010.');
+    }
+    if (includeCars && data.cars != null) {
+      refs.add('Schopler E, Reichler RJ, Renner BR. The Childhood Autism Rating Scale (CARS). Los Angeles: WPS; 1988.');
+    }
+    if (includeVision && data.vision != null) {
+      refs.add('Kementerian Kesehatan RI. Tes Daya Lihat (TDL) - Pedoman SDIDTK. Jakarta: Kemenkes RI; 2016.');
+    }
+    if (data.nutrition != null) {
+      refs.add('UKK Nutrisi & Penyakit Metabolik IDAI. Rekomendasi Praktik Pemberian Makan Berbasis Bukti. Jakarta: IDAI; 2023.');
+    }
+    return refs;
+  }
+
+  static pw.Widget _buildReferencesWidget(List<String> refs) {
+    if (refs.isEmpty) return pw.SizedBox();
+
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(top: 8, bottom: 4),
+      padding: const pw.EdgeInsets.all(6),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.grey50,
+        borderRadius: pw.BorderRadius.circular(4),
+        border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            _clean('DAFTAR PUSTAKA / REFERENSI STANDAR MEDIS'),
+            style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+          ),
+          pw.SizedBox(height: 3),
+          ...refs.asMap().entries.map((e) => pw.Text(
+            _clean('${e.key + 1}. ${e.value}'),
+            style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey800),
+          )),
+        ],
+      ),
     );
   }
 }
