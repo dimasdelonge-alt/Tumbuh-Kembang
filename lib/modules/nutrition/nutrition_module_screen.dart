@@ -810,11 +810,22 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
     final selectedPlantProteins = FoodExchangeRepository.plantProteinList
         .where((i) => _selectedPlantNames.contains(i.name))
         .toList();
+    final selectedVeggies = FoodExchangeRepository.veggiesList
+        .where((i) => _selectedVegNames.contains(i.name))
+        .toList();
+    final selectedFruits = FoodExchangeRepository.fruitsList
+        .where((i) => _selectedFruitNames.contains(i.name))
+        .toList();
 
     await WeeklyMealPlanPdfBuilder.shareWeeklyMealPlanPdf(
       patient: dummyPatient,
       nutResult: nutResult,
       weeklyPlan: weeklyPlan,
+      selectedCarbs: selectedCarbs,
+      selectedAnimalProteins: selectedAnimalProteins,
+      selectedPlantProteins: selectedPlantProteins,
+      selectedVeggies: selectedVeggies,
+      selectedFruits: selectedFruits,
       selectedCarb: selectedCarbs.firstOrNull,
       selectedAnimalProtein: selectedAnimalProteins.firstOrNull,
       selectedPlantProtein: selectedPlantProteins.firstOrNull,
