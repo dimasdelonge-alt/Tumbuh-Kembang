@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 /// 4 Sektor Perkembangan Denver II
 enum DenverSector {
   personalSocial,
@@ -9,6 +7,8 @@ enum DenverSector {
 }
 
 extension DenverSectorExtension on DenverSector {
+  String get label => displayName;
+
   String get displayName {
     switch (this) {
       case DenverSector.personalSocial:

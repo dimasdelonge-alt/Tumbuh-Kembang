@@ -360,6 +360,9 @@ class AppRepository {
     required int delaysCount,
     required String globalResult,
     required String answersJson,
+    String? behaviorNotes,
+    String? fearNotes,
+    String? environmentResponseNotes,
   }) async {
     final id = _uuid.v4();
     await db.transaction(() async {
@@ -375,6 +378,9 @@ class AppRepository {
             delaysCount: Value(delaysCount),
             globalResult: Value(globalResult),
             answersJson: Value(answersJson),
+            behaviorNotes: Value(behaviorNotes),
+            fearNotes: Value(fearNotes),
+            environmentResponseNotes: Value(environmentResponseNotes),
           ));
     });
     await _promoteIfAnonymous(examinationId);

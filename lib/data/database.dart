@@ -181,6 +181,15 @@ class DenverResults extends Table {
   /// JSON map jawaban per itemId ('P', 'F', 'R', 'NO').
   TextColumn get answersJson => text()();
 
+  /// Catatan observasi perilaku khusus anak saat tes.
+  TextColumn get behaviorNotes => text().nullable()();
+
+  /// Catatan ketakutan anak.
+  TextColumn get fearNotes => text().nullable()();
+
+  /// Catatan respon anak terhadap sekeliling.
+  TextColumn get environmentResponseNotes => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -203,7 +212,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -239,6 +248,12 @@ class AppDatabase extends _$AppDatabase {
           if (from < 8) {
             await m.addColumn(patients, patients.deletedAt);
             await m.addColumn(examinations, examinations.deletedAt);
+          }
+          // v8 -> v9: tambah kolom observasi perilaku pada DenverResults.
+          if (from < 9) {
+            await m.addColumn(denverResults, denverResults.behaviorNotes);
+            await m.addColumn(denverResults, denverResults.fearNotes);
+            await m.addColumn(denverResults, denverResults.environmentResponseNotes);
           }
         },
       );

@@ -103,10 +103,15 @@ class PdfReportService {
   static Future<void> generateAndPrintGrowthOnly(ExamReportData data, {BuildContext? context}) async {
     final bytes = await _build(
       data,
+      includeGrowth: true,
       includeKpsp: false,
       includeScreenings: false,
       includeVision: false,
       includeCars: false,
+      includeDenver: false,
+      includeFenton: false,
+      includeCdc: false,
+      includeNutrition: false,
       includeStimulation: false,
     );
     final filename = 'Laporan_Antropometri_${_safe(data.patient.name)}_'
@@ -123,9 +128,14 @@ class PdfReportService {
     final bytes = await _build(
       data,
       includeGrowth: false,
+      includeKpsp: true,
       includeScreenings: false,
       includeVision: false,
       includeCars: false,
+      includeDenver: false,
+      includeFenton: false,
+      includeCdc: false,
+      includeNutrition: false,
       includeStimulation: false,
     );
     final filename = 'Laporan_KPSP_${_safe(data.patient.name)}_'
@@ -146,6 +156,10 @@ class PdfReportService {
       includeScreenings: false,
       includeVision: false,
       includeCars: false,
+      includeDenver: true,
+      includeFenton: false,
+      includeCdc: false,
+      includeNutrition: false,
       includeStimulation: false,
     );
     final filename = 'Laporan_DenverII_${_safe(data.patient.name)}_'
@@ -166,6 +180,10 @@ class PdfReportService {
       includeScreenings: false,
       includeVision: false,
       includeCars: false,
+      includeDenver: false,
+      includeFenton: true,
+      includeCdc: false,
+      includeNutrition: false,
       includeStimulation: false,
     );
     final filename = 'Laporan_Fenton2013_${_safe(data.patient.name)}_'
@@ -186,6 +204,10 @@ class PdfReportService {
       includeScreenings: false,
       includeVision: false,
       includeCars: false,
+      includeDenver: false,
+      includeFenton: false,
+      includeCdc: true,
+      includeNutrition: false,
       includeStimulation: false,
     );
     final filename = 'Laporan_CDC2000_TPG_${_safe(data.patient.name)}_'
@@ -203,8 +225,13 @@ class PdfReportService {
       data,
       includeGrowth: false,
       includeKpsp: false,
-      includeVision: false,
-      includeCars: false,
+      includeVision: true,
+      includeCars: true,
+      includeDenver: false,
+      includeFenton: false,
+      includeCdc: false,
+      includeNutrition: false,
+      includeScreenings: true,
       includeStimulation: false,
     );
     final filename = 'Laporan_Skrining_${_safe(data.patient.name)}_'
@@ -711,7 +738,12 @@ class PdfReportService {
         .replaceAll('≤', '<=')
         .replaceAll('±', '+/-')
         .replaceAll('×', 'x')
-        .replaceAll('°', ' deg');
+        .replaceAll('°', ' deg')
+        .replaceAll('’', "'")
+        .replaceAll('“', '"')
+        .replaceAll('”', '"')
+        .replaceAll('…', '...')
+        .replaceAll(RegExp(r'[^\x00-\x7F]'), '');
   }
 
   static Future<Uint8List> _build(
@@ -721,6 +753,10 @@ class PdfReportService {
     bool includeScreenings = true,
     bool includeVision = true,
     bool includeCars = true,
+    bool includeDenver = true,
+    bool includeFenton = true,
+    bool includeCdc = true,
+    bool includeNutrition = true,
     bool includeStimulation = true,
   }) async {
     final doc = pw.Document();
@@ -739,66 +775,66 @@ class PdfReportService {
           _identity(data),
           pw.SizedBox(height: 16),
           if (includeGrowth && data.growthRows.isNotEmpty) ...[
-            _sectionTitle('Status Pertumbuhan (WHO)'),
+            _sectionTitle(_clean('Status Pertumbuhan (WHO)')),
             _growthTable(data),
             pw.SizedBox(height: 12),
           ],
           if (includeGrowth && data.growthOutOfRange)
             _note(
-                'Catatan: usia anak di luar rentang standar WHO 0-5 tahun; '
+                _clean('Catatan: usia anak di luar rentang standar WHO 0-5 tahun; '
                 'sebagian indikator berbasis umur tidak ditampilkan. '
-                'Status gizi BB/TB memakai referensi CDC 2000 (Waterlow).'),
+                'Status gizi BB/TB memakai referensi CDC 2000 (Waterlow).')),
           if (includeKpsp && data.kpsp != null) ...[
             pw.SizedBox(height: 4),
-            _sectionTitle('Skrining Perkembangan (KPSP)'),
+            _sectionTitle(_clean('Skrining Perkembangan (KPSP)')),
             _kpspSection(data.kpsp!),
             pw.SizedBox(height: 12),
           ],
           if (includeScreenings && data.screenings.isNotEmpty) ...[
             pw.SizedBox(height: 4),
-            _sectionTitle('Skrining Perkembangan & Milestones'),
+            _sectionTitle(_clean('Skrining Perkembangan & Milestones')),
             ...data.screenings.map(_screeningSection),
             pw.SizedBox(height: 12),
           ],
           if (includeVision && data.vision != null) ...[
             pw.SizedBox(height: 4),
-            _sectionTitle('Tes Daya Lihat (TDL)'),
+            _sectionTitle(_clean('Tes Daya Lihat (TDL)')),
             _visionSection(data.vision!),
             pw.SizedBox(height: 12),
           ],
           if (includeCars && data.cars != null) ...[
             pw.SizedBox(height: 4),
-            _sectionTitle('CARS (Skrining Autisme)'),
+            _sectionTitle(_clean('CARS (Skrining Autisme)')),
             _carsSection(data.cars!),
             pw.SizedBox(height: 12),
           ],
-          if (data.denver != null) ...[
+          if (includeDenver && data.denver != null) ...[
             pw.SizedBox(height: 4),
-            _sectionTitle('Skrining Perkembangan (Denver II)'),
+            _sectionTitle(_clean('Skrining Perkembangan (Denver II)')),
             _denverSection(data.denver!),
             pw.SizedBox(height: 12),
           ],
-          if (data.fenton != null) ...[
+          if (includeFenton && data.fenton != null) ...[
             pw.SizedBox(height: 4),
-            _sectionTitle('Pertumbuhan Bayi Prematur (Kurva Fenton 2013)'),
+            _sectionTitle(_clean('Pertumbuhan Bayi Prematur (Kurva Fenton 2013)')),
             _fentonSection(data.fenton!),
             pw.SizedBox(height: 12),
           ],
-          if (data.cdc != null) ...[
+          if (includeCdc && data.cdc != null) ...[
             pw.SizedBox(height: 4),
-            _sectionTitle('Kurva Pertumbuhan CDC 2000 & Tinggi Potensi Genetik (TPG)'),
+            _sectionTitle(_clean('Kurva Pertumbuhan CDC 2000 & Tinggi Potensi Genetik (TPG)')),
             _cdcSection(data.cdc!),
             pw.SizedBox(height: 12),
           ],
-          if (data.nutrition != null) ...[
+          if (includeNutrition && data.nutrition != null) ...[
             pw.SizedBox(height: 4),
-            _sectionTitle('Asuhan Nutrisi Pediatrik'),
+            _sectionTitle(_clean('Asuhan Nutrisi Pediatrik')),
             _nutritionSection(data.nutrition!),
             pw.SizedBox(height: 12),
           ],
           if (includeStimulation && data.stimulation.isNotEmpty) ...[
             pw.SizedBox(height: 12),
-            _sectionTitle('Program Stimulasi (sesuai usia perkembangan)'),
+            _sectionTitle(_clean('Program Stimulasi (sesuai usia perkembangan)')),
             ...data.stimulation.map(_stimulationSection),
           ],
           pw.SizedBox(height: 12),
@@ -811,6 +847,10 @@ class PdfReportService {
             includeScreenings: includeScreenings,
             includeVision: includeVision,
             includeCars: includeCars,
+            includeDenver: includeDenver,
+            includeFenton: includeFenton,
+            includeCdc: includeCdc,
+            includeNutrition: includeNutrition,
             includeStimulation: includeStimulation,
           )),
         ],
@@ -1126,6 +1166,10 @@ class PdfReportService {
     final color = isAlert ? PdfColors.red800 : PdfColors.green800;
     final bg = isAlert ? PdfColors.red50 : PdfColors.green50;
 
+    final hasBehaviorNotes = (d.behaviorNotes != null && d.behaviorNotes!.isNotEmpty) ||
+        (d.fearNotes != null && d.fearNotes!.isNotEmpty) ||
+        (d.environmentResponseNotes != null && d.environmentResponseNotes!.isNotEmpty);
+
     return pw.Container(
       padding: const pw.EdgeInsets.all(8),
       decoration: pw.BoxDecoration(
@@ -1140,7 +1184,7 @@ class PdfReportService {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text(
-                'Denver II: ${d.globalResultLabel}',
+                _clean('Denver II (Tes ke-${d.testNumber}): ${d.globalResultLabel}'),
                 style: pw.TextStyle(
                   fontSize: 10,
                   fontWeight: pw.FontWeight.bold,
@@ -1148,19 +1192,78 @@ class PdfReportService {
                 ),
               ),
               pw.Text(
-                'Usia Uji: ${d.ageInMonths.toStringAsFixed(1)} Bulan${d.usedCorrectedAge ? " (Koreksi)" : ""}',
+                _clean('Usia Uji: ${d.ageInMonths.toStringAsFixed(1)} Bulan${d.usedCorrectedAge ? " (Koreksi)" : ""}'),
                 style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800),
               ),
             ],
           ),
+          pw.SizedBox(height: 6),
+          pw.Text(
+            _clean('Rincian Hasil per Sektor Perkembangan:'),
+            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900),
+          ),
+          pw.SizedBox(height: 3),
+          if (d.sectorSummaries.isNotEmpty) ...[
+            ...d.sectorSummaries.map(
+              (s) {
+                final devAgeText = s.developmentalAgeMonths != null
+                    ? '. Capaian usia perkembangan: ${s.developmentalAgeMonths!.toStringAsFixed(1)} Bulan'
+                    : '';
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.only(left: 4, bottom: 2),
+                  child: _bulletItem(
+                    _clean('${s.sectorLabel}: ${s.narrative}$devAgeText'),
+                    fontSize: 8.5,
+                    color: (s.delays > 0 || s.cautions > 0) ? PdfColors.red900 : PdfColors.black,
+                    bulletColor: (s.delays > 0 || s.cautions > 0) ? PdfColors.red700 : PdfColors.teal700,
+                  ),
+                );
+              },
+            ),
+          ] else ...[
+            pw.Text(
+              _clean('Total Caution: ${d.cautionsCount} | Total Delay: ${d.delaysCount}'),
+              style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900),
+            ),
+          ],
+          if (hasBehaviorNotes) ...[
+            pw.SizedBox(height: 4),
+            pw.Text(
+              _clean('Observasi Perilaku:'),
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.grey900),
+            ),
+            pw.SizedBox(height: 2),
+            if (d.behaviorNotes != null && d.behaviorNotes!.isNotEmpty)
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(left: 4, bottom: 1),
+                child: _bulletItem(
+                  _clean('Perilaku khusus: ${d.behaviorNotes}'),
+                  fontSize: 8.5,
+                  color: PdfColors.grey900,
+                ),
+              ),
+            if (d.fearNotes != null && d.fearNotes!.isNotEmpty)
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(left: 4, bottom: 1),
+                child: _bulletItem(
+                  _clean('Ketakutan / Kecemasan: ${d.fearNotes}'),
+                  fontSize: 8.5,
+                  color: PdfColors.grey900,
+                ),
+              ),
+            if (d.environmentResponseNotes != null && d.environmentResponseNotes!.isNotEmpty)
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(left: 4, bottom: 1),
+                child: _bulletItem(
+                  _clean('Respon sekeliling: ${d.environmentResponseNotes}'),
+                  fontSize: 8.5,
+                  color: PdfColors.grey900,
+                ),
+              ),
+          ],
           pw.SizedBox(height: 4),
           pw.Text(
-            'Rincian: ${d.cautionsCount} Caution (Peringatan) | ${d.delaysCount} Delay (Keterlambatan)',
-            style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey900),
-          ),
-          pw.SizedBox(height: 2),
-          pw.Text(
-            'Rekomendasi: ${d.recommendation}',
+            _clean('Rekomendasi: ${d.recommendation}'),
             style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey800),
           ),
         ],
@@ -1686,6 +1789,10 @@ class PdfReportService {
     bool includeScreenings = true,
     bool includeVision = true,
     bool includeCars = true,
+    bool includeDenver = true,
+    bool includeFenton = true,
+    bool includeCdc = true,
+    bool includeNutrition = true,
     bool includeStimulation = true,
   }) {
     final refs = <String>[];
@@ -1693,17 +1800,17 @@ class PdfReportService {
       refs.add('Kementerian Kesehatan RI. Permenkes No. 2 Tahun 2020 tentang Standar Antropometri Anak. Jakarta: Kemenkes RI; 2020.');
       refs.add('WHO. WHO Child Growth Standards: Length/height, weight, & BMI-for-age. Geneva: World Health Organization; 2006.');
     }
-    if (data.cdc != null || (includeGrowth && data.growthOutOfRange)) {
+    if ((includeCdc && data.cdc != null) || (includeGrowth && data.growthOutOfRange)) {
       refs.add('CDC. 2000 CDC Growth Charts for the United States: Methods & Development. Vital Health Stat 11. 2002.');
       refs.add('Waterlow JC. Classification and definition of protein-calorie malnutrition. Br Med J. 1972;3(5826):566-569.');
     }
-    if (data.fenton != null) {
+    if (includeFenton && data.fenton != null) {
       refs.add('Fenton TR, Kim JH. A systematic review & meta-analysis to revise the Fenton growth chart for preterm infants. BMC Pediatr. 2013;13:59.');
     }
     if (includeKpsp && data.kpsp != null) {
       refs.add('Kementerian Kesehatan RI. Pedoman Pelaksanaan Stimulasi, Deteksi & Intervensi Dini Tumbuh Kembang Anak (SDIDTK). Jakarta: Kemenkes RI; 2022.');
     }
-    if (data.denver != null) {
+    if (includeDenver && data.denver != null) {
       refs.add('Frankenburg WK, Dodds J, Archer P, et al. Denver II Screening Manual. Denver: Denver Developmental Materials; 1990.');
     }
     if (includeScreenings && data.screenings.isNotEmpty) {
@@ -1715,7 +1822,7 @@ class PdfReportService {
     if (includeVision && data.vision != null) {
       refs.add('Kementerian Kesehatan RI. Tes Daya Lihat (TDL) - Pedoman SDIDTK. Jakarta: Kemenkes RI; 2016.');
     }
-    if (data.nutrition != null) {
+    if (includeNutrition && data.nutrition != null) {
       refs.add('UKK Nutrisi & Penyakit Metabolik IDAI. Rekomendasi Praktik Pemberian Makan Berbasis Bukti. Jakarta: IDAI; 2023.');
     }
     return refs;

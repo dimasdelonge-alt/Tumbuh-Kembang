@@ -11,12 +11,14 @@ class DenverChartPainter extends CustomPainter {
   final double ageInMonths;
   final bool usedCorrectedAge;
   final Map<String, DenverItemEvaluation> answers;
+  final List<double> previousAgeLines;
 
   DenverChartPainter({
     required this.image,
     required this.ageInMonths,
     required this.usedCorrectedAge,
     required this.answers,
+    this.previousAgeLines = const [],
   });
 
   /// Mengonversi Usia (Bulan 0 - 72) ke rasio X (0.0 - 1.0) di dalam kotak grafik
@@ -75,7 +77,57 @@ class DenverChartPainter extends CustomPainter {
     final double boxTop = size.height * 0.070;
     final double boxBottom = size.height * 0.950;
 
-    // 2. Hitung posisi X Garis Usia
+    // 1.5 Gambar Garis-Garis Usia Tes Sebelumnya (Beda Warna: Biru / Teal)
+    final prevLineColors = [
+      Colors.blue.shade700,
+      Colors.teal.shade700,
+      Colors.indigo.shade700,
+      Colors.purple.shade700,
+    ];
+
+    for (int i = 0; i < previousAgeLines.length; i++) {
+      final prevAge = previousAgeLines[i];
+      final double prevRatioX = calculateAgeRatioX(prevAge);
+      final double prevLineX = boxLeft + (prevRatioX * boxWidth);
+      final color = prevLineColors[i % prevLineColors.length];
+
+      final prevPaint = Paint()
+        ..color = color
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+
+      // Draw dashed line
+      double startY = boxTop;
+      while (startY < boxBottom) {
+        canvas.drawLine(
+          Offset(prevLineX, startY),
+          Offset(prevLineX, (startY + 6).clamp(boxTop, boxBottom)),
+          prevPaint,
+        );
+        startY += 10;
+      }
+
+      // Label untuk garis sebelumnya
+      final prevTextSpan = TextSpan(
+        text: ' ${prevAge.toStringAsFixed(1)}b ',
+        style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+      );
+      final prevTextPainter = TextPainter(text: prevTextSpan, textDirection: TextDirection.ltr);
+      prevTextPainter.layout();
+      final double pWidth = prevTextPainter.width + 6;
+      final double pHeight = prevTextPainter.height + 2;
+      double pLeft = prevLineX - (pWidth / 2);
+      if (pLeft < boxLeft) pLeft = boxLeft;
+
+      final pRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(pLeft, boxTop - pHeight - 2, pWidth, pHeight),
+        const Radius.circular(3),
+      );
+      canvas.drawRRect(pRect, Paint()..color = color);
+      prevTextPainter.paint(canvas, Offset(pLeft + 3, boxTop - pHeight));
+    }
+
+    // 2. Hitung posisi X Garis Usia Saat Ini
     final double ageRatioX = calculateAgeRatioX(ageInMonths);
     final double ageLineX = boxLeft + (ageRatioX * boxWidth);
 
@@ -86,7 +138,7 @@ class DenverChartPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     final ageLineShadowPaint = Paint()
-      ..color = Colors.red.withOpacity(0.3)
+      ..color = Colors.red.withValues(alpha: 0.3)
       ..strokeWidth = 6.0
       ..style = PaintingStyle.stroke;
 
@@ -142,6 +194,7 @@ class DenverChartPainter extends CustomPainter {
     return oldDelegate.ageInMonths != ageInMonths ||
         oldDelegate.usedCorrectedAge != usedCorrectedAge ||
         oldDelegate.answers != answers ||
-        oldDelegate.image != image;
+        oldDelegate.image != image ||
+        oldDelegate.previousAgeLines != previousAgeLines;
   }
 }

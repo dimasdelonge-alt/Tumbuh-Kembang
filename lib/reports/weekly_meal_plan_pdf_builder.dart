@@ -449,7 +449,7 @@ class WeeklyMealPlanPdfBuilder {
   }) {
     String formatList(List<FoodExchangeItem> items) {
       if (items.isEmpty) return '-';
-      return items.map((i) => '${i.name} (${i.displayUrt})').join(' • ');
+      return items.map((i) => '${i.name} (${i.displayUrt})').join(' - ');
     }
 
     return pw.Table(

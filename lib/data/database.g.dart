@@ -3658,6 +3658,39 @@ class $DenverResultsTable extends DenverResults
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _behaviorNotesMeta = const VerificationMeta(
+    'behaviorNotes',
+  );
+  @override
+  late final GeneratedColumn<String> behaviorNotes = GeneratedColumn<String>(
+    'behavior_notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fearNotesMeta = const VerificationMeta(
+    'fearNotes',
+  );
+  @override
+  late final GeneratedColumn<String> fearNotes = GeneratedColumn<String>(
+    'fear_notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _environmentResponseNotesMeta =
+      const VerificationMeta('environmentResponseNotes');
+  @override
+  late final GeneratedColumn<String> environmentResponseNotes =
+      GeneratedColumn<String>(
+        'environment_response_notes',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3668,6 +3701,9 @@ class $DenverResultsTable extends DenverResults
     delaysCount,
     globalResult,
     answersJson,
+    behaviorNotes,
+    fearNotes,
+    environmentResponseNotes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3759,6 +3795,30 @@ class $DenverResultsTable extends DenverResults
     } else if (isInserting) {
       context.missing(_answersJsonMeta);
     }
+    if (data.containsKey('behavior_notes')) {
+      context.handle(
+        _behaviorNotesMeta,
+        behaviorNotes.isAcceptableOrUnknown(
+          data['behavior_notes']!,
+          _behaviorNotesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fear_notes')) {
+      context.handle(
+        _fearNotesMeta,
+        fearNotes.isAcceptableOrUnknown(data['fear_notes']!, _fearNotesMeta),
+      );
+    }
+    if (data.containsKey('environment_response_notes')) {
+      context.handle(
+        _environmentResponseNotesMeta,
+        environmentResponseNotes.isAcceptableOrUnknown(
+          data['environment_response_notes']!,
+          _environmentResponseNotesMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3800,6 +3860,18 @@ class $DenverResultsTable extends DenverResults
         DriftSqlType.string,
         data['${effectivePrefix}answers_json'],
       )!,
+      behaviorNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}behavior_notes'],
+      ),
+      fearNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fear_notes'],
+      ),
+      environmentResponseNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}environment_response_notes'],
+      ),
     );
   }
 
@@ -3822,6 +3894,15 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
 
   /// JSON map jawaban per itemId ('P', 'F', 'R', 'NO').
   final String answersJson;
+
+  /// Catatan observasi perilaku khusus anak saat tes.
+  final String? behaviorNotes;
+
+  /// Catatan ketakutan anak.
+  final String? fearNotes;
+
+  /// Catatan respon anak terhadap sekeliling.
+  final String? environmentResponseNotes;
   const DenverResult({
     required this.id,
     required this.examinationId,
@@ -3831,6 +3912,9 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
     required this.delaysCount,
     required this.globalResult,
     required this.answersJson,
+    this.behaviorNotes,
+    this.fearNotes,
+    this.environmentResponseNotes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3843,6 +3927,17 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
     map['delays_count'] = Variable<int>(delaysCount);
     map['global_result'] = Variable<String>(globalResult);
     map['answers_json'] = Variable<String>(answersJson);
+    if (!nullToAbsent || behaviorNotes != null) {
+      map['behavior_notes'] = Variable<String>(behaviorNotes);
+    }
+    if (!nullToAbsent || fearNotes != null) {
+      map['fear_notes'] = Variable<String>(fearNotes);
+    }
+    if (!nullToAbsent || environmentResponseNotes != null) {
+      map['environment_response_notes'] = Variable<String>(
+        environmentResponseNotes,
+      );
+    }
     return map;
   }
 
@@ -3856,6 +3951,15 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
       delaysCount: Value(delaysCount),
       globalResult: Value(globalResult),
       answersJson: Value(answersJson),
+      behaviorNotes: behaviorNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(behaviorNotes),
+      fearNotes: fearNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fearNotes),
+      environmentResponseNotes: environmentResponseNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(environmentResponseNotes),
     );
   }
 
@@ -3873,6 +3977,11 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
       delaysCount: serializer.fromJson<int>(json['delaysCount']),
       globalResult: serializer.fromJson<String>(json['globalResult']),
       answersJson: serializer.fromJson<String>(json['answersJson']),
+      behaviorNotes: serializer.fromJson<String?>(json['behaviorNotes']),
+      fearNotes: serializer.fromJson<String?>(json['fearNotes']),
+      environmentResponseNotes: serializer.fromJson<String?>(
+        json['environmentResponseNotes'],
+      ),
     );
   }
   @override
@@ -3887,6 +3996,11 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
       'delaysCount': serializer.toJson<int>(delaysCount),
       'globalResult': serializer.toJson<String>(globalResult),
       'answersJson': serializer.toJson<String>(answersJson),
+      'behaviorNotes': serializer.toJson<String?>(behaviorNotes),
+      'fearNotes': serializer.toJson<String?>(fearNotes),
+      'environmentResponseNotes': serializer.toJson<String?>(
+        environmentResponseNotes,
+      ),
     };
   }
 
@@ -3899,6 +4013,9 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
     int? delaysCount,
     String? globalResult,
     String? answersJson,
+    Value<String?> behaviorNotes = const Value.absent(),
+    Value<String?> fearNotes = const Value.absent(),
+    Value<String?> environmentResponseNotes = const Value.absent(),
   }) => DenverResult(
     id: id ?? this.id,
     examinationId: examinationId ?? this.examinationId,
@@ -3908,6 +4025,13 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
     delaysCount: delaysCount ?? this.delaysCount,
     globalResult: globalResult ?? this.globalResult,
     answersJson: answersJson ?? this.answersJson,
+    behaviorNotes: behaviorNotes.present
+        ? behaviorNotes.value
+        : this.behaviorNotes,
+    fearNotes: fearNotes.present ? fearNotes.value : this.fearNotes,
+    environmentResponseNotes: environmentResponseNotes.present
+        ? environmentResponseNotes.value
+        : this.environmentResponseNotes,
   );
   DenverResult copyWithCompanion(DenverResultsCompanion data) {
     return DenverResult(
@@ -3933,6 +4057,13 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
       answersJson: data.answersJson.present
           ? data.answersJson.value
           : this.answersJson,
+      behaviorNotes: data.behaviorNotes.present
+          ? data.behaviorNotes.value
+          : this.behaviorNotes,
+      fearNotes: data.fearNotes.present ? data.fearNotes.value : this.fearNotes,
+      environmentResponseNotes: data.environmentResponseNotes.present
+          ? data.environmentResponseNotes.value
+          : this.environmentResponseNotes,
     );
   }
 
@@ -3946,7 +4077,10 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
           ..write('cautionsCount: $cautionsCount, ')
           ..write('delaysCount: $delaysCount, ')
           ..write('globalResult: $globalResult, ')
-          ..write('answersJson: $answersJson')
+          ..write('answersJson: $answersJson, ')
+          ..write('behaviorNotes: $behaviorNotes, ')
+          ..write('fearNotes: $fearNotes, ')
+          ..write('environmentResponseNotes: $environmentResponseNotes')
           ..write(')'))
         .toString();
   }
@@ -3961,6 +4095,9 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
     delaysCount,
     globalResult,
     answersJson,
+    behaviorNotes,
+    fearNotes,
+    environmentResponseNotes,
   );
   @override
   bool operator ==(Object other) =>
@@ -3973,7 +4110,10 @@ class DenverResult extends DataClass implements Insertable<DenverResult> {
           other.cautionsCount == this.cautionsCount &&
           other.delaysCount == this.delaysCount &&
           other.globalResult == this.globalResult &&
-          other.answersJson == this.answersJson);
+          other.answersJson == this.answersJson &&
+          other.behaviorNotes == this.behaviorNotes &&
+          other.fearNotes == this.fearNotes &&
+          other.environmentResponseNotes == this.environmentResponseNotes);
 }
 
 class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
@@ -3985,6 +4125,9 @@ class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
   final Value<int> delaysCount;
   final Value<String> globalResult;
   final Value<String> answersJson;
+  final Value<String?> behaviorNotes;
+  final Value<String?> fearNotes;
+  final Value<String?> environmentResponseNotes;
   final Value<int> rowid;
   const DenverResultsCompanion({
     this.id = const Value.absent(),
@@ -3995,6 +4138,9 @@ class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
     this.delaysCount = const Value.absent(),
     this.globalResult = const Value.absent(),
     this.answersJson = const Value.absent(),
+    this.behaviorNotes = const Value.absent(),
+    this.fearNotes = const Value.absent(),
+    this.environmentResponseNotes = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DenverResultsCompanion.insert({
@@ -4006,6 +4152,9 @@ class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
     required int delaysCount,
     required String globalResult,
     required String answersJson,
+    this.behaviorNotes = const Value.absent(),
+    this.fearNotes = const Value.absent(),
+    this.environmentResponseNotes = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : examinationId = Value(examinationId),
        ageInMonths = Value(ageInMonths),
@@ -4022,6 +4171,9 @@ class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
     Expression<int>? delaysCount,
     Expression<String>? globalResult,
     Expression<String>? answersJson,
+    Expression<String>? behaviorNotes,
+    Expression<String>? fearNotes,
+    Expression<String>? environmentResponseNotes,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4033,6 +4185,10 @@ class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
       if (delaysCount != null) 'delays_count': delaysCount,
       if (globalResult != null) 'global_result': globalResult,
       if (answersJson != null) 'answers_json': answersJson,
+      if (behaviorNotes != null) 'behavior_notes': behaviorNotes,
+      if (fearNotes != null) 'fear_notes': fearNotes,
+      if (environmentResponseNotes != null)
+        'environment_response_notes': environmentResponseNotes,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4046,6 +4202,9 @@ class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
     Value<int>? delaysCount,
     Value<String>? globalResult,
     Value<String>? answersJson,
+    Value<String?>? behaviorNotes,
+    Value<String?>? fearNotes,
+    Value<String?>? environmentResponseNotes,
     Value<int>? rowid,
   }) {
     return DenverResultsCompanion(
@@ -4057,6 +4216,10 @@ class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
       delaysCount: delaysCount ?? this.delaysCount,
       globalResult: globalResult ?? this.globalResult,
       answersJson: answersJson ?? this.answersJson,
+      behaviorNotes: behaviorNotes ?? this.behaviorNotes,
+      fearNotes: fearNotes ?? this.fearNotes,
+      environmentResponseNotes:
+          environmentResponseNotes ?? this.environmentResponseNotes,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4088,6 +4251,17 @@ class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
     if (answersJson.present) {
       map['answers_json'] = Variable<String>(answersJson.value);
     }
+    if (behaviorNotes.present) {
+      map['behavior_notes'] = Variable<String>(behaviorNotes.value);
+    }
+    if (fearNotes.present) {
+      map['fear_notes'] = Variable<String>(fearNotes.value);
+    }
+    if (environmentResponseNotes.present) {
+      map['environment_response_notes'] = Variable<String>(
+        environmentResponseNotes.value,
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4105,6 +4279,9 @@ class DenverResultsCompanion extends UpdateCompanion<DenverResult> {
           ..write('delaysCount: $delaysCount, ')
           ..write('globalResult: $globalResult, ')
           ..write('answersJson: $answersJson, ')
+          ..write('behaviorNotes: $behaviorNotes, ')
+          ..write('fearNotes: $fearNotes, ')
+          ..write('environmentResponseNotes: $environmentResponseNotes, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7413,6 +7590,9 @@ typedef $$DenverResultsTableCreateCompanionBuilder =
       required int delaysCount,
       required String globalResult,
       required String answersJson,
+      Value<String?> behaviorNotes,
+      Value<String?> fearNotes,
+      Value<String?> environmentResponseNotes,
       Value<int> rowid,
     });
 typedef $$DenverResultsTableUpdateCompanionBuilder =
@@ -7425,6 +7605,9 @@ typedef $$DenverResultsTableUpdateCompanionBuilder =
       Value<int> delaysCount,
       Value<String> globalResult,
       Value<String> answersJson,
+      Value<String?> behaviorNotes,
+      Value<String?> fearNotes,
+      Value<String?> environmentResponseNotes,
       Value<int> rowid,
     });
 
@@ -7503,6 +7686,21 @@ class $$DenverResultsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get behaviorNotes => $composableBuilder(
+    column: $table.behaviorNotes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fearNotes => $composableBuilder(
+    column: $table.fearNotes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get environmentResponseNotes => $composableBuilder(
+    column: $table.environmentResponseNotes,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$ExaminationsTableFilterComposer get examinationId {
     final $$ExaminationsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -7568,6 +7766,21 @@ class $$DenverResultsTableOrderingComposer
 
   ColumnOrderings<String> get answersJson => $composableBuilder(
     column: $table.answersJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get behaviorNotes => $composableBuilder(
+    column: $table.behaviorNotes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fearNotes => $composableBuilder(
+    column: $table.fearNotes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get environmentResponseNotes => $composableBuilder(
+    column: $table.environmentResponseNotes,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7637,6 +7850,19 @@ class $$DenverResultsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get behaviorNotes => $composableBuilder(
+    column: $table.behaviorNotes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get fearNotes =>
+      $composableBuilder(column: $table.fearNotes, builder: (column) => column);
+
+  GeneratedColumn<String> get environmentResponseNotes => $composableBuilder(
+    column: $table.environmentResponseNotes,
+    builder: (column) => column,
+  );
+
   $$ExaminationsTableAnnotationComposer get examinationId {
     final $$ExaminationsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -7697,6 +7923,9 @@ class $$DenverResultsTableTableManager
                 Value<int> delaysCount = const Value.absent(),
                 Value<String> globalResult = const Value.absent(),
                 Value<String> answersJson = const Value.absent(),
+                Value<String?> behaviorNotes = const Value.absent(),
+                Value<String?> fearNotes = const Value.absent(),
+                Value<String?> environmentResponseNotes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DenverResultsCompanion(
                 id: id,
@@ -7707,6 +7936,9 @@ class $$DenverResultsTableTableManager
                 delaysCount: delaysCount,
                 globalResult: globalResult,
                 answersJson: answersJson,
+                behaviorNotes: behaviorNotes,
+                fearNotes: fearNotes,
+                environmentResponseNotes: environmentResponseNotes,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7719,6 +7951,9 @@ class $$DenverResultsTableTableManager
                 required int delaysCount,
                 required String globalResult,
                 required String answersJson,
+                Value<String?> behaviorNotes = const Value.absent(),
+                Value<String?> fearNotes = const Value.absent(),
+                Value<String?> environmentResponseNotes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DenverResultsCompanion.insert(
                 id: id,
@@ -7729,6 +7964,9 @@ class $$DenverResultsTableTableManager
                 delaysCount: delaysCount,
                 globalResult: globalResult,
                 answersJson: answersJson,
+                behaviorNotes: behaviorNotes,
+                fearNotes: fearNotes,
+                environmentResponseNotes: environmentResponseNotes,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

@@ -1,4 +1,6 @@
 import 'dart:convert';
+import '../modules/denver/denver_calculator.dart';
+import '../modules/denver/denver_model.dart';
 import '../modules/kpsp/kpsp_answers_parser.dart';
 
 import '../core/age_calculator.dart';
@@ -148,6 +150,23 @@ class ReportCars {
   });
 }
 
+/// Ringkasan status Denver II per 4 sektor perkembangan.
+class ReportDenverSectorSummary {
+  final String sectorLabel;
+  final int delays;
+  final int cautions;
+  final String narrative;
+  final double? developmentalAgeMonths;
+
+  ReportDenverSectorSummary({
+    required this.sectorLabel,
+    required this.delays,
+    required this.cautions,
+    required this.narrative,
+    this.developmentalAgeMonths,
+  });
+}
+
 /// Ringkasan hasil Denver II untuk laporan.
 class ReportDenver {
   final double ageInMonths;
@@ -156,6 +175,11 @@ class ReportDenver {
   final int delaysCount;
   final String globalResultLabel;
   final String recommendation;
+  final List<ReportDenverSectorSummary> sectorSummaries;
+  final int testNumber;
+  final String? behaviorNotes;
+  final String? fearNotes;
+  final String? environmentResponseNotes;
 
   ReportDenver({
     required this.ageInMonths,
@@ -164,6 +188,11 @@ class ReportDenver {
     required this.delaysCount,
     required this.globalResultLabel,
     required this.recommendation,
+    this.sectorSummaries = const [],
+    this.testNumber = 1,
+    this.behaviorNotes,
+    this.fearNotes,
+    this.environmentResponseNotes,
   });
 }
 
@@ -538,6 +567,63 @@ class ReportBuilder {
         rec = 'Terdapat penolakan pada item kritis. Ulangi skrining pada kesempatan berikutnya.';
       }
 
+      int testNumber = 1;
+      try {
+        final history = await repo.denverHistory(patient.id);
+        for (int i = 0; i < history.length; i++) {
+          if (history[i].exam.id == exam.id) {
+            testNumber = i + 1;
+            break;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error calculating denver test number: $e');
+      }
+
+      final sectorSummaries = <ReportDenverSectorSummary>[];
+      try {
+        final Map<String, dynamic> jsonMap = jsonDecode(d.answersJson) as Map<String, dynamic>;
+        final Map<String, DenverItemEvaluation> answersMap = {};
+        jsonMap.forEach((key, val) {
+          switch (val) {
+            case 'P': answersMap[key] = DenverItemEvaluation.pass; break;
+            case 'F': answersMap[key] = DenverItemEvaluation.fail; break;
+            case 'R': answersMap[key] = DenverItemEvaluation.refusal; break;
+            case 'NO': answersMap[key] = DenverItemEvaluation.noOpportunity; break;
+          }
+        });
+
+        final analysis = DenverCalculator.analyze(
+          ageInMonths: d.ageInMonths,
+          usedCorrectedAge: d.usedCorrectedAge,
+          answers: answersMap,
+        );
+
+        for (final sector in DenverSector.values) {
+          final del = analysis.delaysPerSector[sector] ?? 0;
+          final cau = analysis.cautionsPerSector[sector] ?? 0;
+          final devAge = analysis.developmentalAgePerSectorInMonths[sector];
+          String narrative;
+          if (del == 0 && cau == 0) {
+            narrative = 'tidak didapatkan adanya delayed maupun caution (D: 0, C: 0)';
+          } else {
+            final parts = <String>[];
+            if (del > 0) parts.add('$del delayed (D: $del)');
+            if (cau > 0) parts.add('$cau caution (C: $cau)');
+            narrative = 'terdapat ${parts.join(', ')}';
+          }
+          sectorSummaries.add(ReportDenverSectorSummary(
+            sectorLabel: sector.label,
+            delays: del,
+            cautions: cau,
+            narrative: narrative,
+            developmentalAgeMonths: (devAge != null && devAge > 0) ? devAge : null,
+          ));
+        }
+      } catch (e) {
+        debugPrint('Error parsing denver sector summaries: $e');
+      }
+
       denver = ReportDenver(
         ageInMonths: d.ageInMonths,
         usedCorrectedAge: d.usedCorrectedAge,
@@ -545,6 +631,11 @@ class ReportBuilder {
         delaysCount: d.delaysCount,
         globalResultLabel: label,
         recommendation: rec,
+        sectorSummaries: sectorSummaries,
+        testNumber: testNumber,
+        behaviorNotes: d.behaviorNotes,
+        fearNotes: d.fearNotes,
+        environmentResponseNotes: d.environmentResponseNotes,
       );
     }
 

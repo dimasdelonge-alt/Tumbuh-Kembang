@@ -37,21 +37,48 @@ class _DenverScreenState extends State<DenverScreen>
 
   final Map<String, DenverItemEvaluation> _answers = {};
   bool _isSaving = false;
-  bool _existingRecordFound = false;
+
+  late final TextEditingController _behaviorNotesCtrl;
+  late final TextEditingController _fearNotesCtrl;
+  late final TextEditingController _envResponseCtrl;
+  List<double> _previousAgeLines = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
+    _behaviorNotesCtrl = TextEditingController();
+    _fearNotesCtrl = TextEditingController();
+    _envResponseCtrl = TextEditingController();
     _calculateAge();
     _loadChartImage();
     _loadExistingResult();
+    _loadHistory();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _behaviorNotesCtrl.dispose();
+    _fearNotesCtrl.dispose();
+    _envResponseCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    final repo = Provider.of<AppRepository>(context, listen: false);
+    final history = await repo.denverHistory(widget.patient.id);
+    final lines = <double>[];
+    for (final item in history) {
+      if (item.exam.id != widget.examination.id) {
+        lines.add(item.denver.ageInMonths);
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _previousAgeLines = lines;
+      });
+    }
   }
 
   void _calculateAge() {
@@ -94,7 +121,6 @@ class _DenverScreenState extends State<DenverScreen>
         final Map<String, dynamic> jsonMap =
             jsonDecode(existing.answersJson) as Map<String, dynamic>;
         setState(() {
-          _existingRecordFound = true;
           jsonMap.forEach((key, value) {
             switch (value) {
               case 'P':
@@ -111,6 +137,9 @@ class _DenverScreenState extends State<DenverScreen>
                 break;
             }
           });
+          _behaviorNotesCtrl.text = existing.behaviorNotes ?? '';
+          _fearNotesCtrl.text = existing.fearNotes ?? '';
+          _envResponseCtrl.text = existing.environmentResponseNotes ?? '';
         });
       } catch (e) {
         debugPrint('Error loading existing denver result: $e');
@@ -152,6 +181,9 @@ class _DenverScreenState extends State<DenverScreen>
       delaysCount: assessment.delaysCount,
       globalResult: assessment.globalResult.name,
       answersJson: jsonEncode(answersJsonMap),
+      behaviorNotes: _behaviorNotesCtrl.text.trim().isEmpty ? null : _behaviorNotesCtrl.text.trim(),
+      fearNotes: _fearNotesCtrl.text.trim().isEmpty ? null : _fearNotesCtrl.text.trim(),
+      environmentResponseNotes: _envResponseCtrl.text.trim().isEmpty ? null : _envResponseCtrl.text.trim(),
     );
 
     setState(() => _isSaving = false);
@@ -193,6 +225,7 @@ class _DenverScreenState extends State<DenverScreen>
             Tab(text: 'Motorik Halus'),
             Tab(text: 'Bahasa'),
             Tab(text: 'Motorik Kasar'),
+            Tab(icon: Icon(Icons.psychology), text: 'Observasi Perilaku'),
           ],
         ),
       ),
@@ -208,6 +241,7 @@ class _DenverScreenState extends State<DenverScreen>
                 _buildSectorListTab(DenverSector.fineMotorAdaptive),
                 _buildSectorListTab(DenverSector.language),
                 _buildSectorListTab(DenverSector.grossMotor),
+                _buildBehaviorNotesTab(),
               ],
             ),
           ),
@@ -296,6 +330,7 @@ class _DenverScreenState extends State<DenverScreen>
                     ageInMonths: _ageInMonths,
                     usedCorrectedAge: _usedCorrectedAge,
                     answers: _answers,
+                    previousAgeLines: _previousAgeLines,
                   ),
                 ),
               ),
@@ -358,7 +393,7 @@ class _DenverScreenState extends State<DenverScreen>
           child: ListView.separated(
             padding: const EdgeInsets.all(12),
             itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final item = items[index];
 
@@ -512,7 +547,7 @@ class _DenverScreenState extends State<DenverScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? color : color.withOpacity(0.1),
+          color: isSelected ? color : color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: color, width: isSelected ? 2 : 1),
         ),
@@ -576,6 +611,63 @@ class _DenverScreenState extends State<DenverScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBehaviorNotesTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Observasi Perilaku Khusus Saat Pengujian',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0148A0),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Catat respon dan perilaku anak selama pemeriksaan Denver II (opsional).',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _behaviorNotesCtrl,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Perilaku Khusus / Menonjol',
+              hintText: 'Contoh: Hiperaktif, sulit konsentrasi, kooperatif',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.person_search),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _fearNotesCtrl,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Ketakutan / Kecemasan',
+              hintText: 'Contoh: Takut dokter/orang asing, cemas',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.sentiment_very_dissatisfied),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _envResponseCtrl,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Respon Terhadap Sekeliling',
+              hintText: 'Contoh: Responsif terhadap suara, kontak mata baik',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.visibility),
+            ),
+          ),
+        ],
       ),
     );
   }
