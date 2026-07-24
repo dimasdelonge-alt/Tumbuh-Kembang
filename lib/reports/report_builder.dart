@@ -156,14 +156,14 @@ class ReportDenverSectorSummary {
   final int delays;
   final int cautions;
   final String narrative;
-  final double? developmentalAgeMonths;
+  final String? developmentalAgeText;
 
   ReportDenverSectorSummary({
     required this.sectorLabel,
     required this.delays,
     required this.cautions,
     required this.narrative,
-    this.developmentalAgeMonths,
+    this.developmentalAgeText,
   });
 }
 
@@ -603,6 +603,15 @@ class ReportBuilder {
           final del = analysis.delaysPerSector[sector] ?? 0;
           final cau = analysis.cautionsPerSector[sector] ?? 0;
           final devAge = analysis.developmentalAgePerSectorInMonths[sector];
+          final minTestedP50 = analysis.lowestTestedP50PerSector[sector];
+
+          String? devAgeText;
+          if (devAge != null && devAge > 0) {
+            devAgeText = '${devAge.toStringAsFixed(1)} Bulan';
+          } else if (minTestedP50 != null && minTestedP50 < double.infinity) {
+            devAgeText = '< ${minTestedP50.toStringAsFixed(1)} Bulan (Belum Lulus)';
+          }
+
           String narrative;
           if (del == 0 && cau == 0) {
             narrative = 'tidak didapatkan adanya delayed maupun caution (D: 0, C: 0)';
@@ -617,7 +626,7 @@ class ReportBuilder {
             delays: del,
             cautions: cau,
             narrative: narrative,
-            developmentalAgeMonths: (devAge != null && devAge > 0) ? devAge : null,
+            developmentalAgeText: devAgeText,
           ));
         }
       } catch (e) {

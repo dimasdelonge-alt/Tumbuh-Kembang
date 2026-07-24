@@ -1206,8 +1206,8 @@ class PdfReportService {
           if (d.sectorSummaries.isNotEmpty) ...[
             ...d.sectorSummaries.map(
               (s) {
-                final devAgeText = s.developmentalAgeMonths != null
-                    ? '. Capaian usia perkembangan: ${s.developmentalAgeMonths!.toStringAsFixed(1)} Bulan'
+                final devAgeText = s.developmentalAgeText != null
+                    ? '. Capaian usia perkembangan: ${s.developmentalAgeText}'
                     : '';
                 return pw.Padding(
                   padding: const pw.EdgeInsets.only(left: 4, bottom: 2),

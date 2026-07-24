@@ -32,6 +32,7 @@ class DenverAssessmentResult {
   final Map<DenverSector, int> cautionsPerSector;
   final Map<DenverSector, int> delaysPerSector;
   final Map<DenverSector, double> developmentalAgePerSectorInMonths;
+  final Map<DenverSector, double> lowestTestedP50PerSector;
 
   const DenverAssessmentResult({
     required this.ageInMonths,
@@ -44,6 +45,7 @@ class DenverAssessmentResult {
     required this.cautionsPerSector,
     required this.delaysPerSector,
     required this.developmentalAgePerSectorInMonths,
+    required this.lowestTestedP50PerSector,
   });
 }
 
@@ -146,11 +148,22 @@ class DenverCalculator {
       DenverSector.grossMotor: 0.0,
     };
 
+    final Map<DenverSector, double> lowestTestedP50PerSector = {
+      DenverSector.personalSocial: double.infinity,
+      DenverSector.fineMotorAdaptive: double.infinity,
+      DenverSector.language: double.infinity,
+      DenverSector.grossMotor: double.infinity,
+    };
+
     bool refusalOnDelayOrMultipleCaution = false;
 
     answers.forEach((itemId, eval) {
       final item = DenverData.getItemById(itemId);
       if (item == null) return;
+
+      if (item.p50 < (lowestTestedP50PerSector[item.sector] ?? double.infinity)) {
+        lowestTestedP50PerSector[item.sector] = item.p50;
+      }
 
       final status = evaluateItemStatus(
         item: item,
@@ -207,6 +220,7 @@ class DenverCalculator {
       cautionsPerSector: cautionsPerSector,
       delaysPerSector: delaysPerSector,
       developmentalAgePerSectorInMonths: highestPassedAgePerSector,
+      lowestTestedP50PerSector: lowestTestedP50PerSector,
     );
   }
 }

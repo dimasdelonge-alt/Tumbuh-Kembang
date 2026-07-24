@@ -42,6 +42,7 @@ class _DenverScreenState extends State<DenverScreen>
   late final TextEditingController _fearNotesCtrl;
   late final TextEditingController _envResponseCtrl;
   List<double> _previousAgeLines = [];
+  final Map<String, List<({int testNumber, double ageInMonths, DenverItemEvaluation eval})>> _pastItemEvaluations = {};
 
   @override
   void initState() {
@@ -69,14 +70,42 @@ class _DenverScreenState extends State<DenverScreen>
     final repo = Provider.of<AppRepository>(context, listen: false);
     final history = await repo.denverHistory(widget.patient.id);
     final lines = <double>[];
+    final pastEvals = <String, List<({int testNumber, double ageInMonths, DenverItemEvaluation eval})>>{};
+
+    int count = 0;
     for (final item in history) {
+      count++;
       if (item.exam.id != widget.examination.id) {
         lines.add(item.denver.ageInMonths);
+        try {
+          final Map<String, dynamic> jsonMap =
+              jsonDecode(item.denver.answersJson) as Map<String, dynamic>;
+          jsonMap.forEach((itemId, value) {
+            DenverItemEvaluation? eval;
+            switch (value) {
+              case 'P': eval = DenverItemEvaluation.pass; break;
+              case 'F': eval = DenverItemEvaluation.fail; break;
+              case 'R': eval = DenverItemEvaluation.refusal; break;
+              case 'NO': eval = DenverItemEvaluation.noOpportunity; break;
+            }
+            if (eval != null) {
+              pastEvals.putIfAbsent(itemId, () => []).add((
+                testNumber: count,
+                ageInMonths: item.denver.ageInMonths,
+                eval: eval,
+              ));
+            }
+          });
+        } catch (e) {
+          debugPrint('Error parsing past denver answers json: $e');
+        }
       }
     }
     if (mounted) {
       setState(() {
         _previousAgeLines = lines;
+        _pastItemEvaluations.clear();
+        _pastItemEvaluations.addAll(pastEvals);
       });
     }
   }
@@ -331,6 +360,7 @@ class _DenverScreenState extends State<DenverScreen>
                     usedCorrectedAge: _usedCorrectedAge,
                     answers: _answers,
                     previousAgeLines: _previousAgeLines,
+                    pastItemEvaluations: _pastItemEvaluations,
                   ),
                 ),
               ),
@@ -468,6 +498,66 @@ class _DenverScreenState extends State<DenverScreen>
                     if (status != null) _buildStatusChip(status),
                   ],
                 ),
+                if (_pastItemEvaluations[item.id] != null && _pastItemEvaluations[item.id]!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.blue.shade200, width: 0.8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.history, size: 14, color: Colors.blue.shade800),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Riwayat Tes Lalu: ',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                        ),
+                        Expanded(
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: _pastItemEvaluations[item.id]!.map((e) {
+                              Color badgeBg;
+                              Color badgeFg;
+                              switch (e.eval) {
+                                case DenverItemEvaluation.pass:
+                                  badgeBg = Colors.green.shade100;
+                                  badgeFg = Colors.green.shade900;
+                                  break;
+                                case DenverItemEvaluation.fail:
+                                  badgeBg = Colors.red.shade100;
+                                  badgeFg = Colors.red.shade900;
+                                  break;
+                                case DenverItemEvaluation.refusal:
+                                  badgeBg = Colors.orange.shade100;
+                                  badgeFg = Colors.orange.shade900;
+                                  break;
+                                case DenverItemEvaluation.noOpportunity:
+                                  badgeBg = Colors.grey.shade200;
+                                  badgeFg = Colors.grey.shade800;
+                                  break;
+                              }
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: badgeBg,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Tes #${e.testNumber} (${e.ageInMonths.toStringAsFixed(1)}b): ${e.eval.code}',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: badgeFg),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,

@@ -12,6 +12,7 @@ class DenverChartPainter extends CustomPainter {
   final bool usedCorrectedAge;
   final Map<String, DenverItemEvaluation> answers;
   final List<double> previousAgeLines;
+  final Map<String, List<({int testNumber, double ageInMonths, DenverItemEvaluation eval})>> pastItemEvaluations;
 
   DenverChartPainter({
     required this.image,
@@ -19,6 +20,7 @@ class DenverChartPainter extends CustomPainter {
     required this.usedCorrectedAge,
     required this.answers,
     this.previousAgeLines = const [],
+    this.pastItemEvaluations = const {},
   });
 
   /// Mengonversi Usia (Bulan 0 - 72) ke rasio X (0.0 - 1.0) di dalam kotak grafik
@@ -195,6 +197,7 @@ class DenverChartPainter extends CustomPainter {
         oldDelegate.usedCorrectedAge != usedCorrectedAge ||
         oldDelegate.answers != answers ||
         oldDelegate.image != image ||
-        oldDelegate.previousAgeLines != previousAgeLines;
+        oldDelegate.previousAgeLines != previousAgeLines ||
+        oldDelegate.pastItemEvaluations != pastItemEvaluations;
   }
 }
