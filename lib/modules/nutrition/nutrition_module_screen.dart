@@ -27,7 +27,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
 
   final _weightController = TextEditingController(text: '10.0');
   final _heightController = TextEditingController(text: '75.0');
-  final _idealWeightController = TextEditingController(text: '9.5');
+  final _idealWeightController = TextEditingController(text: '7.5');
   final _noteController = TextEditingController();
 
   String _sex = 'L';
@@ -45,11 +45,23 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
 
+    _syncIdealWeight();
+
     if (widget.initialPatient != null) {
       _selectedPatient = widget.initialPatient;
       _selectedPatientId = widget.initialPatient!.id;
       _loadPatientData(widget.initialPatient!);
     }
+  }
+
+  void _syncIdealWeight() {
+    final h = double.tryParse(_heightController.text) ?? 75.0;
+    final bbi = PediatricNutritionCalculator.calculateIdealWeight(
+      heightCm: h,
+      sex: _sex,
+      ageMonths: _ageMonths,
+    );
+    _idealWeightController.text = bbi.toStringAsFixed(1);
   }
 
   void _loadPatientData(Patient p) {
@@ -69,7 +81,10 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
           if (g != null && mounted) {
             setState(() {
               if (g.weightKg != null) _weightController.text = g.weightKg.toString();
-              if (g.heightCm != null) _heightController.text = g.heightCm.toString();
+              if (g.heightCm != null) {
+                _heightController.text = g.heightCm.toString();
+                _syncIdealWeight();
+              }
             });
           }
         });
@@ -92,7 +107,12 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
     final repo = context.read<AppRepository>();
     final weight = double.tryParse(_weightController.text) ?? 10.0;
     final height = double.tryParse(_heightController.text) ?? 75.0;
-    final idealWeight = double.tryParse(_idealWeightController.text) ?? weight;
+    final idealWeight = double.tryParse(_idealWeightController.text) ??
+        PediatricNutritionCalculator.calculateIdealWeight(
+          heightCm: height,
+          sex: _sex,
+          ageMonths: _ageMonths,
+        );
 
     final nutResult = PediatricNutritionCalculator.calculate(
       weightKg: weight,
@@ -242,7 +262,11 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                             isDense: true,
                             border: OutlineInputBorder(),
                           ),
-                          onChanged: (_) => setState(() {}),
+                          onChanged: (_) {
+                            setState(() {
+                              _syncIdealWeight();
+                            });
+                          },
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -259,7 +283,12 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                             DropdownMenuItem(value: 'P', child: Text('Perempuan')),
                           ],
                           onChanged: (v) {
-                            if (v != null) setState(() => _sex = v);
+                            if (v != null) {
+                              setState(() {
+                                _sex = v;
+                                _syncIdealWeight();
+                              });
+                            }
                           },
                         ),
                       ),
@@ -275,7 +304,10 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                           max: 60.0,
                           divisions: 59,
                           label: '${_ageMonths.round()} bln',
-                          onChanged: (v) => setState(() => _ageMonths = v),
+                          onChanged: (v) => setState(() {
+                            _ageMonths = v;
+                            _syncIdealWeight();
+                          }),
                         ),
                       ),
                       Text(
@@ -339,11 +371,16 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Kebutuhan Gizi Harian (AAP Handbook 2011)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.teal)),
+                const Text(
+                  'Kebutuhan Gizi Harian (RDA × BB Ideal - Standar IDAI / AAP)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.teal),
+                ),
                 const Divider(),
-                _resultRow('Kebutuhan Energi (EER WHO)', '${nutResult.eerKcal.round()} kcal/hari', isBold: true),
-                _resultRow('Kebutuhan Protein Harian', '${nutResult.proteinGrams.toStringAsFixed(1)} g/hari (${nutResult.proteinRdaPerKg} g/kg)'),
+                _resultRow('Kebutuhan Energi (RDA × BBI)', '${nutResult.eerKcal.round()} kcal/hari (${nutResult.energyRdaPerKg.round()} kcal/kg)', isBold: true),
+                _resultRow('Kebutuhan Protein Harian', '${nutResult.proteinGrams.toStringAsFixed(1)} g/hari (${nutResult.proteinRdaPerKg} g/kg BBI)'),
                 _resultRow('Kebutuhan Cairan (Holliday-Segar)', '${nutResult.fluidMl.round()} mL/hari'),
+                _resultRow('Berat Badan Ideal (BBI)', nutResult.idealWeightLabel),
+                _resultRow('Usia Tinggi (Height Age)', nutResult.heightAgeLabel),
               ],
             ),
           ),

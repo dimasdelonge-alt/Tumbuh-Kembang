@@ -1,5 +1,9 @@
 import 'dart:math';
 
+import '../growth/cdc_growth_data.dart';
+import '../growth/waterlow_calculator.dart';
+import '../growth/who_growth_data.dart';
+
 /// Alias untuk kompatibilitas backward
 typedef NutritionCalculator = PediatricNutritionCalculator;
 typedef NutritionRequirement = NutritionCalculationResult;
@@ -33,18 +37,22 @@ class SupplementInfo {
   const SupplementInfo({required this.dose, required this.notes});
 }
 
-/// Kelas hasil kalkulasi gizi klinis pediatrik.
+/// Kelas hasil kalkulasi gizi klinis pediatrik (Asuhan Nutrisi Pediatrik IDAI / AAP / Permenkes).
 class NutritionCalculationResult {
   final double weightKg;
   final double heightCm;
   final double ageMonths;
   final String sex;
   final double? idealWeightKg;
+  final double heightAgeMonths;
 
-  /// Basal Metabolic Rate (BMR) / EER WHO Equation (kcal/hari)
+  /// Kebutuhan Energi Harian (RDA Kalori at Height Age x BB Ideal) (kcal/hari)
   final double eerKcal;
 
-  /// Kebutuhan Protein Harian RDA (g/hari)
+  /// RDA Energi per kgBB Ideal (kcal/kg/hari)
+  final double energyRdaPerKg;
+
+  /// Kebutuhan Protein Harian (RDA Protein at Height Age x BB Ideal) (g/hari)
   final double proteinGrams;
   final double proteinRdaPerKg;
 
@@ -62,7 +70,9 @@ class NutritionCalculationResult {
     required this.ageMonths,
     required this.sex,
     this.idealWeightKg,
+    required this.heightAgeMonths,
     required this.eerKcal,
+    required this.energyRdaPerKg,
     required this.proteinGrams,
     required this.proteinRdaPerKg,
     required this.fluidMl,
@@ -77,19 +87,20 @@ class NutritionCalculationResult {
   String get proteinLabel => '${proteinGrams.toStringAsFixed(1)} g/hari';
   String get fluidLabel => '${fluidMl.round()} mL/hari';
   String get idealWeightLabel => '${(idealWeightKg ?? weightKg).toStringAsFixed(1)} kg';
+  String get heightAgeLabel => '${heightAgeMonths.toStringAsFixed(1)} bulan';
   String get interventionAdvice =>
       'Indikasi Gagal Tumbuh / Stunting: Target Catch-Up Growth ${catchUpEnergyKcal?.round() ?? eerKcal.round()} kcal/hari.';
 
-  double get heightAgeMonths => ageMonths;
   double get targetEnergyKcal => catchUpEnergyKcal ?? eerKcal;
   double get targetProteinGram => catchUpProteinGrams ?? proteinGrams;
   double get dailyFluidMl => fluidMl;
 
   AkgEntry get akgEntry {
-    if (ageMonths < 6) return const AkgEntry('0-5 Bulan');
-    if (ageMonths < 12) return const AkgEntry('6-11 Bulan');
-    if (ageMonths < 36) return const AkgEntry('1-3 Tahun');
-    if (ageMonths < 72) return const AkgEntry('4-6 Tahun');
+    final refAge = heightAgeMonths > 0 ? heightAgeMonths : ageMonths;
+    if (refAge < 6) return const AkgEntry('0-5 Bulan');
+    if (refAge < 12) return const AkgEntry('6-11 Bulan');
+    if (refAge < 36) return const AkgEntry('1-3 Tahun');
+    if (refAge < 72) return const AkgEntry('4-6 Tahun');
     return const AkgEntry('Anak Usia Sekolah');
   }
 
@@ -153,9 +164,133 @@ class NutritionCalculationResult {
 }
 
 /// Kalkulator Gizi Klinik Pediatrik berbasis algoritma
-/// AAP / Pediatric Nutrition Handbook: An Algorithmic Approach (2011).
+/// Asuhan Nutrisi Pediatrik (ANP) IDAI & AAP Pediatric Nutrition Handbook:
+/// Target Kalori / Energi = RDA Kalori (Usia Tinggi / Height Age) x BB Ideal (BBI).
+/// Target Protein = RDA Protein (Usia Tinggi / Height Age) x BB Ideal (BBI).
 class PediatricNutritionCalculator {
-  /// Menghitung EER / BMR berbasis Persamaan WHO per kelompok usia & jenis kelamin.
+  /// Menghitung Usia Tinggi (Height Age) dalam bulan berdasarkan standar WHO / CDC.
+  static double calculateHeightAge({
+    required double heightCm,
+    required String sex,
+    num? ageMonths,
+  }) {
+    if (heightCm <= 0) return (ageMonths?.toDouble() ?? 12.0);
+
+    // 1. Coba dari tabel WHO length/height for age jika tersedia
+    final who = WhoGrowthData.instance;
+    final whoHa = who.heightAgeMonths(sex: sex, lengthHeightCm: heightCm);
+    if (whoHa != null && whoHa > 0) {
+      return whoHa;
+    }
+
+    // 2. Gunakan CDC 2000 untuk tinggi anak yang lebih besar (>5 thn) atau fallback
+    final isMale = sex.toUpperCase() == 'L';
+    final statureTable = isMale ? CdcGrowthData.statureBoys : CdcGrowthData.statureGirls;
+    if (heightCm < statureTable.first.value) {
+      // Fallback interpolasi 0-24 bulan (lahir ~49.5cm s/d 24 bln ~85.7cm)
+      final birthHeight = isMale ? 49.9 : 49.1;
+      if (heightCm <= birthHeight) return 0.0;
+      final t = (heightCm - birthHeight) / (statureTable.first.value - birthHeight);
+      return (t * 24.0).clamp(0.0, 24.0);
+    } else if (heightCm >= statureTable.last.value) {
+      return statureTable.last.key;
+    } else {
+      for (int i = 0; i < statureTable.length - 1; i++) {
+        final p1 = statureTable[i];
+        final p2 = statureTable[i + 1];
+        if (heightCm >= p1.value && heightCm <= p2.value) {
+          if ((p2.value - p1.value).abs() < 1e-6) return p1.key;
+          final t = (heightCm - p1.value) / (p2.value - p1.value);
+          return p1.key + t * (p2.key - p1.key);
+        }
+      }
+    }
+
+    return (ageMonths?.toDouble() ?? 12.0);
+  }
+
+  /// Menghitung Berat Badan Ideal (BB Ideal / BBI / Median BB/TB) dalam kg.
+  static double calculateIdealWeight({
+    required double heightCm,
+    required String sex,
+    num? ageMonths,
+  }) {
+    if (heightCm <= 0) return 10.0;
+    final age = ageMonths?.toDouble();
+
+    // 1. Coba dari tabel WHO BB/TB (0-60 bulan / panjang 45-120cm)
+    if (age == null || age <= 60.0 || heightCm <= 120.0) {
+      final who = WhoGrowthData.instance;
+      final whoIdeal = who.medianWeightForLength(
+        sex: sex,
+        lengthHeightCm: heightCm,
+        measuredLying: heightCm < 85.0,
+      );
+      if (whoIdeal != null && whoIdeal > 0) {
+        return whoIdeal;
+      }
+    }
+
+    // 2. Fallback untuk tinggi < 85 cm bila aset WHO belum dimuat
+    if (heightCm < 85.7) {
+      final isMale = sex.toUpperCase() == 'L';
+      final birthWeight = isMale ? 3.3 : 3.2;
+      final weight24m = isMale ? 12.2 : 11.5;
+      final birthHeight = isMale ? 49.9 : 49.1;
+      final height24m = isMale ? 86.4 : 85.7;
+      if (heightCm <= birthHeight) return birthWeight;
+      final t = (heightCm - birthHeight) / (height24m - birthHeight);
+      return (birthWeight + t * (weight24m - birthWeight)).clamp(birthWeight, weight24m);
+    }
+
+    // 3. Gunakan metode Waterlow CDC 2000
+    final waterlow = WaterlowCalculator.calculate(
+      weightKg: 10.0,
+      heightCm: heightCm,
+      sex: sex,
+      ageMonths: age?.round(),
+    );
+    return waterlow.idealWeightKg;
+  }
+
+  /// Menghitung RDA Kalori per kg BB Ideal berdasarkan Usia Tinggi (Permenkes 28/2019 & AAP).
+  static double getRdaEnergyPerKg(double heightAgeMonths, [String sex = 'L']) {
+    final isBoy = sex.toUpperCase() == 'L';
+    if (heightAgeMonths < 6.0) {
+      return 100.0;
+    } else if (heightAgeMonths < 12.0) {
+      return 95.0;
+    } else if (heightAgeMonths < 48.0) { // 1-3 tahun (12-47 bulan)
+      return 100.0;
+    } else if (heightAgeMonths < 84.0) { // 4-6 tahun (48-83 bulan)
+      return 80.0;
+    } else if (heightAgeMonths < 120.0) { // 7-9 tahun (84-119 bulan)
+      return 65.0;
+    } else if (heightAgeMonths < 156.0) { // 10-12 tahun
+      return isBoy ? 55.0 : 50.0;
+    } else if (heightAgeMonths < 192.0) { // 13-15 tahun
+      return isBoy ? 50.0 : 45.0;
+    } else { // 16-18 tahun
+      return isBoy ? 45.0 : 40.0;
+    }
+  }
+
+  /// Menghitung Protein RDA per kg BB Ideal berdasarkan Usia Tinggi (AKG 2019 / AAP).
+  static double getProteinRdaPerKg(double heightAgeMonths) {
+    if (heightAgeMonths < 6.0) {
+      return 1.5;
+    } else if (heightAgeMonths < 12.0) {
+      return 1.5;
+    } else if (heightAgeMonths < 48.0) { // 1-3 tahun
+      return 1.5;
+    } else if (heightAgeMonths < 120.0) { // 4-9 tahun
+      return 1.2;
+    } else { // 10-18 tahun
+      return 1.0;
+    }
+  }
+
+  /// Menghitung BMR / Basal Metabolic Rate berbasis Persamaan Schofield / WHO 1985 (hanya basal/istirahat).
   static double calculateEerWho({
     required double weightKg,
     required double ageYears,
@@ -178,48 +313,31 @@ class PediatricNutritionCalculator {
     }
   }
 
-  /// Menghitung Protein RDA per kg berat badan.
-  static double getProteinRdaPerKg(double ageMonths) {
-    if (ageMonths < 6.0) {
-      return 1.52;
-    } else if (ageMonths < 12.0) {
-      return 1.20;
-    } else if (ageMonths < 48.0) { // 1-3 thn (12-47 bln)
-      return 1.05;
-    } else if (ageMonths < 168.0) { // 4-13 thn
-      return 0.95;
-    } else { // 14-18 thn
-      return 0.85;
-    }
-  }
-
   /// Menghitung Kebutuhan Cairan Pemeliharaan (Holliday-Segar).
   static double calculateHollidaySegarFluid(double weightKg) {
     if (weightKg <= 10.0) {
       return weightKg * 100.0;
     } else if (weightKg <= 20.0) {
       return 1000.0 + ((weightKg - 10.0) * 50.0);
-    } else if (weightKg <= 40.0) {
-      return 1500.0 + ((weightKg - 20.0) * 20.0);
     } else {
       return 1500.0 + ((weightKg - 20.0) * 20.0);
     }
   }
 
-  /// Menghitung Kalori Catch-Up Growth untuk Anak Gagal Tumbuh / Stunting / Wasting.
+  /// Menghitung Kalori Catch-Up Growth untuk Anak Gagal Tumbuh / Stunting / Wasting
+  /// Rumus ANP IDAI: (RDA Kalori at HA x BB Ideal) / BB Aktual.
   static double calculateCatchUpEnergy({
     required double idealWeightKg,
     required double actualWeightKg,
-    required double ageYears,
-    required String sex,
+    required double energyRdaPerKg,
   }) {
     if (actualWeightKg <= 0) return 0;
-    final idealEer = calculateEerWho(weightKg: idealWeightKg, ageYears: ageYears, sex: sex);
-    final catchUpVal = (idealEer * idealWeightKg) / actualWeightKg;
-    return max(idealEer * 1.2, catchUpVal);
+    final normalTarget = energyRdaPerKg * idealWeightKg;
+    final catchUpVal = (normalTarget * idealWeightKg) / actualWeightKg;
+    return max(normalTarget * 1.2, catchUpVal);
   }
 
-  /// Kalkulasi lengkap nutrisi klinis.
+  /// Kalkulasi lengkap nutrisi klinis berbasis standar Asuhan Nutrisi Pediatrik IDAI / AAP.
   static NutritionCalculationResult calculate({
     required double weightKg,
     required double heightCm,
@@ -230,21 +348,35 @@ class PediatricNutritionCalculator {
     dynamic whoNutritionStatus,
   }) {
     final months = ageMonths.toDouble();
-    final ageYears = months / 12.0;
-    final eer = calculateEerWho(weightKg: weightKg, ageYears: ageYears, sex: sex);
-    final proteinRda = getProteinRdaPerKg(months);
-    final proteinTotal = weightKg * proteinRda;
-    final fluid = calculateHollidaySegarFluid(weightKg);
+    final ha = calculateHeightAge(heightCm: heightCm, sex: sex, ageMonths: months);
+    final idealW = (idealWeightKg != null && idealWeightKg > 0)
+        ? idealWeightKg
+        : calculateIdealWeight(heightCm: heightCm, sex: sex, ageMonths: months);
+
+    final energyRda = getRdaEnergyPerKg(ha, sex);
+    final proteinRda = getProteinRdaPerKg(ha);
+
+    // Kebutuhan Energi & Protein Standar ANP: RDA at Height Age x BB Ideal
+    final totalEnergy = energyRda * idealW;
+    final totalProtein = proteinRda * idealW;
+    final fluid = calculateHollidaySegarFluid(weightKg > 0 ? weightKg : idealW);
 
     double? catchUpKcal;
     double? catchUpProtein;
 
-    if (isMalnourished && idealWeightKg != null && idealWeightKg > weightKg) {
+    final hasMalnutritionIndication = isMalnourished ||
+        (idealW > weightKg &&
+            whoNutritionStatus != null &&
+            (whoNutritionStatus.toString().contains('wasting') ||
+                whoNutritionStatus.toString().contains('severeWasting') ||
+                whoNutritionStatus.toString().contains('underweight') ||
+                whoNutritionStatus.toString().contains('severeUnderweight')));
+
+    if (hasMalnutritionIndication && idealW > weightKg && weightKg > 0) {
       catchUpKcal = calculateCatchUpEnergy(
-        idealWeightKg: idealWeightKg,
+        idealWeightKg: idealW,
         actualWeightKg: weightKg,
-        ageYears: ageYears,
-        sex: sex,
+        energyRdaPerKg: energyRda,
       );
       catchUpProtein = weightKg * 1.8;
     }
@@ -254,14 +386,16 @@ class PediatricNutritionCalculator {
       heightCm: heightCm,
       ageMonths: months,
       sex: sex,
-      idealWeightKg: idealWeightKg,
-      eerKcal: eer,
-      proteinGrams: proteinTotal,
+      idealWeightKg: idealW,
+      heightAgeMonths: ha,
+      eerKcal: totalEnergy,
+      energyRdaPerKg: energyRda,
+      proteinGrams: totalProtein,
       proteinRdaPerKg: proteinRda,
       fluidMl: fluid,
       catchUpEnergyKcal: catchUpKcal,
       catchUpProteinGrams: catchUpProtein,
-      needsCatchUp: isMalnourished && catchUpKcal != null,
+      needsCatchUp: hasMalnutritionIndication && catchUpKcal != null,
     );
   }
 }

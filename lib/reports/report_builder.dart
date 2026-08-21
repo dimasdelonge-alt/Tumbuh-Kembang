@@ -920,11 +920,29 @@ class ReportBuilder {
           .whereType<NutritionStatus>()
           .firstOrNull;
 
+      final idealWeight = assessment.results
+          .where((r) => r.indicator == GrowthIndicator.weightForLengthHeight)
+          .map((r) => r.z.median)
+          .firstOrNull ?? assessment.waterlow?.idealWeightKg;
+
+      final isMalnourished = whoStatus == NutritionStatus.wasting ||
+          whoStatus == NutritionStatus.severeWasting ||
+          assessment.results.any((r) =>
+              r.indicator == GrowthIndicator.weightForAge &&
+              (r.status == NutritionStatus.underweight ||
+                  r.status == NutritionStatus.severeUnderweight)) ||
+          assessment.results.any((r) =>
+              r.indicator == GrowthIndicator.lengthHeightForAge &&
+              (r.status == NutritionStatus.stunting ||
+                  r.status == NutritionStatus.severeStunting));
+
       final nr = NutritionCalculator.calculate(
         weightKg: g.weightKg!,
         heightCm: g.heightCm!,
         ageMonths: age.chronologicalMonths,
         sex: patient.sex,
+        idealWeightKg: idealWeight,
+        isMalnourished: isMalnourished,
         whoNutritionStatus: whoStatus,
       );
       nutrition = ReportNutrition(

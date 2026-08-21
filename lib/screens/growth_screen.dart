@@ -438,11 +438,29 @@ class _GrowthScreenState extends State<GrowthScreen> {
         .whereType<NutritionStatus>()
         .firstOrNull;
 
+    final idealWeight = _results
+        .where((r) => r.indicator == GrowthIndicator.weightForLengthHeight)
+        .map((r) => r.z.median)
+        .firstOrNull;
+
+    final isMalnourished = whoStatus == NutritionStatus.wasting ||
+        whoStatus == NutritionStatus.severeWasting ||
+        _results.any((r) =>
+            r.indicator == GrowthIndicator.weightForAge &&
+            (r.status == NutritionStatus.underweight ||
+                r.status == NutritionStatus.severeUnderweight)) ||
+        _results.any((r) =>
+            r.indicator == GrowthIndicator.lengthHeightForAge &&
+            (r.status == NutritionStatus.stunting ||
+                r.status == NutritionStatus.severeStunting));
+
     final nutrition = NutritionCalculator.calculate(
       weightKg: w,
       heightCm: h,
       ageMonths: _age.chronologicalMonths,
       sex: widget.patient.sex,
+      idealWeightKg: idealWeight,
+      isMalnourished: isMalnourished,
       whoNutritionStatus: whoStatus,
     );
 

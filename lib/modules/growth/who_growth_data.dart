@@ -116,4 +116,40 @@ class WhoGrowthData {
     }
     return _ageTable(indicator, sex);
   }
+
+  /// Mengambil berat badan median (kg) pada panjang/tinggi tertentu (P50 BB/TB).
+  double? medianWeightForLength({
+    required String sex,
+    required double lengthHeightCm,
+    bool? measuredLying,
+  }) {
+    final lying = measuredLying ?? (lengthHeightCm < 85.0);
+    final table = _wflTable(sex, lying: lying);
+    if (table == null || table.isEmpty) return null;
+    final lms = ZScoreCalculator.interpolate(table, lengthHeightCm);
+    return lms?.m;
+  }
+
+  /// Mencari Usia Tinggi (Height Age) dalam satuan bulan berdasarkan median TB/U WHO.
+  double? heightAgeMonths({
+    required String sex,
+    required double lengthHeightCm,
+  }) {
+    final table = _ageTable(GrowthIndicator.lengthHeightForAge, sex);
+    if (table == null || table.isEmpty) return null;
+    if (lengthHeightCm <= table.first.m) return table.first.x / _daysPerMonth;
+    if (lengthHeightCm >= table.last.m) return table.last.x / _daysPerMonth;
+    for (int i = 0; i < table.length - 1; i++) {
+      final p1 = table[i];
+      final p2 = table[i + 1];
+      if (lengthHeightCm >= p1.m && lengthHeightCm <= p2.m) {
+        if ((p2.m - p1.m).abs() < 1e-6) return p1.x / _daysPerMonth;
+        final t = (lengthHeightCm - p1.m) / (p2.m - p1.m);
+        final days = p1.x + t * (p2.x - p1.x);
+        return days / _daysPerMonth;
+      }
+    }
+    return null;
+  }
 }
+
