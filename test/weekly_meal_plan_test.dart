@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tumbang/modules/nutrition/food_exchange_data.dart';
+import 'package:tumbang/modules/nutrition/nutrition_calculator.dart';
 import 'package:tumbang/modules/nutrition/weekly_meal_plan_generator.dart';
 
 void main() {
@@ -141,6 +142,31 @@ void main() {
       expect(allText, contains('Tempe'));
       expect(allText, contains('Wortel'));
       expect(allText, contains('Pisang'));
+    });
+
+    test('Weekly Meal Plan uses Catch-Up Growth calories as primary benchmark when indicated', () {
+      final nutResultCatchUp = PediatricNutritionCalculator.calculate(
+        weightKg: 7.0,
+        heightCm: 75.0,
+        ageMonths: 12.0,
+        sex: 'L',
+        idealWeightKg: 9.5,
+        isMalnourished: true,
+      );
+
+      expect(nutResultCatchUp.needsCatchUp, isTrue);
+      expect(nutResultCatchUp.catchUpEnergyKcal, isNotNull);
+      expect(nutResultCatchUp.targetEnergyKcal, equals(nutResultCatchUp.catchUpEnergyKcal));
+
+      final plan = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 12.0,
+        nutResult: nutResultCatchUp,
+      );
+
+      expect(plan.length, equals(7));
+      expect(plan[0].theme, contains('Kejar Tumbuh'));
+      expect(plan[0].theme, contains('${nutResultCatchUp.targetEnergyKcal.round()} kcal'));
+      expect(plan[0].sessions[0].description, contains('kejar tumbuh'));
     });
   });
 }

@@ -1,4 +1,5 @@
 import 'food_exchange_data.dart';
+import 'nutrition_calculator.dart';
 
 /// Item menu satu sesi makan (Pagi, Selingan, Siang, Selingan, Malam, Susu).
 class DailyMealSession {
@@ -43,6 +44,7 @@ class WeeklyMealPlanGenerator {
     List<FoodExchangeItem>? selectedPlantProteins,
     List<FoodExchangeItem>? selectedVeggies,
     List<FoodExchangeItem>? selectedFruits,
+    NutritionCalculationResult? nutResult,
   }) {
     final carbs = (selectedCarbs != null && selectedCarbs.isNotEmpty)
         ? selectedCarbs
@@ -147,7 +149,11 @@ class WeeklyMealPlanGenerator {
       final vegName = currentVeg.name;
       final fruitName = currentFruit.name;
 
-      final theme = 'Variasi $animalName & $plantName ($carbName & Sayur $vegName)';
+      final isCatchUp = nutResult?.needsCatchUp ?? false;
+      final targetKcal = nutResult?.targetEnergyKcal.round();
+      final themeSuffix = isCatchUp && targetKcal != null ? ' • Kejar Tumbuh ($targetKcal kcal)' : '';
+
+      final theme = 'Variasi $animalName & $plantName ($carbName & Sayur $vegName)$themeSuffix';
 
       String portionMain;
       String portionSnack;
@@ -159,13 +165,16 @@ class WeeklyMealPlanGenerator {
         textureGuide = 'Tekstur: Lumat Halus / Saring (Puree)';
         portionMain = '2-3 sdm bubur lumat (~25g $carbName + 10-15g $animalName + Sayur $vegName lumat)';
         portionSnack = '2-3 sdt puree buah $fruitName';
+        final fatTip = isCatchUp
+            ? 'Tambahkan 1-2 sdt minyak kelapa/santan/lemak tambahan (densitas energi kejar tumbuh).'
+            : 'Tambahkan 1/2 sdt minyak kelapa/santan.';
 
         sessions = [
           DailyMealSession(
             time: '07:00',
             sessionName: 'Makan Pagi',
             menuName: 'Bubur Lumat $carbName + $animalName',
-            description: '$textureGuide. Bubur saring $carbName dimasak bersama $animalName lumat, $plantName halus, & Sayur $vegName. Tambahkan 1/2 sdt minyak kelapa/santan.',
+            description: '$textureGuide. Bubur saring $carbName dimasak bersama $animalName lumat, $plantName halus, & Sayur $vegName. $fatTip',
             portionUrt: portionMain,
           ),
           DailyMealSession(
@@ -209,13 +218,14 @@ class WeeklyMealPlanGenerator {
         textureGuide = 'Tekstur: Lembik / Cincang Halus (Mashed/Chopped)';
         portionMain = '1/2 mangkuk (125 mL) tim cincang (~50g $carbName + 15-20g $animalName + Sayur $vegName cincang)';
         portionSnack = '1-2 potong finger food buah $fruitName';
+        final extraFatTip = isCatchUp ? ' Tambahkan minyak/santan sehat untuk kejar tumbuh.' : '';
 
         sessions = [
           DailyMealSession(
             time: '07:00',
             sessionName: 'Makan Pagi',
             menuName: 'Nasi Tim Cincang $animalName + Sayur $vegName',
-            description: '$textureGuide. Nasi tim $carbName dengan $animalName cincang halus, $plantName, & irisan Sayur $vegName.',
+            description: '$textureGuide. Nasi tim $carbName dengan $animalName cincang halus, $plantName, & irisan Sayur $vegName.$extraFatTip',
             portionUrt: portionMain,
           ),
           DailyMealSession(
@@ -259,13 +269,14 @@ class WeeklyMealPlanGenerator {
         textureGuide = 'Tekstur: Makanan Keluarga Cincang Kasar / Potong Kecil';
         portionMain = '3/4 mangkuk (175 mL) makanan cincang (~75g $carbName + 30g $animalName + Sayur $vegName)';
         portionSnack = '1 potong buah segar $fruitName';
+        final catchUp12Tip = isCatchUp ? ' Porsi padat energi & kaya protein hewani untuk kejar tumbuh.' : '';
 
         sessions = [
           DailyMealSession(
             time: '07:00',
             sessionName: 'Makan Pagi',
             menuName: 'Menu Pagi: $carbName + $animalName + Sayur $vegName',
-            description: '$textureGuide. $carbName hangat dengan lauk $animalName potong kecil gurih, $plantName kukus/tumis, & sup Sayur $vegName.',
+            description: '$textureGuide. $carbName hangat dengan lauk $animalName potong kecil gurih, $plantName kukus/tumis, & sup Sayur $vegName.$catchUp12Tip',
             portionUrt: portionMain,
           ),
           DailyMealSession(
@@ -309,13 +320,14 @@ class WeeklyMealPlanGenerator {
         textureGuide = 'Tekstur: Makanan Keluarga Utuh';
         portionMain = '1 porsi piring makan ($carbName [${currentCarb.displayUrt}] + $animalName [${currentAnimal.displayUrt}] + Sayur $vegName [${currentVeg.displayUrt}])';
         portionSnack = '1 porsi buah segar $fruitName [${currentFruit.displayUrt}]';
+        final catchUp24Tip = isCatchUp ? ' Menu porsi padat gizi untuk kejar tumbuh.' : '';
 
         sessions = [
           DailyMealSession(
             time: '07:00',
             sessionName: 'Makan Pagi',
             menuName: 'Menu Pagi: $carbName + Lauk $animalName + Sayur $vegName',
-            description: '$textureGuide. Seporsi sarapan $carbName bersama lauk $animalName, $plantName, & Sayur $vegName.',
+            description: '$textureGuide. Seporsi sarapan $carbName bersama lauk $animalName, $plantName, & Sayur $vegName.$catchUp24Tip',
             portionUrt: portionMain,
           ),
           DailyMealSession(

@@ -159,9 +159,9 @@ class WeeklyMealPlanPdfBuilder {
               pw.Container(
                 padding: const pw.EdgeInsets.all(8),
                 decoration: pw.BoxDecoration(
-                  color: PdfColors.grey100,
+                  color: nutResult.needsCatchUp ? PdfColors.orange50 : PdfColors.grey100,
                   borderRadius: pw.BorderRadius.circular(4),
-                  border: pw.Border.all(color: PdfColors.grey300),
+                  border: pw.Border.all(color: nutResult.needsCatchUp ? PdfColors.deepOrange300 : PdfColors.grey300),
                 ),
                 child: pw.Row(
                   children: [
@@ -173,21 +173,44 @@ class WeeklyMealPlanPdfBuilder {
                           pw.Text(_clean('Nama Anak: ${patient.name}'), style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
                           pw.Text(_clean('Usia: ${age.chronologicalLabel} (${patient.sex == 'L' ? 'Laki-laki' : 'Perempuan'})'), style: const pw.TextStyle(fontSize: 8.5)),
                           pw.Text(_clean('Berat: ${nutResult.weightKg} kg  |  Tinggi: ${nutResult.heightCm} cm'), style: const pw.TextStyle(fontSize: 8.5)),
+                          pw.Text(_clean('BB Ideal (BBI): ${nutResult.idealWeightLabel}  |  Usia Tinggi: ${nutResult.heightAgeLabel}'), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800)),
                         ],
                       ),
                     ),
-                    pw.Container(width: 1, height: 35, color: PdfColors.grey400),
+                    pw.Container(width: 1, height: 42, color: nutResult.needsCatchUp ? PdfColors.deepOrange200 : PdfColors.grey400),
                     pw.SizedBox(width: 8),
                     pw.Expanded(
                       flex: 5,
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text(_clean('Target Kalori: ${nutResult.eerKcal.round()} kcal/hari'), style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
-                          pw.Text(_clean('Target Protein: ${nutResult.proteinGrams.toStringAsFixed(1)} g/hari'), style: const pw.TextStyle(fontSize: 8.5)),
-                          pw.Text(_clean('Cairan Pemeliharaan: ${nutResult.fluidMl.round()} mL/hari'), style: const pw.TextStyle(fontSize: 8.5)),
-                          if (nutResult.needsCatchUp)
-                            pw.Text(_clean('Catch-up Growth: ${nutResult.catchUpEnergyKcal?.round()} kcal/hari'), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.deepOrange900)),
+                          if (nutResult.needsCatchUp) ...[
+                            pw.Text(
+                              _clean('Patokan Kalori: ${nutResult.targetEnergyKcal.round()} kcal/hari (Catch-Up Growth)'),
+                              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.deepOrange900),
+                            ),
+                            pw.Text(
+                              _clean('Patokan Protein: ${nutResult.targetProteinGram.toStringAsFixed(1)} g/hari (Kejar Tumbuh)'),
+                              style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.deepOrange800),
+                            ),
+                            pw.Text(
+                              _clean('RDA Standar: ${nutResult.eerKcal.round()} kcal | Cairan: ${nutResult.fluidMl.round()} mL'),
+                              style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700),
+                            ),
+                          ] else ...[
+                            pw.Text(
+                              _clean('Target Kalori: ${nutResult.eerKcal.round()} kcal/hari (RDA x BBI)'),
+                              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+                            ),
+                            pw.Text(
+                              _clean('Target Protein: ${nutResult.proteinGrams.toStringAsFixed(1)} g/hari'),
+                              style: const pw.TextStyle(fontSize: 8.5),
+                            ),
+                            pw.Text(
+                              _clean('Cairan Pemeliharaan: ${nutResult.fluidMl.round()} mL/hari'),
+                              style: const pw.TextStyle(fontSize: 8.5),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -293,18 +316,29 @@ class WeeklyMealPlanPdfBuilder {
               pw.Container(
                 padding: const pw.EdgeInsets.all(6),
                 decoration: pw.BoxDecoration(
-                  color: PdfColors.teal50,
+                  color: nutResult.needsCatchUp ? PdfColors.deepOrange50 : PdfColors.teal50,
                   borderRadius: pw.BorderRadius.circular(3),
-                  border: pw.Border.all(color: PdfColors.teal200, width: 0.5),
+                  border: pw.Border.all(color: nutResult.needsCatchUp ? PdfColors.deepOrange200 : PdfColors.teal200, width: 0.5),
                 ),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text(_clean('PRINSIP ATURAN PEMBERIAN MAKAN (FEEDING RULES)'), style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
+                    pw.Text(
+                      _clean(nutResult.needsCatchUp
+                          ? 'PRINSIP PEMBERIAN MAKAN CATCH-UP GROWTH (KEJAR TUMBUH)'
+                          : 'PRINSIP ATURAN PEMBERIAN MAKAN (FEEDING RULES)'),
+                      style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: nutResult.needsCatchUp ? PdfColors.deepOrange900 : PdfColors.teal900),
+                    ),
                     pw.SizedBox(height: 2),
-                    pw.Text(_clean('1. Jadwal Terstruktur: Berikan makanan utama & selingan pada jam teratur (jarak 2-3 jam).'), style: const pw.TextStyle(fontSize: 7)),
-                    pw.Text(_clean('2. Utamakan Protein Hewani (telur/hati/daging/ikan) di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
-                    pw.Text(_clean('3. Lingkungan Menyenangkan: Makan bersama di meja makan tanpa TV/HP, max 30 menit.'), style: const pw.TextStyle(fontSize: 7)),
+                    if (nutResult.needsCatchUp) ...[
+                      pw.Text(_clean('1. Patokan Target Kejar Tumbuh: Berikan ${nutResult.targetEnergyKcal.round()} kcal/hari & Protein ${nutResult.targetProteinGram.toStringAsFixed(1)} g/hari.'), style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.deepOrange900)),
+                      pw.Text(_clean('2. Densitas Energi Tinggi: Tambahkan 1-2 sdt minyak sehat/santan/mentega di setiap porsi makan utama.'), style: const pw.TextStyle(fontSize: 7)),
+                      pw.Text(_clean('3. Jadwal Terstruktur & Protein Hewani: Utamakan porsi penuh lauk hewani di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
+                    ] else ...[
+                      pw.Text(_clean('1. Jadwal Terstruktur: Berikan makanan utama & selingan pada jam teratur (jarak 2-3 jam).'), style: const pw.TextStyle(fontSize: 7)),
+                      pw.Text(_clean('2. Utamakan Protein Hewani (telur/hati/daging/ikan) di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
+                      pw.Text(_clean('3. Lingkungan Menyenangkan: Makan bersama di meja makan tanpa TV/HP, max 30 menit.'), style: const pw.TextStyle(fontSize: 7)),
+                    ],
                     if (customNote != null && customNote.isNotEmpty) ...[
                       pw.SizedBox(height: 2),
                       pw.Text(_clean('Catatan Dokter: $customNote'), style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),

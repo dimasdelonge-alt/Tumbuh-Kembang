@@ -103,9 +103,9 @@ class MealPlanPdfBuilder {
               pw.Container(
                 padding: const pw.EdgeInsets.all(8),
                 decoration: pw.BoxDecoration(
-                  color: PdfColors.grey100,
+                  color: nutResult.needsCatchUp ? PdfColors.orange50 : PdfColors.grey100,
                   borderRadius: pw.BorderRadius.circular(4),
-                  border: pw.Border.all(color: PdfColors.grey300),
+                  border: pw.Border.all(color: nutResult.needsCatchUp ? PdfColors.deepOrange300 : PdfColors.grey300),
                 ),
                 child: pw.Row(
                   children: [
@@ -126,39 +126,56 @@ class MealPlanPdfBuilder {
                             _clean('Berat: ${nutResult.weightKg} kg  |  Tinggi: ${nutResult.heightCm} cm'),
                             style: const pw.TextStyle(fontSize: 9),
                           ),
+                          pw.Text(
+                            _clean('BB Ideal (BBI): ${nutResult.idealWeightLabel}  |  Usia Tinggi: ${nutResult.heightAgeLabel}'),
+                            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey800),
+                          ),
                         ],
                       ),
                     ),
-                    pw.Container(width: 1, height: 35, color: PdfColors.grey400),
+                    pw.Container(width: 1, height: 42, color: nutResult.needsCatchUp ? PdfColors.deepOrange200 : PdfColors.grey400),
                     pw.SizedBox(width: 8),
                     pw.Expanded(
                       flex: 5,
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text(
-                            _clean('Target Kalori: ${nutResult.eerKcal.round()} kcal/hari'),
-                            style: pw.TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: pw.FontWeight.bold,
-                                color: PdfColors.teal900),
-                          ),
-                          pw.Text(
-                            _clean('Target Protein: ${nutResult.proteinGrams.toStringAsFixed(1)} g/hari'),
-                            style: const pw.TextStyle(fontSize: 9),
-                          ),
-                          pw.Text(
-                            _clean('Kebutuhan Cairan: ${nutResult.fluidMl.round()} mL/hari'),
-                            style: const pw.TextStyle(fontSize: 9),
-                          ),
-                          if (nutResult.needsCatchUp)
+                          if (nutResult.needsCatchUp) ...[
                             pw.Text(
-                              _clean('Catch-up Growth: ${nutResult.catchUpEnergyKcal?.round()} kcal/hari'),
+                              _clean('Patokan Kalori: ${nutResult.targetEnergyKcal.round()} kcal/hari (Catch-Up Growth)'),
                               style: pw.TextStyle(
-                                  fontSize: 8.5,
+                                  fontSize: 9.5,
                                   fontWeight: pw.FontWeight.bold,
                                   color: PdfColors.deepOrange900),
                             ),
+                            pw.Text(
+                              _clean('Patokan Protein: ${nutResult.targetProteinGram.toStringAsFixed(1)} g/hari (Kejar Tumbuh)'),
+                              style: pw.TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.deepOrange800),
+                            ),
+                            pw.Text(
+                              _clean('RDA Standar: ${nutResult.eerKcal.round()} kcal | Cairan: ${nutResult.fluidMl.round()} mL'),
+                              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                            ),
+                          ] else ...[
+                            pw.Text(
+                              _clean('Target Kalori: ${nutResult.eerKcal.round()} kcal/hari'),
+                              style: pw.TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.teal900),
+                            ),
+                            pw.Text(
+                              _clean('Target Protein: ${nutResult.proteinGrams.toStringAsFixed(1)} g/hari'),
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                            pw.Text(
+                              _clean('Kebutuhan Cairan: ${nutResult.fluidMl.round()} mL/hari'),
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -252,37 +269,62 @@ class MealPlanPdfBuilder {
               pw.Container(
                 padding: const pw.EdgeInsets.all(5),
                 decoration: pw.BoxDecoration(
-                  color: PdfColors.teal50,
+                  color: nutResult.needsCatchUp ? PdfColors.deepOrange50 : PdfColors.teal50,
                   borderRadius: pw.BorderRadius.circular(3),
-                  border: pw.Border.all(color: PdfColors.teal200, width: 0.5),
+                  border: pw.Border.all(color: nutResult.needsCatchUp ? PdfColors.deepOrange200 : PdfColors.teal200, width: 0.5),
                 ),
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text(
-                      _clean('3. PRINSIP ATURAN PEMBERIAN MAKAN (FEEDING RULES)'),
-                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+                      _clean(nutResult.needsCatchUp
+                          ? '3. PRINSIP PEMBERIAN MAKAN CATCH-UP GROWTH (KEJAR TUMBUH)'
+                          : '3. PRINSIP ATURAN PEMBERIAN MAKAN (FEEDING RULES)'),
+                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: nutResult.needsCatchUp ? PdfColors.deepOrange900 : PdfColors.teal900),
                     ),
                     pw.SizedBox(height: 2),
-                    ...MealPlanRepository.feedingRules.take(4).map(
-                      (rule) => pw.Padding(
+                    if (nutResult.needsCatchUp) ...[
+                      pw.Padding(
                         padding: const pw.EdgeInsets.only(bottom: 1),
-                        child: pw.Row(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            pw.Container(
-                              width: 3,
-                              height: 3,
-                              margin: const pw.EdgeInsets.only(top: 2.5, right: 4),
-                              decoration: const pw.BoxDecoration(color: PdfColors.teal700, shape: pw.BoxShape.circle),
-                            ),
-                            pw.Expanded(
-                              child: pw.Text(_clean(rule), style: const pw.TextStyle(fontSize: 6.5)),
-                            ),
-                          ],
+                        child: pw.Text(
+                          _clean('• Patokan Target Kejar Tumbuh: ${nutResult.targetEnergyKcal.round()} kcal/hari & Protein ${nutResult.targetProteinGram.toStringAsFixed(1)} g/hari.'),
+                          style: pw.TextStyle(fontSize: 6.5, fontWeight: pw.FontWeight.bold, color: PdfColors.deepOrange900),
                         ),
                       ),
-                    ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.only(bottom: 1),
+                        child: pw.Text(
+                          _clean('• Densitas Kalori Tinggi: Tambahkan 1-2 sdt minyak kelapa/santan/butter di tiap makanan utama.'),
+                          style: const pw.TextStyle(fontSize: 6.5),
+                        ),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.only(bottom: 1),
+                        child: pw.Text(
+                          _clean('• Prioritas Protein Hewani: Berikan lauk hewani porsi penuh di setiap sesi makan utama.'),
+                          style: const pw.TextStyle(fontSize: 6.5),
+                        ),
+                      ),
+                    ] else
+                      ...MealPlanRepository.feedingRules.take(4).map(
+                        (rule) => pw.Padding(
+                          padding: const pw.EdgeInsets.only(bottom: 1),
+                          child: pw.Row(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Container(
+                                width: 3,
+                                height: 3,
+                                margin: const pw.EdgeInsets.only(top: 2.5, right: 4),
+                                decoration: const pw.BoxDecoration(color: PdfColors.teal700, shape: pw.BoxShape.circle),
+                              ),
+                              pw.Expanded(
+                                child: pw.Text(_clean(rule), style: const pw.TextStyle(fontSize: 6.5)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     if (customNote != null && customNote.isNotEmpty) ...[
                       pw.SizedBox(height: 2),
                       pw.Text(_clean('Catatan Dokter: $customNote'), style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),

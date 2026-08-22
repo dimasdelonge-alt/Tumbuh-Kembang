@@ -149,6 +149,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
       selectedPlantProteins: selectedPlantProteins.isNotEmpty ? selectedPlantProteins : null,
       selectedVeggies: selectedVeggies.isNotEmpty ? selectedVeggies : null,
       selectedFruits: selectedFruits.isNotEmpty ? selectedFruits : null,
+      nutResult: nutResult,
     );
 
     return Scaffold(
@@ -437,6 +438,68 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
+        // Card Ringkasan Patokan Target Kalori & Protein
+        Card(
+          color: nutResult.needsCatchUp ? Colors.deepOrange.shade50 : Colors.teal.shade50,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: nutResult.needsCatchUp ? Colors.deepOrange.shade300 : Colors.teal.shade300,
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: nutResult.needsCatchUp ? Colors.deepOrange : Colors.teal,
+                  foregroundColor: Colors.white,
+                  child: Icon(nutResult.needsCatchUp ? Icons.trending_up : Icons.restaurant, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        nutResult.needsCatchUp
+                            ? 'Patokan Meal Plan: Catch-Up Growth (Kejar Tumbuh)'
+                            : 'Patokan Meal Plan: Kebutuhan Gizi Standar',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: nutResult.needsCatchUp ? Colors.deepOrange.shade900 : Colors.teal.shade900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        nutResult.needsCatchUp
+                            ? '🎯 Target Kalori: ${nutResult.targetEnergyKcal.round()} kcal/hari | Protein: ${nutResult.targetProteinGram.toStringAsFixed(1)} g/hari (BB Ideal: ${nutResult.idealWeightLabel})'
+                            : '🎯 Target Kalori: ${nutResult.eerKcal.round()} kcal/hari | Protein: ${nutResult.proteinGrams.toStringAsFixed(1)} g/hari (BB Ideal: ${nutResult.idealWeightLabel})',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: nutResult.needsCatchUp ? Colors.deepOrange.shade800 : Colors.teal.shade800,
+                        ),
+                      ),
+                      if (nutResult.needsCatchUp) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'RDA Pemeliharaan Standar: ${nutResult.eerKcal.round()} kcal/hari. Menu difokuskan pada densitas energi tinggi.',
+                          style: TextStyle(fontSize: 10.5, color: Colors.grey.shade700),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
         // Card Pemilihan Penukar Multi-Select (Mode Centang Bahan yang Ada di Rumah)
         Card(
           color: Colors.teal.shade50,
