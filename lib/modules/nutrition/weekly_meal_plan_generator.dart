@@ -83,20 +83,57 @@ class WeeklyMealPlanGenerator {
       });
     }
 
-    // 6+ Bulan: 7 Variasi Menu Terstruktur (Senin s/d Minggu)
-    final dailyThemes = [
-      ('Senin', 'Variasi Daging Ayam & Telur', 'Ayam tanpa kulit & Telur rebus', 'Tahu kukus halus'),
-      ('Selasa', 'Variasi Ikan Kembung & Tempe', 'Daging Ikan Kembung kukus halus', 'Tempe lumat tumis'),
-      ('Rabu', 'Variasi Daging Sapi & Hati Ayam', 'Daging sapi giling & Hati ayam', 'Tahu bacem lunak'),
-      ('Kamis', 'Variasi Ikan Lele / Kakap & Telur Puyuh', 'Ikan Kakap & 2 btr Telur puyuh', 'Tempe kukus santan'),
-      ('Jumat', 'Variasi Daging Ayam & Hati Sapi', 'Daging Ayam & Hati sapi cincang', 'Tahu sutra kukus'),
-      ('Sabtu', 'Variasi Telur Ayam & Daging Sapi', 'Bola daging sapi & Telur dadar', 'Tempe goreng tepung lunak'),
-      ('Minggu', 'Variasi Spesial Ikan & Ayam Santan', 'Ikan segar & Daging ayam gurih', 'Tahu tempe kuah santan'),
+    // Gaya masakan & variasi pengolahan kuliner per hari (Senin s/d Minggu)
+    final cookingStyles = [
+      (
+        'Sup Kaldu Gurih',
+        'kuah kaldu bening gurih',
+        'sup sayur kaldu hangat',
+        'kuah bening segar',
+      ),
+      (
+        'Kukus & Tim Wangi',
+        'tim kukus gurih lembut',
+        'kukus bumbu aromatik',
+        'tim lembut harum',
+      ),
+      (
+        'Masak Gurih Santan Ringan',
+        'kuah santan encer gurih',
+        'tumis santan ringan',
+        'masak kuah santan gurih',
+      ),
+      (
+        'Semur / Bumbu Gurih Manis',
+        'semur bumbu gurih manis lunak',
+        'bumbu semur empuk',
+        'masak kecap gurih manis',
+      ),
+      (
+        'Sup Bola Cincang / Sayur',
+        'bola-bola cincang kuah sayur',
+        'kuah kaldu bola cincang',
+        'sup bola sayur hangat',
+      ),
+      (
+        'Tumis Lembut / Bumbu Gurih',
+        'tumis mentega/minyak kelapa lunak',
+        'masak tumis empuk',
+        'tumis bumbu gurih',
+      ),
+      (
+        'Bumbu Kuning / Soto Bening Segar',
+        'kuah soto bening rempah ringan',
+        'masak bumbu kuning gurih',
+        'kuah kuning segar',
+      ),
     ];
 
+    const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
     return List.generate(7, (index) {
-      final t = dailyThemes[index];
-      final dayName = t.$1;
+      final dayName = days[index];
+      final style = cookingStyles[index % cookingStyles.length];
 
       final currentCarb = carbs[index % carbs.length];
       final currentAnimal = animalProteins[index % animalProteins.length];
@@ -105,92 +142,224 @@ class WeeklyMealPlanGenerator {
       final currentFruit = fruits[index % fruits.length];
 
       final carbName = currentCarb.name;
+      final animalName = currentAnimal.name;
+      final plantName = currentPlant.name;
+      final vegName = currentVeg.name;
+      final fruitName = currentFruit.name;
 
-      final theme = '${t.$2} (${currentCarb.name} & ${currentVeg.name})';
-      final mainDish = 'Menu Utama: $carbName + ${currentAnimal.name} + Sayur ${currentVeg.name}';
-      final animalDetail = '${t.$3} / ${currentAnimal.name}';
-      final plantDetail = '${t.$4} / ${currentPlant.name}';
-      final snackDetail = 'Puree / Potongan Buah ${currentFruit.name}';
+      final theme = 'Variasi $animalName & $plantName ($carbName & Sayur $vegName)';
 
       String portionMain;
       String portionSnack;
       String textureGuide;
+      List<DailyMealSession> sessions;
 
-      if (ageMonths < 6.0) { // < 6 bulan (ASI/Formula Eksklusif)
-        portionMain = 'ASI Eksklusif / Formula (on demand)';
-        portionSnack = 'ASI / Formula';
-        textureGuide = 'Cair (ASI / Susu)';
-      } else if (ageMonths < 9.0) { // 6-8 bulan (Lumat / Puree)
-        portionMain = '2-3 sdm bubur lumat (~25g $carbName + 10-15g ${currentAnimal.name} + Sayur ${currentVeg.name} lumat)';
-        portionSnack = '2-3 sdt puree buah ${currentFruit.name}';
+      if (ageMonths < 9.0) {
+        // 6-8 bulan (Lumat / Puree)
         textureGuide = 'Tekstur: Lumat Halus / Saring (Puree)';
-      } else if (ageMonths < 12.0) { // 9-11 bulan (Cincang / Lembik)
-        portionMain = '1/2 mangkuk (125 mL) tim cincang (~50g $carbName + 15-20g ${currentAnimal.name} + Sayur ${currentVeg.name} cincang)';
-        portionSnack = '1-2 potong finger food buah ${currentFruit.name}';
-        textureGuide = 'Tekstur: Lembik / Cincang Halus (Mashed/Chopped)';
-      } else if (ageMonths < 24.0) { // 12-23 bulan (1-2 Tahun: Makanan Keluarga Cincang)
-        portionMain = '3/4 mangkuk (175 mL) makanan cincang (~75g $carbName + 30g ${currentAnimal.name} + Sayur ${currentVeg.name})';
-        portionSnack = '1 potong buah segar ${currentFruit.name}';
-        textureGuide = 'Tekstur: Makanan Keluarga Cincang Kasar / Potong Kecil';
-      } else { // 24+ bulan (2-5 Tahun: Makanan Keluarga Utuh)
-        portionMain = '1 porsi piring makan ($carbName [${currentCarb.displayUrt}] + ${currentAnimal.name} [${currentAnimal.displayUrt}] + Sayur ${currentVeg.name} [${currentVeg.displayUrt}])';
-        portionSnack = '1 porsi buah segar ${currentFruit.name} [${currentFruit.displayUrt}]';
-        textureGuide = 'Tekstur: Makanan Keluarga Utuh';
-      }
+        portionMain = '2-3 sdm bubur lumat (~25g $carbName + 10-15g $animalName + Sayur $vegName lumat)';
+        portionSnack = '2-3 sdt puree buah $fruitName';
 
-      final isWeaned = ageMonths >= 24.0;
-      final afternoonSnackTitle = isWeaned ? 'Snack Sore Sehat' : 'Snack Sore / ASI';
-      final afternoonSnackDesc = isWeaned ? '$snackDetail atau Susu UHT / Pasturisasi.' : '$snackDetail atau ASI / Susu segar.';
-      final bedtimeTitle = isWeaned ? 'Susu UHT / Pasturisasi' : 'ASI / Susu Malam';
-      final bedtimeDesc = isWeaned ? 'Susu UHT / Pasturisasi / Susu Segar (max 200 mL).' : 'ASI atau Susu UHT / Formula lunak (max 200 mL).';
-
-      return SingleDayMealPlan(
-        dayName: dayName,
-        theme: theme,
-        sessions: [
+        sessions = [
           DailyMealSession(
             time: '07:00',
             sessionName: 'Makan Pagi',
-            menuName: mainDish,
-            description: '$textureGuide. Bahan: $carbName + $animalDetail + $plantDetail + Sayur ${currentVeg.name}. Opsi penukar: ${currentAnimal.name}.',
+            menuName: 'Bubur Lumat $carbName + $animalName',
+            description: '$textureGuide. Bubur saring $carbName dimasak bersama $animalName lumat, $plantName halus, & Sayur $vegName. Tambahkan 1/2 sdt minyak kelapa/santan.',
             portionUrt: portionMain,
           ),
           DailyMealSession(
             time: '09:30',
             sessionName: 'Selingan Pagi',
-            menuName: 'Snack Pagi Buah',
-            description: snackDetail,
+            menuName: 'Puree Buah $fruitName',
+            description: 'Puree lumatan buah segar $fruitName kaya vitamin & serat.',
             portionUrt: portionSnack,
           ),
           DailyMealSession(
             time: '12:00',
             sessionName: 'Makan Siang',
-            menuName: mainDish,
-            description: '$textureGuide. Bahan: $carbName + $animalDetail + ${currentPlant.name} + Sayur ${currentVeg.name}. Kuah bening/santan gurih.',
+            menuName: 'Puree Tim $carbName + $animalName (${style.$1})',
+            description: '$textureGuide. Tim saring $carbName dengan $animalName lumat ${style.$2}, $plantName, & Sayur $vegName.',
             portionUrt: portionMain,
           ),
           DailyMealSession(
             time: '15:30',
             sessionName: 'Selingan Sore',
-            menuName: afternoonSnackTitle,
-            description: afternoonSnackDesc,
+            menuName: 'Selingan Sore / ASI',
+            description: 'Puree buah $fruitName atau ASI / Susu segar.',
             portionUrt: portionSnack,
           ),
           DailyMealSession(
             time: '18:00',
             sessionName: 'Makan Malam',
-            menuName: mainDish,
-            description: '$textureGuide. Bahan: $carbName + $animalDetail + ${currentPlant.name}.',
+            menuName: 'Bubur Halus $carbName + $animalName',
+            description: '$textureGuide. Bubur lembut $carbName dengan olahan $animalName lumat gurih & $plantName kukus halus.',
+            portionUrt: portionMain,
+          ),
+          const DailyMealSession(
+            time: '20:30',
+            sessionName: 'Sebelum Tidur',
+            menuName: 'ASI / Susu Malam',
+            description: 'Menyusu ASI atau susu formula on demand sebelum tidur malam.',
+            portionUrt: 'Sesuai kehendak bayi (on demand)',
+          ),
+        ];
+      } else if (ageMonths < 12.0) {
+        // 9-11 bulan (Cincang / Lembik)
+        textureGuide = 'Tekstur: Lembik / Cincang Halus (Mashed/Chopped)';
+        portionMain = '1/2 mangkuk (125 mL) tim cincang (~50g $carbName + 15-20g $animalName + Sayur $vegName cincang)';
+        portionSnack = '1-2 potong finger food buah $fruitName';
+
+        sessions = [
+          DailyMealSession(
+            time: '07:00',
+            sessionName: 'Makan Pagi',
+            menuName: 'Nasi Tim Cincang $animalName + Sayur $vegName',
+            description: '$textureGuide. Nasi tim $carbName dengan $animalName cincang halus, $plantName, & irisan Sayur $vegName.',
             portionUrt: portionMain,
           ),
           DailyMealSession(
+            time: '09:30',
+            sessionName: 'Selingan Pagi',
+            menuName: 'Finger Food Buah $fruitName',
+            description: 'Potongan buah $fruitName lunak seukuran jari untuk stimulasi motorik & oromotor.',
+            portionUrt: portionSnack,
+          ),
+          DailyMealSession(
+            time: '12:00',
+            sessionName: 'Makan Siang',
+            menuName: 'Tim Gurih $carbName + $animalName (${style.$1})',
+            description: '$textureGuide. Nasi tim $carbName dengan $animalName cincang ${style.$2}, $plantName, & Sayur $vegName cincang.',
+            portionUrt: portionMain,
+          ),
+          DailyMealSession(
+            time: '15:30',
+            sessionName: 'Selingan Sore',
+            menuName: 'Selingan Sore / ASI',
+            description: 'Potongan buah segar $fruitName lunak atau ASI / Susu.',
+            portionUrt: portionSnack,
+          ),
+          DailyMealSession(
+            time: '18:00',
+            sessionName: 'Makan Malam',
+            menuName: 'Nasi Tim Bola/Cincang $animalName',
+            description: '$textureGuide. Nasi tim $carbName dengan cincangan $animalName lembut, $plantName kukus lunak, & Sayur $vegName.',
+            portionUrt: portionMain,
+          ),
+          const DailyMealSession(
             time: '20:30',
             sessionName: 'Sebelum Tidur',
-            menuName: bedtimeTitle,
-            description: bedtimeDesc,
+            menuName: 'ASI / Susu Malam',
+            description: 'ASI atau Susu Formula hangat menjelang tidur malam.',
+            portionUrt: '1 botol/gelas (120-180 mL)',
+          ),
+        ];
+      } else if (ageMonths < 24.0) {
+        // 12-23 bulan (1-2 Tahun: Makanan Keluarga Cincang)
+        textureGuide = 'Tekstur: Makanan Keluarga Cincang Kasar / Potong Kecil';
+        portionMain = '3/4 mangkuk (175 mL) makanan cincang (~75g $carbName + 30g $animalName + Sayur $vegName)';
+        portionSnack = '1 potong buah segar $fruitName';
+
+        sessions = [
+          DailyMealSession(
+            time: '07:00',
+            sessionName: 'Makan Pagi',
+            menuName: 'Menu Pagi: $carbName + $animalName + Sayur $vegName',
+            description: '$textureGuide. $carbName hangat dengan lauk $animalName potong kecil gurih, $plantName kukus/tumis, & sup Sayur $vegName.',
+            portionUrt: portionMain,
+          ),
+          DailyMealSession(
+            time: '09:30',
+            sessionName: 'Selingan Pagi',
+            menuName: 'Snack Pagi: Buah $fruitName',
+            description: 'Potongan buah segar $fruitName kaya vitamin & serat alami.',
+            portionUrt: portionSnack,
+          ),
+          DailyMealSession(
+            time: '12:00',
+            sessionName: 'Makan Siang',
+            menuName: 'Menu Siang: $carbName + $animalName (${style.$1}) + $plantName',
+            description: '$textureGuide. $carbName dengan olahan $animalName ${style.$2}, lauk nabati $plantName, & Sayur $vegName.',
+            portionUrt: portionMain,
+          ),
+          DailyMealSession(
+            time: '15:30',
+            sessionName: 'Selingan Sore',
+            menuName: 'Snack Sore: Buah / Susu',
+            description: 'Potongan buah $fruitName atau Susu UHT / Susu Pertumbuhan.',
+            portionUrt: portionSnack,
+          ),
+          DailyMealSession(
+            time: '18:00',
+            sessionName: 'Makan Malam',
+            menuName: 'Menu Malam: $carbName + $animalName (${style.$4}) + $plantName',
+            description: '$textureGuide. $carbName dengan $animalName empuk potong kecil, $plantName gurih, & Sayur $vegName.',
+            portionUrt: portionMain,
+          ),
+          const DailyMealSession(
+            time: '20:30',
+            sessionName: 'Sebelum Tidur',
+            menuName: 'ASI / Susu Malam',
+            description: 'ASI atau Susu UHT / Pertumbuhan (max 200 mL).',
             portionUrt: '1 gelas (150-200 mL)',
           ),
-        ],
+        ];
+      } else {
+        // 24+ bulan (2-5 Tahun: Makanan Keluarga Utuh)
+        textureGuide = 'Tekstur: Makanan Keluarga Utuh';
+        portionMain = '1 porsi piring makan ($carbName [${currentCarb.displayUrt}] + $animalName [${currentAnimal.displayUrt}] + Sayur $vegName [${currentVeg.displayUrt}])';
+        portionSnack = '1 porsi buah segar $fruitName [${currentFruit.displayUrt}]';
+
+        sessions = [
+          DailyMealSession(
+            time: '07:00',
+            sessionName: 'Makan Pagi',
+            menuName: 'Menu Pagi: $carbName + Lauk $animalName + Sayur $vegName',
+            description: '$textureGuide. Seporsi sarapan $carbName bersama lauk $animalName, $plantName, & Sayur $vegName.',
+            portionUrt: portionMain,
+          ),
+          DailyMealSession(
+            time: '09:30',
+            sessionName: 'Selingan Pagi',
+            menuName: 'Snack Pagi: Buah $fruitName',
+            description: '1 porsi buah segar $fruitName.',
+            portionUrt: portionSnack,
+          ),
+          DailyMealSession(
+            time: '12:00',
+            sessionName: 'Makan Siang',
+            menuName: 'Menu Siang: $carbName + $animalName (${style.$1}) + $plantName',
+            description: '$textureGuide. Makan siang lengkap $carbName dengan $animalName ${style.$2}, lauk $plantName, & olahan Sayur $vegName.',
+            portionUrt: portionMain,
+          ),
+          DailyMealSession(
+            time: '15:30',
+            sessionName: 'Selingan Sore',
+            menuName: 'Snack Sore Sehat',
+            description: 'Potongan buah segar $fruitName atau Susu UHT / Pasturisasi.',
+            portionUrt: portionSnack,
+          ),
+          DailyMealSession(
+            time: '18:00',
+            sessionName: 'Makan Malam',
+            menuName: 'Menu Malam: $carbName + $animalName (${style.$4}) + $plantName',
+            description: '$textureGuide. Makan malam lengkap $carbName dengan lauk hewani $animalName, pendamping $plantName, & Sayur $vegName.',
+            portionUrt: portionMain,
+          ),
+          const DailyMealSession(
+            time: '20:30',
+            sessionName: 'Sebelum Tidur',
+            menuName: 'Susu UHT / Pasturisasi',
+            description: 'Susu UHT / Pasturisasi / Susu Segar (max 200 mL).',
+            portionUrt: '1 gelas (150-200 mL)',
+          ),
+        ];
+      }
+
+      return SingleDayMealPlan(
+        dayName: dayName,
+        theme: theme,
+        sessions: sessions,
       );
     }).toList();
   }

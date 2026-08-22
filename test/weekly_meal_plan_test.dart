@@ -73,5 +73,74 @@ void main() {
       final portion36m = plan36m[0].sessions[0].portionUrt;
       expect(portion36m, contains('1 porsi piring makan'));
     });
+
+    test('Weekly Meal Plan ONLY includes checked/selected animal proteins (e.g. Daging Sapi & Hati Sapi)', () {
+      final beef = FoodExchangeRepository.animalProteinMedFat.firstWhere((i) => i.name == 'Daging Sapi');
+      final beefLiver = FoodExchangeRepository.animalProteinMedFat.firstWhere((i) => i.name == 'Hati Sapi');
+      final rice = FoodExchangeRepository.carbsList.firstWhere((i) => i.name.contains('Nasi'));
+      final tempeh = FoodExchangeRepository.plantProteinList.firstWhere((i) => i.name == 'Tempe');
+      final carrot = FoodExchangeRepository.veggiesList.firstWhere((i) => i.name == 'Wortel');
+      final banana = FoodExchangeRepository.fruitsList.firstWhere((i) => i.name.contains('Pisang'));
+
+      final plan = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 10.0, // 9-11 bulan
+        selectedCarbs: [rice],
+        selectedAnimalProteins: [beef, beefLiver],
+        selectedPlantProteins: [tempeh],
+        selectedVeggies: [carrot],
+        selectedFruits: [banana],
+      );
+
+      expect(plan.length, equals(7));
+
+      // Disallowed words that were previously hardcoded and leaked into output
+      final unselectedMeats = [
+        'Ayam',
+        'Telur',
+        'Ikan',
+        'Puyuh',
+        'Bebek',
+        'Lele',
+        'Kakap',
+        'Kembung',
+        'Hati ayam',
+        'Tahu',
+      ];
+
+      for (final day in plan) {
+        // Check theme
+        for (final meat in unselectedMeats) {
+          expect(
+            day.theme.toLowerCase().contains(meat.toLowerCase()),
+            isFalse,
+            reason: 'Day ${day.dayName} theme "${day.theme}" should not contain unselected "$meat"',
+          );
+        }
+
+        // Check sessions
+        for (final session in day.sessions) {
+          for (final meat in unselectedMeats) {
+            expect(
+              session.menuName.toLowerCase().contains(meat.toLowerCase()),
+              isFalse,
+              reason: 'Day ${day.dayName} session "${session.sessionName}" menuName "${session.menuName}" should not contain unselected "$meat"',
+            );
+            expect(
+              session.description.toLowerCase().contains(meat.toLowerCase()),
+              isFalse,
+              reason: 'Day ${day.dayName} session "${session.sessionName}" description "${session.description}" should not contain unselected "$meat"',
+            );
+          }
+        }
+      }
+
+      // Verify that Daging Sapi and Hati Sapi are present
+      final allText = plan.map((d) => '${d.theme} ${d.sessions.map((s) => '${s.menuName} ${s.description}').join(' ')}').join(' ');
+      expect(allText, contains('Daging Sapi'));
+      expect(allText, contains('Hati Sapi'));
+      expect(allText, contains('Tempe'));
+      expect(allText, contains('Wortel'));
+      expect(allText, contains('Pisang'));
+    });
   });
 }
