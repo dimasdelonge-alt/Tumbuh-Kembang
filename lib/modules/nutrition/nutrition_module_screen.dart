@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/age_calculator.dart';
 import '../../data/database.dart';
@@ -34,11 +35,17 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
   double _ageMonths = 12.0;
   bool _isMalnourished = false;
 
-  final Set<String> _selectedCarbsNames = {'Nasi Beras Giling', 'Kentang', 'Roti Putih'};
-  final Set<String> _selectedAnimalNames = {'Daging Ayam tanpa Kulit', 'Telur Ayam', 'Ikan Segar (Kembung/Mas/Kakap)'};
-  final Set<String> _selectedPlantNames = {'Tempe', 'Tahu'};
-  final Set<String> _selectedVegNames = {'Wortel', 'Bayam', 'Brokoli', 'Labu Siam / Labu Air'};
-  final Set<String> _selectedFruitNames = {'Pisang Ambon / Kepok', 'Alpukat', 'Pepaya'};
+  static const Set<String> _defaultCarbs = {'Nasi Beras Giling', 'Kentang', 'Roti Putih'};
+  static const Set<String> _defaultAnimals = {'Daging Ayam tanpa Kulit', 'Telur Ayam', 'Ikan Segar (Kembung/Mas/Kakap)'};
+  static const Set<String> _defaultPlants = {'Tempe', 'Tahu'};
+  static const Set<String> _defaultVeggies = {'Wortel', 'Bayam', 'Brokoli', 'Labu Siam / Labu Air'};
+  static const Set<String> _defaultFruits = {'Pisang Ambon / Kepok', 'Alpukat', 'Pepaya'};
+
+  Set<String> _selectedCarbsNames = {..._defaultCarbs};
+  Set<String> _selectedAnimalNames = {..._defaultAnimals};
+  Set<String> _selectedPlantNames = {..._defaultPlants};
+  Set<String> _selectedVegNames = {..._defaultVeggies};
+  Set<String> _selectedFruitNames = {..._defaultFruits};
 
   @override
   void initState() {
@@ -46,6 +53,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
     _tabController = TabController(length: 4, vsync: this);
 
     _syncIdealWeight();
+    _loadSavedSelections();
 
     if (widget.initialPatient != null) {
       _selectedPatient = widget.initialPatient;
@@ -90,6 +98,66 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
         });
       }
     });
+  }
+
+  Future<void> _loadSavedSelections() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedCarbs = prefs.getStringList('nutrition_selected_carbs');
+      final savedAnimals = prefs.getStringList('nutrition_selected_animals');
+      final savedPlants = prefs.getStringList('nutrition_selected_plants');
+      final savedVeggies = prefs.getStringList('nutrition_selected_veggies');
+      final savedFruits = prefs.getStringList('nutrition_selected_fruits');
+
+      if (!mounted) return;
+      setState(() {
+        if (savedCarbs != null && savedCarbs.isNotEmpty) {
+          _selectedCarbsNames = savedCarbs.toSet();
+        }
+        if (savedAnimals != null && savedAnimals.isNotEmpty) {
+          _selectedAnimalNames = savedAnimals.toSet();
+        }
+        if (savedPlants != null && savedPlants.isNotEmpty) {
+          _selectedPlantNames = savedPlants.toSet();
+        }
+        if (savedVeggies != null && savedVeggies.isNotEmpty) {
+          _selectedVegNames = savedVeggies.toSet();
+        }
+        if (savedFruits != null && savedFruits.isNotEmpty) {
+          _selectedFruitNames = savedFruits.toSet();
+        }
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _saveSelections() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('nutrition_selected_carbs', _selectedCarbsNames.toList());
+      await prefs.setStringList('nutrition_selected_animals', _selectedAnimalNames.toList());
+      await prefs.setStringList('nutrition_selected_plants', _selectedPlantNames.toList());
+      await prefs.setStringList('nutrition_selected_veggies', _selectedVegNames.toList());
+      await prefs.setStringList('nutrition_selected_fruits', _selectedFruitNames.toList());
+    } catch (_) {}
+  }
+
+  Future<void> _resetDefaultSelections() async {
+    setState(() {
+      _selectedCarbsNames = {..._defaultCarbs};
+      _selectedAnimalNames = {..._defaultAnimals};
+      _selectedPlantNames = {..._defaultPlants};
+      _selectedVegNames = {..._defaultVeggies};
+      _selectedFruitNames = {..._defaultFruits};
+    });
+    await _saveSelections();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pilihan bahan makanan dikembalikan ke default'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -522,13 +590,24 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                     ),
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         visualDensity: VisualDensity.compact,
                         side: BorderSide(color: Colors.teal.shade700),
                       ),
-                      icon: Icon(Icons.swap_horiz, size: 16, color: Colors.teal.shade800),
+                      icon: Icon(Icons.swap_horiz, size: 15, color: Colors.teal.shade800),
                       label: Text('Tabel Penukar', style: TextStyle(fontSize: 11, color: Colors.teal.shade800, fontWeight: FontWeight.bold)),
                       onPressed: () => _showFoodExchangeDialog(context),
+                    ),
+                    const SizedBox(width: 6),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        visualDensity: VisualDensity.compact,
+                        foregroundColor: Colors.grey.shade700,
+                      ),
+                      icon: const Icon(Icons.restart_alt, size: 15),
+                      label: const Text('Reset', style: TextStyle(fontSize: 11)),
+                      onPressed: _resetDefaultSelections,
                     ),
                   ],
                 ),
@@ -562,6 +641,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                             }
                           }
                         });
+                        _saveSelections();
                       },
                     );
                   }).toList(),
@@ -591,6 +671,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                             }
                           }
                         });
+                        _saveSelections();
                       },
                     );
                   }).toList(),
@@ -620,6 +701,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                             }
                           }
                         });
+                        _saveSelections();
                       },
                     );
                   }).toList(),
@@ -648,6 +730,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                             }
                           }
                         });
+                        _saveSelections();
                       },
                     );
                   }).toList(),
@@ -676,6 +759,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                             }
                           }
                         });
+                        _saveSelections();
                       },
                     );
                   }).toList(),
