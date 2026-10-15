@@ -104,37 +104,37 @@ class MealPlanRepository {
           time: '07:00',
           title: 'Makan Pagi (MPASI Lumat)',
           category: 'Utama',
-          recommendation: '2-3 sendok makan bubur lumat kaya protein hewani (telur/hati/daging).',
+          recommendation: '2-3 sendok makan bubur lumat kaya protein hewani (telur/hati/daging/ikan). WHO 2023: wajib pangan hewani setiap hari.',
         ),
         MealScheduleItem(
           time: '09:30',
           title: 'Selingan Pagi / ASI',
           category: 'Selingan',
-          recommendation: 'Puree buah lunak (pisang/alpukat) atau ASI.',
+          recommendation: 'Puree buah lunak segar (pisang/alpukat/pepaya) kaya vitamin atau ASI.',
         ),
         MealScheduleItem(
           time: '12:00',
           title: 'Makan Siang (MPASI Lumat)',
           category: 'Utama',
-          recommendation: '2-3 sendok makan bubur lumat + protein hewani + minyak/santan.',
+          recommendation: '2-3 sendok makan bubur lumat + protein hewani + sayur lumat + 1 sdt minyak/santan sehat.',
         ),
         MealScheduleItem(
           time: '15:30',
           title: 'Selingan Sore / ASI',
           category: 'Selingan',
-          recommendation: 'ASI atau kue lumatan MPASI.',
+          recommendation: 'ASI atau lumatan buah segar/kudapan MPASI sehat bebas gula.',
         ),
         MealScheduleItem(
           time: '18:00',
-          title: 'Makan Malam (Opsional / ASI)',
+          title: 'Makan Malam (MPASI Lumat)',
           category: 'Utama',
-          recommendation: '1-2 sdm bubur lumat atau ASI.',
+          recommendation: '1-2 sdm bubur lumat atau ASI. Terapkan responsive feeding (peka rasa kenyang, tanpa paksaan).',
         ),
         MealScheduleItem(
           time: '20:30',
-          title: 'ASI / Formula Sebelum Tidur',
+          title: 'ASI / Susu Sebelum Tidur',
           category: 'ASI/Susu',
-          recommendation: 'Menjelang tidur malam.',
+          recommendation: 'ASI on demand atau susu formula/susu hewani murni full-fat tanpa pemanis (WHO 2023).',
         ),
       ];
     } else if (ageMonths < 12.0) { // 9-11 bulan
@@ -143,37 +143,37 @@ class MealPlanRepository {
           time: '07:00',
           title: 'Makan Pagi (MPASI Cincang/Lembik)',
           category: 'Utama',
-          recommendation: '1/2 mangkuk (125 mL) bubur tim / nasi tim cincang halus.',
+          recommendation: '1/2 mangkuk (125 mL) bubur tim / nasi tim cincang halus + lauk hewani + sayur.',
         ),
         MealScheduleItem(
           time: '09:30',
           title: 'Selingan Pagi (Finger Food)',
           category: 'Selingan',
-          recommendation: 'Potongan buah lunak / biskuit MPASI / potongan telur rebus.',
+          recommendation: 'Finger food potongan buah lunak / potongan telur rebus untuk stimulasi makan mandiri (WHO 2023).',
         ),
         MealScheduleItem(
           time: '12:00',
           title: 'Makan Siang (MPASI Lembik)',
           category: 'Utama',
-          recommendation: '1/2 mangkuk nasi tim lengkap dengan 1 butir telur/daging cincang.',
+          recommendation: '1/2 mangkuk nasi tim lengkap dengan 1 butir telur / daging cincang / ikan segar.',
         ),
         MealScheduleItem(
           time: '15:30',
           title: 'Selingan Sore / ASI',
           category: 'Selingan',
-          recommendation: 'Buah naga / pepaya / ASI.',
+          recommendation: 'Buah segar (pepaya/pisang/mangga) atau ASI.',
         ),
         MealScheduleItem(
           time: '18:00',
           title: 'Makan Malam (MPASI Lembik)',
           category: 'Utama',
-          recommendation: '1/2 mangkuk nasi tim kaya protein hewani.',
+          recommendation: '1/2 mangkuk nasi tim kaya protein hewani + kuah sayur.',
         ),
         MealScheduleItem(
           time: '20:30',
           title: 'ASI / Susu Sebelum Tidur',
           category: 'ASI/Susu',
-          recommendation: 'Sebelum tidur malam.',
+          recommendation: 'ASI atau susu formula/susu sapi murni full-fat tanpa perisa sebelum tidur.',
         ),
       ];
     } else if (ageMonths < 24.0) { // 12-23 bulan (1-2 thn)
@@ -182,25 +182,25 @@ class MealPlanRepository {
           time: '07:00',
           title: 'Makan Pagi (Makanan Keluarga Cincang)',
           category: 'Utama',
-          recommendation: 'Nasi tim/lunak + lauk protein hewani (ayam/telur/ikan) + sayur.',
+          recommendation: 'Nasi tim/lunak 3/4 mangkuk + lauk hewani (ayam/telur/ikan/daging) + sayur keluarga.',
         ),
         MealScheduleItem(
           time: '09:30',
           title: 'Selingan Pagi',
           category: 'Selingan',
-          recommendation: 'Buah segar, puding susu, atau roti gandum.',
+          recommendation: 'Buah segar potong atau snack sehat bebas gula tambahan (WHO 2023).',
         ),
         MealScheduleItem(
           time: '12:00',
           title: 'Makan Siang (Makanan Keluarga Cincang)',
           category: 'Utama',
-          recommendation: 'Nasi lunak 3/4 mangkuk + lauk hewani + kuah sayur.',
+          recommendation: 'Nasi lunak 3/4 mangkuk + lauk hewani harian + kuah sayur kaya vitamin.',
         ),
         MealScheduleItem(
           time: '15:30',
           title: 'Selingan Sore',
           category: 'Selingan',
-          recommendation: 'Snack sehat (pisang bakar, bola tahu daging, susu uht/ASI).',
+          recommendation: 'Snack sehat (pisang, bola tahu telur, ubi kukus). Hindari biskuit berpemanis/minuman manis.',
         ),
         MealScheduleItem(
           time: '18:00',
@@ -210,9 +210,9 @@ class MealPlanRepository {
         ),
         MealScheduleItem(
           time: '20:30',
-          title: 'Susu / ASI Malam',
+          title: 'Susu Pasteurisasi / ASI Malam',
           category: 'ASI/Susu',
-          recommendation: '1 gelas susu segar / UHT / ASI (max 400 mL/hari).',
+          recommendation: 'Susu sapi pasteurisasi murni / ASI (maks 400 mL/hari). WHO 2023 tidak merekomendasikan formula lanjutan.',
         ),
       ];
     } else { // 24+ bulan (2-5 thn+) - ASI disapih
@@ -257,7 +257,7 @@ class MealPlanRepository {
     }
   }
 
-  /// Panduan Porsi Satter per Kelompok Usia.
+  /// Panduan Porsi Satter per Kelompok Usia (Diselaraskan dengan WHO Guideline 2023).
   static PortionGuide getPortionGuide(double ageMonths) {
     if (ageMonths < 6.0) {
       return const PortionGuide(
@@ -275,33 +275,33 @@ class MealPlanRepository {
         ageGroupLabel: '6 - 8 Bulan',
         textureLabel: 'Lumat / Saring (Smooth Puree)',
         carbs: '2-3 sdm bubur beras/kentang per makan',
-        animalProtein: '1/2 sdm daging cincang / 1/2 telur per makan',
+        animalProtein: '1/2 - 1 sdm daging/hati/ikan cincang atau 1/2 telur (WAJIB setiap hari - WHO 2023)',
         plantProtein: '1 sdt tahu/tempe lumat',
-        veggiesFruit: '1 sdt sayur/buah lumat',
+        veggiesFruit: '1 sdt - 1 sdm sayur/buah lumat harian (WHO 2023)',
         fatAdded: '1/2 - 1 sdt minyak/santan/mentega per porsi',
-        milkFluid: 'ASI diteruskan + air putih secukupnya',
+        milkFluid: 'ASI diteruskan + air putih secukupnya (non-ASI: formula/susu sapi murni)',
       );
     } else if (ageMonths < 12.0) {
       return const PortionGuide(
         ageGroupLabel: '9 - 11 Bulan',
         textureLabel: 'Cincang Halus / Nasi Tim (Mashed & Finger Foods)',
         carbs: '1/2 mangkuk (125 mL) nasi tim / kentang',
-        animalProtein: '1 sdm daging ayam/sapi/ikan atau 1/2-1 butir telur',
+        animalProtein: '1 sdm daging ayam/sapi/ikan atau 1/2-1 butir telur (WAJIB setiap hari - WHO 2023)',
         plantProtein: '1 sdm tempe/tahu cincang',
-        veggiesFruit: '1-2 sdm sayur cincang lunak',
+        veggiesFruit: '1-2 sdm sayur cincang lunak & finger food buah harian',
         fatAdded: '1 sdt minyak/santan per porsi',
-        milkFluid: 'ASI + air putih',
+        milkFluid: 'ASI + air putih (non-ASI: formula/susu sapi murni full-fat)',
       );
     } else if (ageMonths < 36.0) { // 1-3 thn
       return const PortionGuide(
         ageGroupLabel: '1 - 3 Tahun (Toddler)',
         textureLabel: 'Makanan Keluarga (Family Foods)',
         carbs: '2-4 sdm nasi / 1/2 potong roti / 2 sdm pasta',
-        animalProtein: '1-2 sdm daging cincang / 1 butir telur / 1/2 potong ikan',
+        animalProtein: '1-2 sdm daging cincang / 1 butir telur / 1/2 potong ikan (harian)',
         plantProtein: '1-2 sdm potong tahu/tempe',
-        veggiesFruit: '1-2 sdm sayur matang / 1/4 potong buah',
+        veggiesFruit: '1-2 sdm sayur matang / 1/4 potong buah (harian)',
         fatAdded: '1 sdt minyak/butter/santan pada masakan',
-        milkFluid: 'Susu 400-500 mL/hari (max 2 gelas) + Air Putih',
+        milkFluid: 'Susu sapi pasteurisasi 400-500 mL/hari (max 2 gelas) / ASI (WHO: tanpa formula lanjutan) + Air Putih',
       );
     } else { // 3+ thn
       return const PortionGuide(
@@ -317,13 +317,15 @@ class MealPlanRepository {
     }
   }
 
-  /// 5 Aturan Pemberian Makan (Ellyn Satter Feeding Rules).
+  /// Aturan Pemberian Makan Terintegrasi (WHO Guideline 2023 & Ellyn Satter Feeding Rules).
   static const List<String> feedingRules = [
     'Jadwal Terstruktur: Berikan makanan utama & selingan pada jam teratur (jarak 2-3 jam). Jangan membiasakan anak ngemil/minum susu terus-menerus di luar jadwal (grazing).',
-    'Divisi Tanggung Jawab: Orang tua menentukan APA yang disajikan, KAPAN, dan DI MANA. Anak menentukan BERAPA BANYAK yang ingin dimakan.',
+    'Divisi Tanggung Jawab & Responsive Feeding: Orang tua menentukan APA yang disajikan, KAPAN, dan DI MANA. Anak menentukan BERAPA BANYAK yang ingin dimakan tanpa paksaan (WHO 2023).',
     'Lingkungan Menyenangkan: Makan bersama di meja makan tanpa distraksi (matikan TV, HP, dan mainan). Durasi makan maksimal 30 menit.',
-    'Variasi & Protein Hewani: Utamakan protein hewani (telur, hati, ayam, daging, ikan) di setiap jam makan utama untuk mencegah stunting.',
-    'Batasi Minuman Manis: Batasi jus buah manis & susu berlebihan. Susu formula/UHT maksimal 500 mL/hari agar anak tidak kenyang oleh cairan.',
+    'Wajib Protein Hewani Harian (WHO 2023): Sajikan protein hewani bernilai hayati tinggi (telur, hati, ayam, daging, ikan) di setiap hari makan utama untuk mencegah stunting dan anemia.',
+    'Sayur & Buah Harian (WHO 2023): Berikan sayuran dan buah segar setiap hari, terutama yang kaya Vitamin A dan C.',
+    'Bebas Gula Tambahan & Batasi Minuman Manis (WHO 2023): Dilarang memberikan gula tambahan, garam tinggi, minuman manis (SSB), dan pemanis buatan. Jus buah 100% sangat dibatasi.',
+    'Ketentuan Susu Non-ASI (WHO 2023): Dianjurkan susu sapi pasteurisasi murni full-cream atau ASI. WHO tidak merekomendasikan susu formula lanjutan/pertumbuhan 1-3 tahun. Batasi susu maksimal 400-500 mL/hari.',
   ];
 
   /// Resep MPASI Kemenkes RI 2023.

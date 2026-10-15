@@ -140,7 +140,7 @@ class WeeklyMealPlanPdfBuilder {
                           ),
                           pw.SizedBox(height: 2),
                           pw.Text(
-                            _clean('Asuhan Nutrisi Pediatrik & Tabel Matriks Bahan Makanan Penukar Setara'),
+                            _clean('Rujukan Utama: WHO Guideline (2023) & Kemenkes RI | Asuhan Nutrisi Pediatrik'),
                             style: pw.TextStyle(fontSize: 8.5, color: PdfColors.teal50),
                           ),
                         ],
@@ -325,19 +325,21 @@ class WeeklyMealPlanPdfBuilder {
                   children: [
                     pw.Text(
                       _clean(nutResult.needsCatchUp
-                          ? 'PRINSIP PEMBERIAN MAKAN CATCH-UP GROWTH (KEJAR TUMBUH)'
-                          : 'PRINSIP ATURAN PEMBERIAN MAKAN (FEEDING RULES)'),
+                          ? 'PRINSIP PEMBERIAN MAKAN CATCH-UP GROWTH & WHO GUIDELINE 2023'
+                          : 'PRINSIP ATURAN PEMBERIAN MAKAN (WHO GUIDELINE 2023 & FEEDING RULES)'),
                       style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold, color: nutResult.needsCatchUp ? PdfColors.deepOrange900 : PdfColors.teal900),
                     ),
                     pw.SizedBox(height: 2),
                     if (nutResult.needsCatchUp) ...[
                       pw.Text(_clean('1. Patokan Target Kejar Tumbuh: Berikan ${nutResult.targetEnergyKcal.round()} kcal/hari & Protein ${nutResult.targetProteinGram.toStringAsFixed(1)} g/hari.'), style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.deepOrange900)),
                       pw.Text(_clean('2. Densitas Energi Tinggi: Tambahkan 1-2 sdt minyak sehat/santan/mentega di setiap porsi makan utama.'), style: const pw.TextStyle(fontSize: 7)),
-                      pw.Text(_clean('3. Jadwal Terstruktur & Protein Hewani: Utamakan porsi penuh lauk hewani di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
+                      pw.Text(_clean('3. Wajib Protein Hewani Harian (WHO 2023): Berikan porsi penuh lauk hewani kaya zat besi di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
+                      pw.Text(_clean('4. Bebas Gula Tambahan & Minuman Manis: Dilarang memberi minuman manis (SSB), pemanis sintetis, atau garam berlebih.'), style: const pw.TextStyle(fontSize: 7)),
                     ] else ...[
                       pw.Text(_clean('1. Jadwal Terstruktur: Berikan makanan utama & selingan pada jam teratur (jarak 2-3 jam).'), style: const pw.TextStyle(fontSize: 7)),
-                      pw.Text(_clean('2. Utamakan Protein Hewani (telur/hati/daging/ikan) di setiap jam makan utama.'), style: const pw.TextStyle(fontSize: 7)),
-                      pw.Text(_clean('3. Lingkungan Menyenangkan: Makan bersama di meja makan tanpa TV/HP, max 30 menit.'), style: const pw.TextStyle(fontSize: 7)),
+                      pw.Text(_clean('2. Wajib Protein Hewani & Buah/Sayur Harian (WHO 2023): Sajikan lauk hewani (telur/hati/daging/ikan) dan sayur/buah setiap hari.'), style: const pw.TextStyle(fontSize: 7)),
+                      pw.Text(_clean('3. Responsive Feeding (WHO 2023): Peka rasa kenyang/lapar anak, dorong makan mandiri, suasana hangat tanpa paksaan/gadget.'), style: const pw.TextStyle(fontSize: 7)),
+                      pw.Text(_clean('4. Bebas Gula Tambahan & Batasi Susu: Tanpa minuman manis (SSB). Susu hewan murni/ASI (WHO tidak sarankan formula lanjutan).'), style: const pw.TextStyle(fontSize: 7)),
                     ],
                     if (customNote != null && customNote.isNotEmpty) ...[
                       pw.SizedBox(height: 2),
@@ -363,10 +365,10 @@ class WeeklyMealPlanPdfBuilder {
                     pw.Text(_clean('DAFTAR PUSTAKA / REFERENSI'), style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900)),
                     pw.SizedBox(height: 3),
                     pw.Text(_clean('1. UKK Nutrisi & Penyakit Metabolik IDAI. Rekomendasi Praktik Pemberian Makan Berbasis Bukti pd Bayi & Batita di Indonesia. Jakarta: IDAI; 2023.'), style: const pw.TextStyle(fontSize: 6)),
-                    pw.Text(_clean('2. WHO. Complementary Feeding: Family Foods for Breastfed Children. Geneva: WHO; 2000.'), style: const pw.TextStyle(fontSize: 6)),
-                    pw.Text(_clean('3. Kementerian Kesehatan RI. Tabel Komposisi Pangan Indonesia (TKPI). Jakarta: Kemenkes RI; 2017.'), style: const pw.TextStyle(fontSize: 6)),
+                    pw.Text(_clean('2. WHO. Guideline for Complementary Feeding of Infants and Young Children 6-23 Months of Age. Geneva: WHO; 2023.'), style: const pw.TextStyle(fontSize: 6)),
+                    pw.Text(_clean('3. Kementerian Kesehatan RI. Buku Resep Makanan Lokal Balita & Ibu Hamil. Jakarta: Kemenkes RI; 2023.'), style: const pw.TextStyle(fontSize: 6)),
                     pw.Text(_clean('4. UKK Nutrisi & Penyakit Metabolik IDAI. Buku Ajar Nutrisi Pediatrik dan Penyakit Metabolik Jilid I. Jakarta: IDAI; 2011.'), style: const pw.TextStyle(fontSize: 6)),
-                    pw.Text(_clean('5. Almatsier S. Penuntun Diet Anak, Ed. 3. Jakarta: Gramedia Pustaka Utama; 2015.'), style: const pw.TextStyle(fontSize: 6)),
+                    pw.Text(_clean('5. Kementerian Kesehatan RI. Tabel Komposisi Pangan Indonesia (TKPI). Jakarta: Kemenkes RI; 2017.'), style: const pw.TextStyle(fontSize: 6)),
                   ],
                 ),
               ),

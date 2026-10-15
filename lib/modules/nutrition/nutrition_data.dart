@@ -3,10 +3,11 @@ library;
 /// Data statis untuk Modul Pemenuhan Nutrisi (Asuhan Nutrisi Pediatrik).
 ///
 /// Sumber:
+/// - MPASI & Pangan 6–23 Bulan: WHO Guideline for Complementary Feeding of Infants and Young Children 6–23 Months of Age (2023)
+/// - Resep MPASI & Pangan Lokal: Buku Resep Makanan Lokal Balita & Ibu Hamil Kemenkes RI (2023)
 /// - Tabel AKG: Permenkes RI Nomor 28 Tahun 2019
-/// - Feeding Rules: Rekomendasi IDAI
-/// - MPASI: Panduan WHO/IDAI
-/// - Suplementasi: Rekomendasi IDAI
+/// - Feeding Rules & ANP: Rekomendasi IDAI (Ikatan Dokter Anak Indonesia)
+/// - Suplementasi Mikronutrien: Rekomendasi IDAI & WHO 2023
 
 /// Kebutuhan Energi & Protein harian per kelompok usia (Permenkes RI 28/2019).
 class AkgEntry {
@@ -153,10 +154,11 @@ const List<MpasiGuidance> mpasiGuidelines = [
     ageMinMonths: 0, ageMaxMonths: 5,
     label: '0–6 Bulan',
     texture: 'ASI Eksklusif',
-    frequency: 'On demand (sesuai permintaan bayi)',
+    frequency: 'On demand (sesuai permintaan bayi, 8–12×/hari)',
     portion: 'Tidak dibatasi',
-    notes: 'ASI eksklusif tanpa tambahan makanan/minuman apapun. '
-        'Jika ada indikasi medis, susu formula diberikan atas advis dokter.',
+    notes: 'ASI eksklusif tanpa tambahan makanan/minuman apapun (WHO Rec 1 & 3). '
+        'Mulai MPASI tepat saat usia genap 6 bulan (180 hari). '
+        'Jika ada indikasi medis khusus, susu formula diberikan atas advis dokter.',
     menuExamples: [],
   ),
   MpasiGuidance(
@@ -165,9 +167,12 @@ const List<MpasiGuidance> mpasiGuidelines = [
     texture: 'Bubur kental (puree) / makanan dilumatkan halus (mashed)',
     frequency: '2–3× makan utama + 1–2× selingan',
     portion: 'Mulai 2–3 sdm, bertahap hingga ½ mangkuk (125 ml)',
-    notes: 'Mulai MPASI kaya zat besi (protein hewani: daging, hati, telur). '
-        'Perkenalkan satu jenis makanan baru setiap 3–5 hari. '
-        'ASI tetap diberikan sesuai permintaan.',
+    notes: 'WHO Guideline (2023): Pangan hewani (daging, hati, telur, ayam, ikan) '
+        'WAJIB diberikan SETIAP HARI sebagai sumber zat besi heme & seng. '
+        'Sertakan buah & sayuran harian. Makanan bertepung jangan mendominasi. '
+        'Jika non-ASI: berikan susu formula bayi atau susu hewani full-fat murni tanpa pemanis. '
+        'Dilarang: gula tambahan, garam tinggi, lemak trans, & minuman manis (SSB). '
+        'Terapkan Responsive Feeding: peka tanda lapar/kenyang, tanpa paksaan.',
     menuExamples: [
       'Bubur Singkong Isi Ikan & Ayam dengan Saus Jeruk',
       'Bubur Soto Ayam Santan',
@@ -179,12 +184,14 @@ const List<MpasiGuidance> mpasiGuidelines = [
   MpasiGuidance(
     ageMinMonths: 9, ageMaxMonths: 11,
     label: '9–11 Bulan',
-    texture: 'Makanan dicincang halus/kasar + finger food',
+    texture: 'Makanan dicincang halus/kasar (chopped/mashed) + finger food',
     frequency: '3–4× makan utama + 1–2× selingan',
     portion: '½ – ¾ mangkuk (125–175 ml)',
-    notes: 'Dorong anak makan mandiri dengan finger food. '
-        'Variasi protein hewani & nabati, sayur, buah. '
-        'ASI tetap diberikan.',
+    notes: 'WHO Guideline (2023): Pangan hewani harian, sayur & buah harian. '
+        'Responsive Feeding: fasilitasi makan mandiri dengan finger food lunak untuk stimulasi motorik & regulasi kenyang. '
+        'Jika non-ASI: susu formula atau susu hewani full-fat tanpa perisa. '
+        'Dilarang minuman manis (SSB), gula tambahan, garam tinggi, dan pemanis buatan. '
+        'ASI tetap diteruskan sesuai permintaan.',
     menuExamples: [
       'Nasi Tim Ikan Tuna Telur Puyuh',
       'Nasi Tim Ayam Lele Cincang',
@@ -199,9 +206,12 @@ const List<MpasiGuidance> mpasiGuidelines = [
     texture: 'Makanan keluarga (potong kecil/dicincang)',
     frequency: '3–4× makan utama + 1–2× selingan',
     portion: '¾ – 1 mangkuk (175–250 ml)',
-    notes: 'Transisi ke makanan keluarga. Perhatikan keamanan '
-        '(hindari makanan bulat keras: kacang utuh, anggur utuh). '
-        'ASI dapat dilanjutkan sampai 24 bulan.',
+    notes: 'WHO Guideline (2023): Teruskan ASI sampai 2 tahun atau lebih (Rec 1). '
+        'Pangan hewani harian & buah/sayur harian. '
+        'Susu Non-ASI (Rec 2): Dianjurkan susu sapi pasteurisasi murni full-cream. '
+        'WHO 2023 TIDAK merekomendasikan susu formula lanjutan (follow-up formula 1-3 tahun). '
+        'Batasi susu maks 400–500 ml/hari agar anak tidak kenyang cairan dan lahap makan padat. '
+        'Nol gula tambahan, nol minuman manis, dan hindari makanan ultra-proses.',
     menuExamples: [
       'Nasi Sup Telur Puyuh Bola Tahu Ayam',
       'Nasi Soto Ayam Kuah Kuning',
@@ -218,7 +228,7 @@ const List<MpasiGuidance> mpasiGuidelines = [
     portion: 'Sesuai kebutuhan anak',
     notes: 'Pola makan gizi seimbang: karbohidrat, protein hewani & nabati, '
         'lemak sehat, sayur, dan buah. Batasi makanan ultra-proses, '
-        'minuman manis, dan garam berlebih.',
+        'minuman manis (SSB), dan garam berlebih.',
     menuExamples: [
       'Nasi Bakar Ayam Santan',
       'Nasi Sup Tabas Udang',
@@ -237,6 +247,112 @@ MpasiGuidance findMpasiGuidance(int ageMonths) {
   }
   return mpasiGuidelines.last;
 }
+
+// ─────────────────────────────────────────────
+// 7 PRINSIP MPASI WHO GUIDELINE (2023)
+// "WHO Guideline for Complementary Feeding of Infants and Young Children 6–23 Months of Age"
+// ─────────────────────────────────────────────
+
+class WhoGuidelinePrinciple {
+  final int number;
+  final String title;
+  final String recommendation;
+  final String strengthAndCertainty;
+  final List<String> details;
+
+  const WhoGuidelinePrinciple({
+    required this.number,
+    required this.title,
+    required this.recommendation,
+    required this.strengthAndCertainty,
+    required this.details,
+  });
+}
+
+const List<WhoGuidelinePrinciple> whoComplementaryFeedingPrinciples = [
+  WhoGuidelinePrinciple(
+    number: 1,
+    title: 'Kelanjutan Pemberian ASI (Continued Breastfeeding)',
+    recommendation: 'Pemberian ASI sebaiknya terus dilanjutkan hingga anak berusia 2 tahun atau lebih.',
+    strengthAndCertainty: 'Strong recommendation, very low certainty evidence',
+    details: [
+      'Menyumbang proporsi energi substansial: 77% pada 6-8 bulan, 63% pada 9-11 bulan, dan 44% pada 12-23 bulan.',
+      'Memenuhi ~70% kebutuhan Vit A, ~40% Kalsium, & ~37% Riboflavin pada tahun kedua, serta asam lemak esensial (DHA/ALA) untuk otak.',
+      'Melindungi anak dari infeksi saluran napas dan gastrointestinal.',
+      'Mendukung hak ibu dengan ruang laktasi, jadwal kerja fleksibel, dan perlindungan dari pemasaran agresif susu pengganti ASI.',
+    ],
+  ),
+  WhoGuidelinePrinciple(
+    number: 2,
+    title: 'Ketentuan Susu Non-ASI (Milks for Non-Breastfed Children)',
+    recommendation: 'Usia 6–11 bulan: susu formula bayi atau susu hewani full-fat. Usia 12–23 bulan: susu hewani pasteurisasi murni; Formula lanjutan (follow-up formula) TIDAK direkomendasikan.',
+    strengthAndCertainty: 'Conditional recommendation, low certainty evidence',
+    details: [
+      'Jenis susu hewan: Susu sapi pasteurisasi murni full-cream, susu fermentasi tawar, atau yogurt alami.',
+      'Usia 12–23 bulan: WHO secara eksplisit TIDAK merekomendasikan formula lanjutan (susu formula 1-3 tahun komersial).',
+      'Dilarang memberikan susu kental manis, susu berperisa (cokelat/stroberi), atau susu dengan tambahan gula.',
+      'Batasi volume susu (maksimal 400-500 mL/hari) agar anak tidak kenyang cairan dan tetap bernafsu makan makanan padat.',
+    ],
+  ),
+  WhoGuidelinePrinciple(
+    number: 3,
+    title: 'Usia Pengenalan MPASI (Age of Introduction)',
+    recommendation: 'Bayi harus mulai diperkenalkan makanan pendamping ASI (MPASI) tepat pada usia 6 bulan (180 hari) sambil terus disusui.',
+    strengthAndCertainty: 'Strong recommendation, low certainty evidence',
+    details: [
+      'Pada usia 6 bulan, kebutuhan energi dan zat gizi (terutama zat besi & seng) melampaui yang disediakan oleh ASI saja.',
+      'Pengenalan dini (< 6 bulan) tidak mencegah anemia dan meningkatkan risiko infeksi atau penyapihan dini.',
+      'Kebutuhan zat besi bayi aterm sangat tinggi; utamakan protein hewani kaya zat besi heme sejak hari pertama MPASI.',
+    ],
+  ),
+  WhoGuidelinePrinciple(
+    number: 4,
+    title: 'Keragaman Makanan & Kualitas Pangan (Dietary Diversity)',
+    recommendation: 'Anak 6–23 bulan harus mengonsumsi makanan beraneka ragam: Pangan Hewani (ASF) setiap hari, Buah & Sayuran setiap hari, serta Kacang/Biji-bijian secara berkala.',
+    strengthAndCertainty: 'Strong recommendation (ASF & Buah/Sayur), Conditional (Kacang/Biji)',
+    details: [
+      'Pangan Hewani (ASF: daging merah, ayam, telur, ikan, hati): WAJIB dikonsumsi SETIAP HARI sebagai sumber zat besi, seng, protein berkualitas, dan Vit B12.',
+      'Buah & Sayuran: WAJIB dikonsumsi SETIAP HARI, khususnya yang kaya vitamin A dan vitamin C.',
+      'Minimalkan Makanan Pokok Bertepung (starchy staples): Nasi, serealia, atau umbi-umbian jangan mendominasi isi piring karena densitas nutrisi rendah dan mengandung fitat.',
+      'Kacang-kacangan & biji-bijian: Diberikan teratur dalam tekstur aman tanpa risiko tersedak (puree/lumat).',
+    ],
+  ),
+  WhoGuidelinePrinciple(
+    number: 5,
+    title: 'Pembatasan Makanan & Minuman Tidak Sehat (Unhealthy Foods)',
+    recommendation: 'Makanan tinggi gula, garam, dan lemak trans TIDAK BOLEH dikonsumsi. Minuman manis (SSB) dan pemanis buatan DILARANG. Jus buah 100% sangat dibatasi.',
+    strengthAndCertainty: 'Strong recommendation (Gula/Garam/Trans/SSB), Conditional (Jus Buah)',
+    details: [
+      'Tanpa tambahan gula meja, pemanis sintetis, atau garam berlebih pada masakan MPASI.',
+      'Larang keras minuman berpemanis (Sugar-Sweetened Beverages/SSBs): teh manis, soda, kental manis, sari buah kemasan.',
+      'Mencegah karies gigi dini, obesitas anak, preferensi rasa manis berlebih, dan risiko penyakit tidak menular (hipertensi/diabetes).',
+      'Jus buah 100% sebaiknya diganti dengan buah potong utuh untuk menjaga serat alami.',
+    ],
+  ),
+  WhoGuidelinePrinciple(
+    number: 6,
+    title: 'Suplementasi Mikronutrien & Fortifikasi Selektif (Nutrient Supplements)',
+    recommendation: 'Jika kebutuhan gizi tidak terpenuhi dari makanan lokal unfortified, anak 6–23 bulan dapat menerima suplemen mikronutrien (MNP/Fe/Vit D) atau pangan terfortifikasi.',
+    strengthAndCertainty: 'Context-specific recommendation, moderate-to-high certainty evidence',
+    details: [
+      'Tabur gizi (Multiple Micronutrient Powders/MNP) dan suplemen tetes Zat Besi rutin IDAI (2 mg/kgBB/hari) untuk pencegahan stunting & anemia.',
+      'Suplementasi Vitamin D (400-600 IU/hari) sesuai indikasi IDAI.',
+      'Suplemen mikronutrien bersifat pelengkap dan tidak pernah menggantikan piring makanan segar yang beragam.',
+    ],
+  ),
+  WhoGuidelinePrinciple(
+    number: 7,
+    title: 'Pemberian Makan Responsif (Responsive Feeding)',
+    recommendation: 'Anak 6–23 bulan harus diberi makan secara responsif: mendukung kemandirian makan otonom dan peka terhadap sinyal lapar serta kenyang fisiologis anak.',
+    strengthAndCertainty: 'Strong recommendation, low certainty evidence',
+    details: [
+      'Mendukung regulasi nafsu makan mandiri (self-regulation) serta perkembangan kognitif, emosional, dan sosial anak.',
+      'Pengasuh hadir mendampingi secara sabar, hangat, tersenyum, dan mempertahankan kontak mata.',
+      'Dilarang memaksa makan (no force-feeding), tidak mengancam, dan tidak menggunakan gadget/TV sebagai distraksi.',
+      'Dorong anak memegang makanan sendiri (finger food) atau menggunakan sendok kecil sesuai tahap perkembangannya.',
+    ],
+  ),
+];
 
 // ─────────────────────────────────────────────
 // BASIC FEEDING RULES IDAI

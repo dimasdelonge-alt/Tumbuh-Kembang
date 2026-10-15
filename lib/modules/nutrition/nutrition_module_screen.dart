@@ -8,6 +8,7 @@ import '../../data/repository.dart';
 import '../../reports/weekly_meal_plan_pdf_builder.dart';
 import 'food_exchange_data.dart';
 import 'nutrition_calculator.dart';
+import 'nutrition_data.dart';
 import 'meal_plan_data.dart';
 import 'weekly_meal_plan_generator.dart';
 
@@ -906,6 +907,72 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
         _portionCard('Sayur & Buah', guide.veggiesFruit, Icons.local_florist, Colors.purple),
         _portionCard('Lemak Tambahan', guide.fatAdded, Icons.water_drop, Colors.amber),
         _portionCard('Susu / Cairan', guide.milkFluid, Icons.local_cafe, Colors.blue),
+        if (_ageMonths <= 24.0) ...[
+          const SizedBox(height: 12),
+          Card(
+            color: Colors.teal.shade50,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.teal.shade200),
+            ),
+            child: ExpansionTile(
+              initiallyExpanded: true,
+              leading: const Icon(Icons.verified, color: Colors.teal),
+              title: const Text(
+                '7 Rekomendasi Emas MPASI WHO Guideline (2023)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.teal),
+              ),
+              subtitle: const Text(
+                'Standar Resmi Pangan Anak 6–23 Bulan (WHO Complementary Feeding 2023)',
+                style: TextStyle(fontSize: 11, color: Colors.teal),
+              ),
+              children: whoComplementaryFeedingPrinciples.map((p) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 10,
+                            backgroundColor: Colors.teal.shade700,
+                            child: Text(
+                              '${p.number}',
+                              style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              p.title,
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 28),
+                        child: Text(
+                          p.recommendation,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      ...p.details.map((d) => Padding(
+                            padding: const EdgeInsets.only(left: 28, top: 2),
+                            child: Text('• $d', style: TextStyle(fontSize: 11, color: Colors.grey.shade800)),
+                          )),
+                      const Divider(height: 14),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -924,9 +991,35 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
   Widget _buildRecipeTab(List<MpasiRecipe> recipes) {
     return ListView.builder(
       padding: const EdgeInsets.all(12),
-      itemCount: recipes.length,
+      itemCount: recipes.length + 1,
       itemBuilder: (context, i) {
-        final r = recipes[i];
+        if (i == 0) {
+          return Card(
+            color: Colors.amber.shade50,
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(color: Colors.amber.shade300),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(Icons.menu_book, color: Colors.deepOrange),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Resep MPASI Padat Nutrisi: Buku Resep Makanan Lokal Kemenkes RI (2023) diselaraskan dengan Standar Keragaman Pangan Harian & Bebas Gula Tambahan WHO Guideline (2023).',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.brown),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final r = recipes[i - 1];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: Padding(

@@ -26,8 +26,8 @@ Dokumen ini ringkasan lengkap proyek agar sesi chat baru langsung punya konteks 
 - Ekstraksi PDF: pakai Python `pypdf`, skrip di `C:\Users\ADMINI~1\AppData\Local\Temp\kilo\extract_pdf.py`.
 
 ## Verifikasi terkini
-- `flutter analyze`: 0 error, 0 warning.
-- **110 unit test lolos** (`flutter test`).
+- `flutter analyze`: 0 compile error, 90 info (lint).
+- **122 unit test lolos** (`flutter test`).
 - `flutter build apk --debug`: sukses. Skema DB versi **7**.
 - Versi aplikasi: **12.0.0+12**.
 
@@ -134,4 +134,5 @@ Patients (`fatherHeightCm`, `motherHeightCm`), Examinations, GrowthMeasurements,
 5. ✅ **Identitas Dokter & Tanda Tangan Digital (Auto QR Code)** -> **Selesai.**
 6. ✅ **Kurva CDC 2000 & Tinggi Potensi Genetik (TPG) Module (Stature & Weight Plotting)** -> **Selesai.**
 7. ✅ **Asuhan Nutrisi Pediatrik & Ide Resep MPASI Kemenkes 2023** -> **Selesai.**
-8. Pematangan UI/UX & uji coba lapangan oleh dokter.
+8. ✅ **Integrasi WHO Guideline for Complementary Feeding 6–23 Months (2023)** -> **Selesai.** (7 Rekomendasi Emas WHO, aturan susu non-ASI, responsive feeding, larangan SSB/gula-garam, integrasi PDF & UI meal plan).
+9. Pematangan UI/UX & uji coba lapangan oleh dokter.

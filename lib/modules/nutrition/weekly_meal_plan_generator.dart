@@ -297,7 +297,7 @@ class WeeklyMealPlanGenerator {
             time: '15:30',
             sessionName: 'Selingan Sore',
             menuName: 'Snack Sore: Buah / Susu',
-            description: 'Potongan buah $fruitName atau Susu UHT / Susu Pertumbuhan.',
+            description: 'Potongan buah $fruitName atau Susu UHT Plain / Pasteurisasi murni (WHO 2023).',
             portionUrt: portionSnack,
           ),
           DailyMealSession(
@@ -311,7 +311,7 @@ class WeeklyMealPlanGenerator {
             time: '20:30',
             sessionName: 'Sebelum Tidur',
             menuName: 'ASI / Susu Malam',
-            description: 'ASI atau Susu UHT / Pertumbuhan (max 200 mL).',
+            description: 'ASI atau Susu Sapi Pasteurisasi / UHT plain (max 200 mL, WHO: tanpa formula lanjutan).',
             portionUrt: '1 gelas (150-200 mL)',
           ),
         ];
