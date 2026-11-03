@@ -1103,7 +1103,7 @@ class PdfReportService {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text('${s.name} - skor ${s.score}/${s.total}',
+          pw.Text('${s.name} - ${s.scoreSummary}',
               style: const pw.TextStyle(fontSize: 10)),
           pw.Text('Hasil: ${s.levelLabel.toUpperCase()}',
               style: pw.TextStyle(
@@ -1462,6 +1462,8 @@ class PdfReportService {
                   1: const pw.FlexColumnWidth(3),
                 },
                 children: [
+                  _nutritionRow('Usia Panduan Makan',
+                      '${n.foodAgeMonths} bulan${n.foodAgeCorrected ? ' (usia koreksi)' : ''}'),
                   _nutritionRow('Tekstur', n.mpasiTexture),
                   _nutritionRow('Frekuensi', n.mpasiFrequency),
                   _nutritionRow('Porsi', n.mpasiPortion),

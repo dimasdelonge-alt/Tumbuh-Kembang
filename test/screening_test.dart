@@ -5,6 +5,7 @@ import 'package:tumbang/modules/screening/data/mchat_data.dart';
 import 'package:tumbang/modules/screening/data/gpph_data.dart';
 import 'package:tumbang/modules/screening/data/sppahi_data.dart';
 import 'package:tumbang/modules/screening/registry.dart';
+import 'package:tumbang/reports/report_builder.dart';
 
 void main() {
   group('ScreeningScorer (generik)', () {
@@ -238,6 +239,59 @@ void main() {
       final r = ScreeningScorer.interpretLikert(sppahiInstrument, answers);
       // Instrumen ber-rater tanpa penilai dikenali tidak otomatis "tinggi".
       expect(r.level, RiskLevel.low);
+    });
+  });
+
+  group('ReportScreening M-CHAT-R/F Tahap 1/2', () {
+    test('scoreSummary Tahap 2 mencetak skor Tahap 1 dan Tahap 2', () {
+      final s = ReportScreening(
+        instrumentId: 'mchat_r',
+        name: 'M-CHAT-R (Skrining Autisme) — Follow-Up',
+        score: 3,
+        total: 20,
+        levelLabel: 'Risiko tinggi',
+        severity: 2,
+        interpretation: 'Risiko tinggi ASD (Skrining M-CHAT-R/F Positif)',
+        recommendation: 'Rujuk segera.',
+        flaggedItemTexts: const [],
+        mchatStage1Score: 5,
+      );
+      expect(s.isMchatFollowUp, isTrue);
+      expect(s.scoreSummary,
+          'Tahap 1: 5/20  •  Tahap 2 (Follow-Up): 3/20');
+    });
+
+    test('scoreSummary M-CHAT-R bukan Follow-Up hanya mencetak Tahap 1', () {
+      final s = ReportScreening(
+        instrumentId: 'mchat_r',
+        name: 'M-CHAT-R (Skrining Autisme)',
+        score: 4,
+        total: 20,
+        levelLabel: 'Risiko sedang',
+        severity: 1,
+        interpretation: 'Risiko sedang',
+        recommendation: 'Lakukan follow-up.',
+        flaggedItemTexts: const [],
+        mchatStage1Score: 4,
+      );
+      expect(s.isMchatFollowUp, isFalse);
+      expect(s.scoreSummary, 'Tahap 1: 4/20');
+    });
+
+    test('scoreSummary instrumen non-M-CHAT mencetak skor biasa', () {
+      final s = ReportScreening(
+        instrumentId: 'gpph',
+        name: 'GPPH',
+        score: 15,
+        total: 10,
+        levelLabel: 'Risiko tinggi',
+        severity: 2,
+        interpretation: 'Risiko tinggi perkembangan',
+        recommendation: 'Rujuk.',
+        flaggedItemTexts: const [],
+      );
+      expect(s.isMchatFollowUp, isFalse);
+      expect(s.scoreSummary, '15/10');
     });
   });
 }

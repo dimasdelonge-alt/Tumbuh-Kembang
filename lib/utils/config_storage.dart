@@ -8,5 +8,9 @@ abstract class ConfigStorage {
   static Future<String?> getString(String key) => getStringImpl(key);
   static Future<void> setString(String key, String value) =>
       setStringImpl(key, value);
+  static Future<List<String>?> getStringList(String key) =>
+      getStringListImpl(key);
+  static Future<void> setStringList(String key, List<String> value) =>
+      setStringListImpl(key, value);
   static Future<void> remove(String key) => removeImpl(key);
 }

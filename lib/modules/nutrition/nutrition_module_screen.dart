@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/age_calculator.dart';
 import '../../data/database.dart';
 import '../../data/repository.dart';
 import '../../reports/weekly_meal_plan_pdf_builder.dart';
+import '../../utils/config_storage.dart';
+import '../growth/growth_assessment.dart';
 import 'food_exchange_data.dart';
 import 'nutrition_calculator.dart';
 import 'nutrition_data.dart';
@@ -34,7 +35,21 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
 
   String _sex = 'L';
   double _ageMonths = 12.0;
+
+  /// Usia pasien terpilih (kronologis + koreksi) untuk label panduan makan.
+  /// Null pada mode simulasi (slider murni manual).
+  AgeResult? _patientAge;
   bool _isMalnourished = false;
+  bool _catchUpAutoDetected = false;
+  String? _textureOverride; // null = ikuti usia; 'saring' | 'lembik' | 'keluarga'
+
+  /// Penanda urutan pemuatan data pasien. Hasil query pasien lama yang
+  /// datang terlambat tidak boleh menimpa data pasien yang sedang dipilih.
+  int _patientLoadToken = 0;
+  bool _patientDataMissing = false;
+
+  static const String _defaultWeight = '10.0';
+  static const String _defaultHeight = '75.0';
 
   static const Set<String> _defaultCarbs = {'Nasi Beras Giling', 'Kentang', 'Roti Putih'};
   static const Set<String> _defaultAnimals = {'Daging Ayam tanpa Kulit', 'Telur Ayam', 'Ikan Segar (Kembung/Mas/Kakap)'};
@@ -56,10 +71,9 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
     _syncIdealWeight();
     _loadSavedSelections();
 
-    if (widget.initialPatient != null) {
-      _selectedPatient = widget.initialPatient;
-      _selectedPatientId = widget.initialPatient!.id;
-      _loadPatientData(widget.initialPatient!);
+    final initial = widget.initialPatient;
+    if (initial != null) {
+      _loadPatientData(initial);
     }
   }
 
@@ -74,41 +88,85 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
   }
 
   void _loadPatientData(Patient p) {
-    _sex = p.sex;
+    // Naikkan token agar hasil query pasien sebelumnya diabaikan bila masih
+    // berjalan (mis. dokter cepat berganti pasien di dropdown).
+    final token = ++_patientLoadToken;
     final age = AgeCalculator.calculate(
       birthDate: p.birthDate,
       examDate: DateTime.now(),
       gestationalWeeks: p.gestationalWeeks,
     );
-    _ageMonths = age.chronologicalMonths.toDouble();
+
+    setState(() {
+      _selectedPatient = p;
+      _selectedPatientId = p.id;
+      _sex = p.sex;
+      _patientAge = age;
+      // Arahan dokter: panduan makanan (tekstur, porsi, resep, menu)
+      // mengikuti usia koreksi selama koreksi prematur berlaku.
+      _ageMonths = age.foodAgeMonths.toDouble();
+      // Reset status catch-up agar tidak terbawa dari pasien sebelumnya;
+      // akan terisi otomatis dari status gizi pemeriksaan terakhir.
+      _isMalnourished = false;
+      _catchUpAutoDetected = false;
+      _patientDataMissing = false;
+      _textureOverride = null;
+      // Jangan tampilkan BB/TB/catatan milik pasien sebelumnya.
+      _weightController.text = _defaultWeight;
+      _heightController.text = _defaultHeight;
+      _noteController.clear();
+    });
+    _syncIdealWeight();
 
     // Ambil data pertumbuhan terakhir pasien bila ada
     final repo = context.read<AppRepository>();
     repo.watchExaminations(p.id).first.then((exams) {
-      if (exams.isNotEmpty) {
-        repo.getGrowthForExam(exams.first.id).then((g) {
-          if (g != null && mounted) {
-            setState(() {
-              if (g.weightKg != null) _weightController.text = g.weightKg.toString();
-              if (g.heightCm != null) {
-                _heightController.text = g.heightCm.toString();
-                _syncIdealWeight();
-              }
-            });
-          }
-        });
+      if (!mounted || token != _patientLoadToken) return;
+      if (exams.isEmpty) {
+        setState(() => _patientDataMissing = true);
+        return;
       }
+      repo.getGrowthForExam(exams.first.id).then((g) {
+        if (!mounted || token != _patientLoadToken) return;
+        if (g == null) {
+          setState(() => _patientDataMissing = true);
+          return;
+        }
+        // Deteksi indikasi catch-up dari status gizi WHO pemeriksaan
+        // terakhir (definisi sama dengan layar Pertumbuhan & PDF).
+        final assessment = GrowthAssessment.fromMeasurement(
+          birthDate: p.birthDate,
+          examDate: exams.first.examDate,
+          gestationalWeeks: p.gestationalWeeks,
+          sex: p.sex,
+          m: g,
+        );
+        setState(() {
+          _patientDataMissing = false;
+          if (g.weightKg != null) _weightController.text = g.weightKg.toString();
+          if (g.heightCm != null) {
+            _heightController.text = g.heightCm.toString();
+            _syncIdealWeight();
+          }
+          _isMalnourished = assessment.indicatesMalnutrition;
+          _catchUpAutoDetected = assessment.indicatesMalnutrition;
+        });
+      });
     });
   }
 
   Future<void> _loadSavedSelections() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedCarbs = prefs.getStringList('nutrition_selected_carbs');
-      final savedAnimals = prefs.getStringList('nutrition_selected_animals');
-      final savedPlants = prefs.getStringList('nutrition_selected_plants');
-      final savedVeggies = prefs.getStringList('nutrition_selected_veggies');
-      final savedFruits = prefs.getStringList('nutrition_selected_fruits');
+      final savedCarbs =
+          await ConfigStorage.getStringList('nutrition_selected_carbs');
+      final savedAnimals =
+          await ConfigStorage.getStringList('nutrition_selected_animals');
+      final savedPlants =
+          await ConfigStorage.getStringList('nutrition_selected_plants');
+      final savedVeggies =
+          await ConfigStorage.getStringList('nutrition_selected_veggies');
+      final savedFruits =
+          await ConfigStorage.getStringList('nutrition_selected_fruits');
 
       if (!mounted) return;
       setState(() {
@@ -133,12 +191,16 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
 
   Future<void> _saveSelections() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('nutrition_selected_carbs', _selectedCarbsNames.toList());
-      await prefs.setStringList('nutrition_selected_animals', _selectedAnimalNames.toList());
-      await prefs.setStringList('nutrition_selected_plants', _selectedPlantNames.toList());
-      await prefs.setStringList('nutrition_selected_veggies', _selectedVegNames.toList());
-      await prefs.setStringList('nutrition_selected_fruits', _selectedFruitNames.toList());
+      await ConfigStorage.setStringList(
+          'nutrition_selected_carbs', _selectedCarbsNames.toList());
+      await ConfigStorage.setStringList(
+          'nutrition_selected_animals', _selectedAnimalNames.toList());
+      await ConfigStorage.setStringList(
+          'nutrition_selected_plants', _selectedPlantNames.toList());
+      await ConfigStorage.setStringList(
+          'nutrition_selected_veggies', _selectedVegNames.toList());
+      await ConfigStorage.setStringList(
+          'nutrition_selected_fruits', _selectedFruitNames.toList());
     } catch (_) {}
   }
 
@@ -219,6 +281,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
       selectedVeggies: selectedVeggies.isNotEmpty ? selectedVeggies : null,
       selectedFruits: selectedFruits.isNotEmpty ? selectedFruits : null,
       nutResult: nutResult,
+      textureOverride: _textureOverride,
     );
 
     return Scaffold(
@@ -290,16 +353,28 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                                 ),
                               ],
                               onChanged: (id) {
-                                setState(() {
-                                  _selectedPatientId = id;
-                                  if (id != null) {
-                                    final p = patients.firstWhere((item) => item.id == id);
-                                    _selectedPatient = p;
-                                    _loadPatientData(p);
-                                  } else {
+                                if (id != null) {
+                                  final p = patients
+                                      .firstWhere((item) => item.id == id);
+                                  _loadPatientData(p);
+                                } else {
+                                  setState(() {
+                                    // Batalkan pemuatan pasien yang masih
+                                    // berjalan saat beralih ke mode simulasi.
+                                    _patientLoadToken++;
+                                    _selectedPatientId = null;
                                     _selectedPatient = null;
-                                  }
-                                });
+                                    _patientAge = null;
+                                    _isMalnourished = false;
+                                    _catchUpAutoDetected = false;
+                                    _patientDataMissing = false;
+                                    _textureOverride = null;
+                                    _weightController.text = _defaultWeight;
+                                    _heightController.text = _defaultHeight;
+                                    _noteController.clear();
+                                  });
+                                  _syncIdealWeight();
+                                }
                               },
                             );
                           },
@@ -307,11 +382,29 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                       ),
                     ],
                   ),
+                  if (_selectedPatient != null && _patientDataMissing) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 14, color: Colors.orange.shade800),
+                        const SizedBox(width: 4),
+                        const Expanded(
+                          child: Text(
+                            'Belum ada data BB/TB dari pemeriksaan pasien ini — masukkan manual. Nilai awal bukan data pasien.',
+                            style: TextStyle(fontSize: 10.5, color: Colors.black54),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: TextField(
+                          key: const ValueKey('weight_field'),
                           controller: _weightController,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: const InputDecoration(
@@ -325,6 +418,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
+                          key: const ValueKey('height_field'),
                           controller: _heightController,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: const InputDecoration(
@@ -342,7 +436,12 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                       const SizedBox(width: 8),
                       Expanded(
                         child: DropdownButtonFormField<String>(
+                          // Key per nilai agar tampilan ikut berubah saat
+                          // pasien terpilih berganti jenis kelamin
+                          // (initialValue saja tidak memperbarui field).
+                          key: ValueKey('gender_$_sex'),
                           initialValue: _sex,
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Gender',
                             isDense: true,
@@ -381,11 +480,34 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                         ),
                       ),
                       Text(
-                        'Usia: ${_ageMonths.round()} bln',
+                        _patientAge?.correctionApplied == true
+                            ? 'Usia koreksi: ${_ageMonths.round()} bln'
+                            : 'Usia: ${_ageMonths.round()} bln',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
+                  if (_patientAge?.correctionApplied == true) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 14, color: Colors.teal.shade800),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Kronologis ${_patientAge!.chronologicalMonths} bln '
+                            '• Koreksi ${_patientAge!.correctedMonths} bln — '
+                            'tekstur, porsi, resep & menu mengikuti usia '
+                            'koreksi. Geser slider untuk simulasi manual.',
+                            style: TextStyle(
+                                fontSize: 10.5, color: Colors.teal.shade900),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -403,7 +525,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                 _buildWeeklyMealPlanTab(weeklyPlan, nutResult),
 
                 // TAB 3: PANDUAN PORSI SATTER
-                _buildPortionTab(portionGuide),
+                _buildPortionTab(portionGuide, weeklyPlan, nutResult),
 
                 // TAB 4: RESEP MPASI KEMENKES 2023
                 _buildRecipeTab(recipes),
@@ -459,9 +581,16 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
         Card(
           child: CheckboxListTile(
             title: const Text('Indikasi Gagal Tumbuh / Stunting / Wasting'),
-            subtitle: const Text('Aktifkan perhitungan kalori Catch-Up Growth'),
+            subtitle: Text(
+              _catchUpAutoDetected && _isMalnourished
+                  ? 'Terdeteksi otomatis dari status gizi pemeriksaan terakhir — dapat diubah manual'
+                  : 'Aktifkan perhitungan kalori Catch-Up Growth',
+            ),
             value: _isMalnourished,
-            onChanged: (v) => setState(() => _isMalnourished = v ?? false),
+            onChanged: (v) => setState(() {
+              _isMalnourished = v ?? false;
+              _catchUpAutoDetected = false;
+            }),
           ),
         ),
         if (_isMalnourished) ...[
@@ -560,8 +689,60 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                           style: TextStyle(fontSize: 10.5, color: Colors.grey.shade700),
                         ),
                       ],
+                      if (weeklyPlan.isNotEmpty && weeklyPlan.first.totalKcal > 0) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Estimasi menu contoh: ±${weeklyPlan.first.totalKcal.round()} kkal/hari terhitung (makanan padat + susu terhitung) | ${weeklyPlan.first.macroSummary}. Kekurangan dari target dipenuhi ASI/susu on demand.',
+                          style: TextStyle(fontSize: 10.5, color: Colors.grey.shade700),
+                        ),
+                      ],
                     ],
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Pilihan tekstur (arahan dokter: bubur saring / nasi lembik / keluarga)
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Tekstur Makanan:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.teal)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Ikuti Usia', style: TextStyle(fontSize: 11)),
+                      selected: _textureOverride == null,
+                      onSelected: (_) => setState(() => _textureOverride = null),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Bubur Saring', style: TextStyle(fontSize: 11)),
+                      selected: _textureOverride == 'saring',
+                      onSelected: (_) => setState(() => _textureOverride = 'saring'),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Nasi Lembik', style: TextStyle(fontSize: 11)),
+                      selected: _textureOverride == 'lembik',
+                      onSelected: (_) => setState(() => _textureOverride = 'lembik'),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Makanan Keluarga', style: TextStyle(fontSize: 11)),
+                      selected: _textureOverride == 'keluarga',
+                      onSelected: (_) => setState(() => _textureOverride = 'keluarga'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Komponen wajib setiap hari: protein hewani di tiap makan utama, sayur & buah, lemak tambahan (minyak/santan), dan susu — pilihan susu: ASI, PKMK, PDK, atau UHT plain sesuai advis dokter.',
+                  style: TextStyle(fontSize: 11, color: Colors.black54),
                 ),
               ],
             ),
@@ -589,28 +770,35 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.teal),
                       ),
                     ),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        visualDensity: VisualDensity.compact,
-                        side: BorderSide(color: Colors.teal.shade700),
-                      ),
-                      icon: Icon(Icons.swap_horiz, size: 15, color: Colors.teal.shade800),
-                      label: Text('Tabel Penukar', style: TextStyle(fontSize: 11, color: Colors.teal.shade800, fontWeight: FontWeight.bold)),
-                      onPressed: () => _showFoodExchangeDialog(context),
-                    ),
-                    const SizedBox(width: 6),
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                        visualDensity: VisualDensity.compact,
-                        foregroundColor: Colors.grey.shade700,
-                      ),
-                      icon: const Icon(Icons.restart_alt, size: 15),
-                      label: const Text('Reset', style: TextStyle(fontSize: 11)),
-                      onPressed: _resetDefaultSelections,
-                    ),
                   ],
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Wrap(
+                    spacing: 6,
+                    children: [
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          visualDensity: VisualDensity.compact,
+                          side: BorderSide(color: Colors.teal.shade700),
+                        ),
+                        icon: Icon(Icons.swap_horiz, size: 15, color: Colors.teal.shade800),
+                        label: Text('Tabel Penukar', style: TextStyle(fontSize: 11, color: Colors.teal.shade800, fontWeight: FontWeight.bold)),
+                        onPressed: () => _showFoodExchangeDialog(context),
+                      ),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          visualDensity: VisualDensity.compact,
+                          foregroundColor: Colors.grey.shade700,
+                        ),
+                        icon: const Icon(Icons.restart_alt, size: 15),
+                        label: const Text('Reset', style: TextStyle(fontSize: 11)),
+                        onPressed: _resetDefaultSelections,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 4),
                 const Text(
@@ -771,6 +959,26 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
         ),
         const SizedBox(height: 12),
 
+        // Catatan dokter yang ikut tercetak di PDF meal plan.
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextField(
+              key: const ValueKey('doctor_note_field'),
+              controller: _noteController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Catatan Dokter (tercetak di PDF)',
+                hintText: 'Mis. kontrol ulang 2 minggu, naikkan porsi bila BB naik…',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
         ...weeklyPlan.map((dayPlan) {
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -781,7 +989,12 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                 child: Text(dayPlan.dayName.substring(0, 3), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
               ),
               title: Text('${dayPlan.dayName}: ${dayPlan.theme}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              subtitle: Text('${dayPlan.sessions.length} Waktu Makan', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              subtitle: Text(
+                dayPlan.totalKcal > 0
+                    ? '${dayPlan.sessions.length} Waktu Makan • ±${dayPlan.totalKcal.round()} kkal • ${dayPlan.macroSummary}'
+                    : '${dayPlan.sessions.length} Waktu Makan',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
               children: dayPlan.sessions.map((session) {
                 return ListTile(
                   dense: true,
@@ -796,7 +1009,12 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                     children: [
                       Text(session.description, style: const TextStyle(fontSize: 11)),
                       const SizedBox(height: 2),
-                      Text('Porsi: ${session.portionUrt}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal.shade800)),
+                      Text(
+                        session.kcal > 0
+                            ? 'Porsi: ${session.portionUrt} (±${session.kcal.round()} kkal)'
+                            : 'Porsi: ${session.portionUrt}',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal.shade800),
+                      ),
                     ],
                   ),
                 );
@@ -882,10 +1100,96 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
     );
   }
 
-  Widget _buildPortionTab(PortionGuide guide) {
+  Widget _buildPortionTab(
+    PortionGuide guide,
+    List<SingleDayMealPlan> weeklyPlan,
+    NutritionCalculationResult nutResult,
+  ) {
+    final sampleDay = weeklyPlan.isNotEmpty ? weeklyPlan.first : null;
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
+        // Acuan utama: takaran yang benar-benar dipakai pada menu 7 hari.
+        // Sebelumnya tab ini hanya menampilkan rentang umum per usia,
+        // sehingga bisa berbeda dengan Meal Plan (sumber takaran ganda).
+        Card(
+          color: Colors.teal.shade50,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.teal.shade200),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.calculate, color: Colors.teal, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Porsi Hasil Hitung Target Kalori (Acuan Utama)',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.teal),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Target ${nutResult.targetEnergyKcal.round()} kkal/hari • '
+                  'protein ${nutResult.targetProteinGram.toStringAsFixed(1)} g/hari'
+                  '${nutResult.needsCatchUp ? ' (kejar tumbuh)' : ''}',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.teal.shade900),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  sampleDay == null
+                      ? 'Belum ada menu contoh.'
+                      : 'Contoh ${sampleDay.dayName}: ±${sampleDay.totalKcal.round()} kkal terhitung',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                ),
+                const Divider(),
+                if (sampleDay != null)
+                  ...sampleDay.sessions.map((s) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 96,
+                              child: Text(
+                                '${s.sessionName} (${s.time})',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(s.portionUrt, style: const TextStyle(fontSize: 11)),
+                            ),
+                            if (s.kcal > 0)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: Text(
+                                  '${s.kcal.round()} kkal',
+                                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.teal.shade800),
+                                ),
+                              ),
+                          ],
+                        ),
+                      )),
+                const SizedBox(height: 6),
+                Text(
+                  'Takaran ini sama dengan tab Meal Plan 7 Hari dan PDF. Bila berbeda dengan tabel umum di bawah, ikuti takaran hasil hitung ini.',
+                  style: TextStyle(fontSize: 10.5, color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Referensi umum per kelompok usia (bukan target individual).
         Card(
           color: Colors.blue.shade50,
           child: Padding(
@@ -893,9 +1197,18 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Panduan Porsi Satter (${guide.ageGroupLabel})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text('Panduan Porsi Umum per Usia (Referensi)',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 4),
-                Text('Tekstur Makanan: ${guide.textureLabel}', style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.w600)),
+                Text(
+                  'Kelompok ${guide.ageGroupLabel} • Tekstur: ${guide.textureLabel}',
+                  style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Rentang umum untuk konseling. Ini bukan target individual — gunakan porsi hasil hitung di atas bila BB/TB anak sudah diukur.',
+                  style: TextStyle(fontSize: 11, color: Colors.black54),
+                ),
               ],
             ),
           ),
@@ -1054,10 +1367,19 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.w600, color: Colors.teal.shade900)),
+          Expanded(
+            child: Text(label, style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.w600, color: Colors.teal.shade900),
+            ),
+          ),
         ],
       ),
     );

@@ -172,8 +172,13 @@ class WeeklyMealPlanPdfBuilder {
                         children: [
                           pw.Text(_clean('Nama Anak: ${patient.name}'), style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
                           pw.Text(_clean('Usia: ${age.chronologicalLabel} (${patient.sex == 'L' ? 'Laki-laki' : 'Perempuan'})'), style: const pw.TextStyle(fontSize: 8.5)),
+                          if (age.correctionApplied)
+                            pw.Text(_clean('Usia koreksi: ${age.correctedLabel} - menu mengikuti usia koreksi'), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800)),
+                          pw.Text(_clean('Usia untuk menu: ${nutResult.ageMonths.round()} bulan'), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800)),
                           pw.Text(_clean('Berat: ${nutResult.weightKg} kg  |  Tinggi: ${nutResult.heightCm} cm'), style: const pw.TextStyle(fontSize: 8.5)),
                           pw.Text(_clean('BB Ideal (BBI): ${nutResult.idealWeightLabel}  |  Usia Tinggi: ${nutResult.heightAgeLabel}'), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800)),
+                          if (weeklyPlan.isNotEmpty && weeklyPlan.first.totalKcal > 0)
+                            pw.Text(_clean('Estimasi menu contoh: ±${weeklyPlan.first.totalKcal.round()} kkal/hari terhitung | Rasio ${weeklyPlan.first.macroSummary}'), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800)),
                         ],
                       ),
                     ),
@@ -430,6 +435,21 @@ class WeeklyMealPlanPdfBuilder {
               ),
             ],
           ),
+          // Row total energi & rasio makro hari ini
+          if (dayPlan.totalKcal > 0)
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.teal50),
+              children: [
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  child: pw.Text(
+                    _clean('Total terhitung: ±${dayPlan.totalKcal.round()} kkal | ${dayPlan.macroSummary}'),
+                    style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold, color: PdfColors.teal900),
+                  ),
+                ),
+              ],
+            ),
           // Row 1: Tabel Matriks 4-Kolom Sesi Makan
           pw.TableRow(
             children: [
@@ -462,7 +482,10 @@ class WeeklyMealPlanPdfBuilder {
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(3),
-                        child: pw.Text(_clean(s.portionUrt), style: pw.TextStyle(fontSize: 6.5, color: PdfColors.grey900, fontWeight: pw.FontWeight.bold)),
+                        child: pw.Text(
+                          _clean(s.kcal > 0 ? '${s.portionUrt} (±${s.kcal.round()} kkal)' : s.portionUrt),
+                          style: pw.TextStyle(fontSize: 6.5, color: PdfColors.grey900, fontWeight: pw.FontWeight.bold),
+                        ),
                       ),
                     ],
                   );

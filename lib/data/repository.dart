@@ -192,11 +192,115 @@ class AppRepository {
         .getSingleOrNull();
   }
 
+  /// Cari pemeriksaan pasien pada tanggal kalender yang sama (jam diabaikan),
+  /// yang belum terhapus. Dipakai untuk mencegah pemeriksaan ganda di tanggal
+  /// yang sama bila pengguna keluar lalu masuk lagi lewat "Pemeriksaan Baru".
+  Future<Examination?> findExaminationOnDate(
+      String patientId, DateTime date) async {
+    final exams = await (db.select(db.examinations)
+          ..where((e) => e.patientId.equals(patientId) & e.deletedAt.isNull())
+          ..orderBy([
+            (e) => OrderingTerm(expression: e.examDate, mode: OrderingMode.desc)
+          ]))
+        .get();
+    for (final e in exams) {
+      final d = e.examDate;
+      if (d.year == date.year && d.month == date.month && d.day == date.day) {
+        return e;
+      }
+    }
+    return null;
+  }
+
+  /// Hapus duplikat semantik hasil pemeriksaan: baris dengan kunci logis sama
+  /// tetapi ID berbeda (biasanya warisan sinkronisasi dua perangkat, di mana
+  /// hasil yang sudah digantikan hidup kembali sebagai dokumen terpisah).
+  /// Satu baris dipertahankan per kunci. Mengembalikan jumlah baris dihapus.
+  Future<int> cleanupDuplicateResults() async {
+    Future<int> dedup<T>(
+      List<T> rows,
+      String Function(T) idOf,
+      String Function(T) keyOf,
+      Future<int> Function(List<String> ids) deleteIds,
+    ) async {
+      final keepIdByKey = <String, String>{};
+      for (final r in rows) {
+        keepIdByKey[keyOf(r)] = idOf(r); // baris terakhir per kunci dipertahankan
+      }
+      final keepIds = keepIdByKey.values.toSet();
+      final dupIds =
+          rows.map(idOf).where((id) => !keepIds.contains(id)).toList();
+      if (dupIds.isEmpty) return 0;
+      return deleteIds(dupIds);
+    }
+
+    var removed = 0;
+
+    final screening = await db.select(db.screeningResults).get();
+    removed += await dedup<ScreeningResult>(
+      screening,
+      (r) => r.id,
+      (r) => '${r.examinationId}|${r.instrumentId}|${r.variantLabel ?? ''}',
+      (ids) =>
+          (db.delete(db.screeningResults)..where((t) => t.id.isIn(ids))).go(),
+    );
+
+    final kpsp = await db.select(db.kpspResults).get();
+    removed += await dedup<KpspResult>(
+      kpsp,
+      (r) => r.id,
+      (r) => r.examinationId,
+      (ids) => (db.delete(db.kpspResults)..where((t) => t.id.isIn(ids))).go(),
+    );
+
+    final growth = await db.select(db.growthMeasurements).get();
+    removed += await dedup<GrowthMeasurement>(
+      growth,
+      (r) => r.id,
+      (r) => r.examinationId,
+      (ids) =>
+          (db.delete(db.growthMeasurements)..where((t) => t.id.isIn(ids))).go(),
+    );
+
+    final vision = await db.select(db.visionResults).get();
+    removed += await dedup<VisionResult>(
+      vision,
+      (r) => r.id,
+      (r) => r.examinationId,
+      (ids) => (db.delete(db.visionResults)..where((t) => t.id.isIn(ids))).go(),
+    );
+
+    final cars = await db.select(db.carsResults).get();
+    removed += await dedup<CarsResult>(
+      cars,
+      (r) => r.id,
+      (r) => r.examinationId,
+      (ids) => (db.delete(db.carsResults)..where((t) => t.id.isIn(ids))).go(),
+    );
+
+    final denver = await db.select(db.denverResults).get();
+    removed += await dedup<DenverResult>(
+      denver,
+      (r) => r.id,
+      (r) => r.examinationId,
+      (ids) => (db.delete(db.denverResults)..where((t) => t.id.isIn(ids))).go(),
+    );
+
+    return removed;
+  }
+
   // ---------------- Antropometri ----------------
 
   Future<String> upsertGrowth(GrowthMeasurementsCompanion data) async {
-    final id = data.id.present ? data.id.value : _uuid.v4();
     final examId = data.examinationId.value;
+    // Pakai ulang ID baris lama agar dokumen sinkronisasi tidak beranak
+    // (ID baru setiap simpan meninggalkan dokumen yatim di Firestore yang
+    // kemudian hidup kembali sebagai duplikat di perangkat ini).
+    var id = data.id.present ? data.id.value : _uuid.v4();
+    if (!data.id.present) {
+      final existing = await getGrowthForExam(examId);
+      if (existing != null) id = existing.id;
+    }
     await db.transaction(() async {
       await (db.delete(db.growthMeasurements)
             ..where((g) => g.examinationId.equals(examId)))
@@ -225,8 +329,12 @@ class AppRepository {
   // ---------------- KPSP ----------------
 
   Future<String> upsertKpsp(KpspResultsCompanion data) async {
-    final id = data.id.present ? data.id.value : _uuid.v4();
     final examId = data.examinationId.value;
+    var id = data.id.present ? data.id.value : _uuid.v4();
+    if (!data.id.present) {
+      final existing = await getKpspForExam(examId);
+      if (existing != null) id = existing.id;
+    }
     await db.transaction(() async {
       await (db.delete(db.kpspResults)
             ..where((k) => k.examinationId.equals(examId)))
@@ -247,22 +355,49 @@ class AppRepository {
     final list = await (db.select(db.kpspResults)
           ..where((k) => k.examinationId.equals(examinationId)))
         .get();
-    return list.isEmpty ? null : list.first;
+    // Baris terakhir = tersimpan paling akhir (toleran duplikat warisan sync).
+    return list.isEmpty ? null : list.last;
   }
 
   // ---------------- Instrumen skrining generik (KMME, M-CHAT, dll) ----------
 
   /// Simpan hasil instrumen. Bila sudah ada hasil instrumen yang sama untuk
   /// pemeriksaan ini, ganti (hindari duplikat per exam+instrument).
-  Future<String> upsertScreening(ScreeningResultsCompanion data) async {
-    final id = data.id.present ? data.id.value : _uuid.v4();
+  ///
+  /// Bila [keyByVariant] true (instrumen ber-penilai seperti SPPAHI), kunci
+  /// penggantian adalah exam+instrument+variantLabel, sehingga hasil penilai
+  /// berbeda (Dokter/Orang Tua/Guru) dapat hidup berdampingan.
+  Future<String> upsertScreening(ScreeningResultsCompanion data,
+      {bool keyByVariant = false}) async {
     final examId = data.examinationId.value;
     final instrId = data.instrumentId.value;
-    await db.transaction(() async {
-      await (db.delete(db.screeningResults)
+    final variant = data.variantLabel.present ? data.variantLabel.value : null;
+
+    // Pakai ulang ID baris yang digantikan agar dokumen Firestore tidak
+    // beranak (lihat upsertGrowth).
+    var id = data.id.present ? data.id.value : _uuid.v4();
+    if (!data.id.present) {
+      final rows = await (db.select(db.screeningResults)
             ..where((s) =>
                 s.examinationId.equals(examId) &
                 s.instrumentId.equals(instrId)))
+          .get();
+      for (final r in rows) {
+        if (!keyByVariant || r.variantLabel == variant) id = r.id;
+      }
+    }
+
+    await db.transaction(() async {
+      await (db.delete(db.screeningResults)
+            ..where((s) {
+              final base =
+                  s.examinationId.equals(examId) & s.instrumentId.equals(instrId);
+              if (!keyByVariant) return base;
+              return base &
+                  (variant == null
+                      ? s.variantLabel.isNull()
+                      : s.variantLabel.equals(variant));
+            }))
           .go();
       await db
           .into(db.screeningResults)
@@ -278,27 +413,42 @@ class AppRepository {
     return id;
   }
 
-  Future<List<ScreeningResult>> getScreeningsForExam(String examinationId) {
-    return (db.select(db.screeningResults)
+  Future<List<ScreeningResult>> getScreeningsForExam(
+      String examinationId) async {
+    final rows = await (db.select(db.screeningResults)
           ..where((s) => s.examinationId.equals(examinationId)))
         .get();
+    // Dedup defensif: duplikat semantik (exam+instrumen+varian, ID berbeda)
+    // yang terlanjur masuk lewat sinkronisasi/backup tidak boleh tampil
+    // ganda di UI maupun PDF. Baris terakhir per kunci yang dipakai.
+    final byKey = <String, ScreeningResult>{};
+    for (final r in rows) {
+      byKey['${r.instrumentId}|${r.variantLabel ?? ''}'] = r;
+    }
+    return byKey.values.toList();
   }
 
   Future<ScreeningResult?> getScreening(
-      String examinationId, String instrumentId) {
-    return (db.select(db.screeningResults)
+      String examinationId, String instrumentId) async {
+    final rows = await (db.select(db.screeningResults)
           ..where((s) =>
               s.examinationId.equals(examinationId) &
               s.instrumentId.equals(instrumentId)))
-        .getSingleOrNull();
+        .get();
+    // Jangan getSingleOrNull: duplikat warisan sync akan melempar StateError.
+    return rows.isEmpty ? null : rows.last;
   }
 
   // ---------------- TDL (Tes Daya Lihat) ----------------
 
   /// Simpan hasil TDL; ganti hasil sebelumnya untuk pemeriksaan yang sama.
   Future<String> upsertVision(VisionResultsCompanion data) async {
-    final id = data.id.present ? data.id.value : _uuid.v4();
     final examId = data.examinationId.value;
+    var id = data.id.present ? data.id.value : _uuid.v4();
+    if (!data.id.present) {
+      final existing = await getVisionForExam(examId);
+      if (existing != null) id = existing.id;
+    }
     await db.transaction(() async {
       await (db.delete(db.visionResults)
             ..where((v) => v.examinationId.equals(examId)))
@@ -315,18 +465,23 @@ class AppRepository {
     return id;
   }
 
-  Future<VisionResult?> getVisionForExam(String examinationId) {
-    return (db.select(db.visionResults)
+  Future<VisionResult?> getVisionForExam(String examinationId) async {
+    final rows = await (db.select(db.visionResults)
           ..where((v) => v.examinationId.equals(examinationId)))
-        .getSingleOrNull();
+        .get();
+    return rows.isEmpty ? null : rows.last;
   }
 
   // ---------------- CARS (autisme) ----------------
 
   /// Simpan hasil CARS; ganti hasil sebelumnya untuk pemeriksaan yang sama.
   Future<String> upsertCars(CarsResultsCompanion data) async {
-    final id = data.id.present ? data.id.value : _uuid.v4();
     final examId = data.examinationId.value;
+    var id = data.id.present ? data.id.value : _uuid.v4();
+    if (!data.id.present) {
+      final existing = await getCarsForExam(examId);
+      if (existing != null) id = existing.id;
+    }
     await db.transaction(() async {
       await (db.delete(db.carsResults)
             ..where((c) => c.examinationId.equals(examId)))
@@ -343,10 +498,11 @@ class AppRepository {
     return id;
   }
 
-  Future<CarsResult?> getCarsForExam(String examinationId) {
-    return (db.select(db.carsResults)
+  Future<CarsResult?> getCarsForExam(String examinationId) async {
+    final rows = await (db.select(db.carsResults)
           ..where((c) => c.examinationId.equals(examinationId)))
-        .getSingleOrNull();
+        .get();
+    return rows.isEmpty ? null : rows.last;
   }
 
   // ---------------- Denver II ----------------
@@ -364,7 +520,9 @@ class AppRepository {
     String? fearNotes,
     String? environmentResponseNotes,
   }) async {
-    final id = _uuid.v4();
+    var id = _uuid.v4();
+    final existing = await getDenverResultForExamination(examinationId);
+    if (existing != null) id = existing.id;
     await db.transaction(() async {
       await (db.delete(db.denverResults)
             ..where((d) => d.examinationId.equals(examinationId)))
@@ -384,13 +542,21 @@ class AppRepository {
           ));
     });
     await _promoteIfAnonymous(examinationId);
+    if (syncService != null) {
+      final item = await getDenverResultForExamination(examinationId);
+      if (item != null) {
+        unawaited(syncService!.uploadDenverResult(item));
+      }
+    }
     return id;
   }
 
-  Future<DenverResult?> getDenverResultForExamination(String examinationId) {
-    return (db.select(db.denverResults)
+  Future<DenverResult?> getDenverResultForExamination(
+      String examinationId) async {
+    final rows = await (db.select(db.denverResults)
           ..where((d) => d.examinationId.equals(examinationId)))
-        .getSingleOrNull();
+        .get();
+    return rows.isEmpty ? null : rows.last;
   }
 
   Future<List<({Examination exam, DenverResult denver})>> denverHistory(

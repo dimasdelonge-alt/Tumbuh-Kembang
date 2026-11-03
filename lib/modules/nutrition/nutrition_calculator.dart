@@ -378,7 +378,11 @@ class PediatricNutritionCalculator {
         actualWeightKg: weightKg,
         energyRdaPerKg: energyRda,
       );
-      catchUpProtein = weightKg * 1.8;
+      // Protein kejar tumbuh tidak boleh lebih rendah dari kebutuhan
+      // pemeliharaan (RDA x BBI): pada anak sangat kurus, rumus
+      // 1,8 g/kgBB aktual bisa jatuh di bawah standar (mis. BB 7 kg,
+      // BBI 9,5 kg -> 12,6 g < 14,25 g), jadi standar menjadi lantai.
+      catchUpProtein = max(totalProtein, weightKg * 1.8);
     }
 
     return NutritionCalculationResult(

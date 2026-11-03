@@ -131,6 +131,51 @@ class SyncService {
                 }
               }
               await db.into(table).insertOnConflictUpdate(toCompanion(item));
+              // Jaga invariant "satu hasil per pemeriksaan": dokumen duplikat
+              // semantik dari perangkat lain (ID berbeda, isi sama) tidak
+              // boleh menghidupkan kembali baris yang sudah digantikan,
+              // misalnya GPPH yang tampil ganda di laporan PDF.
+              if (item is ScreeningResult) {
+                await (db.delete(db.screeningResults)
+                      ..where((s) =>
+                          s.examinationId.equals(item.examinationId) &
+                          s.instrumentId.equals(item.instrumentId) &
+                          (item.variantLabel == null
+                              ? s.variantLabel.isNull()
+                              : s.variantLabel.equals(item.variantLabel!)) &
+                          s.id.isNotIn([item.id])))
+                    .go();
+              } else if (item is KpspResult) {
+                await (db.delete(db.kpspResults)
+                      ..where((k) =>
+                          k.examinationId.equals(item.examinationId) &
+                          k.id.isNotIn([item.id])))
+                    .go();
+              } else if (item is GrowthMeasurement) {
+                await (db.delete(db.growthMeasurements)
+                      ..where((g) =>
+                          g.examinationId.equals(item.examinationId) &
+                          g.id.isNotIn([item.id])))
+                    .go();
+              } else if (item is VisionResult) {
+                await (db.delete(db.visionResults)
+                      ..where((v) =>
+                          v.examinationId.equals(item.examinationId) &
+                          v.id.isNotIn([item.id])))
+                    .go();
+              } else if (item is CarsResult) {
+                await (db.delete(db.carsResults)
+                      ..where((c) =>
+                          c.examinationId.equals(item.examinationId) &
+                          c.id.isNotIn([item.id])))
+                    .go();
+              } else if (item is DenverResult) {
+                await (db.delete(db.denverResults)
+                      ..where((d) =>
+                          d.examinationId.equals(item.examinationId) &
+                          d.id.isNotIn([item.id])))
+                    .go();
+              }
             } catch (e) {
               print('Error syncing document to local SQLite ($collectionName): $e');
             }
@@ -150,7 +195,7 @@ class SyncService {
       _subscriptions.add(sub);
     }
     
-    // Subscribe ke 7 tabel data medis
+    // Subscribe ke 8 tabel data medis
     _listenCollection<Patient>(
       'patients',
       (json) => Patient.fromJson(json),
@@ -198,6 +243,13 @@ class SyncService {
       (json) => CarsResult.fromJson(json),
       (item) => item,
       db.carsResults,
+    );
+
+    _listenCollection<DenverResult>(
+      'denverResults',
+      (json) => DenverResult.fromJson(json),
+      (item) => item,
+      db.denverResults,
     );
   }
 
@@ -297,6 +349,15 @@ class SyncService {
     }
   }
 
+  Future<void> uploadDenverResult(DenverResult item) async {
+    if (!_initialized || _firestore == null) return;
+    try {
+      await _firestore!.collection('denverResults').doc(item.id).set(item.toJson());
+    } catch (e) {
+      print('Failed to upload Denver II to Firestore: $e');
+    }
+  }
+
   /// Unggah seluruh data SQLite lokal ke Firestore
   Future<void> pushAllLocalData() async {
     if (!_initialized || _firestore == null) return;
@@ -334,6 +395,11 @@ class SyncService {
       final cars = await db.select(db.carsResults).get();
       for (final item in cars) {
         await uploadCarsResult(item);
+      }
+
+      final denver = await db.select(db.denverResults).get();
+      for (final item in denver) {
+        await uploadDenverResult(item);
       }
     } catch (e) {
       print('Error pushing local data: $e');

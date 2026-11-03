@@ -26,9 +26,9 @@ Dokumen ini ringkasan lengkap proyek agar sesi chat baru langsung punya konteks 
 - Ekstraksi PDF: pakai Python `pypdf`, skrip di `C:\Users\ADMINI~1\AppData\Local\Temp\kilo\extract_pdf.py`.
 
 ## Verifikasi terkini
-- `flutter analyze`: 0 compile error, 90 info (lint).
-- **122 unit test lolos** (`flutter test`).
-- `flutter build apk --debug`: sukses. Skema DB versi **7**.
+- `flutter analyze`: 0 error, 0 warning, 48 info (lint lama, semua pre-existing).
+- **153 unit test lolos** (`flutter test`).
+- `flutter build apk --debug`: sukses. Skema DB versi **9** (tidak ada perubahan skema untuk no. 8–10).
 - Versi aplikasi: **12.0.0+12**.
 
 ---
@@ -40,7 +40,7 @@ Dokumen ini ringkasan lengkap proyek agar sesi chat baru langsung punya konteks 
 - **Sesi Skrining Cepat (Anonim)**: Tab "Skrining Cepat" di dashboard untuk melangsungkan skrining instan tanpa pendaftaran formal (disimpan sebagai pasien anonim dengan kode rekam medis `'ANONIM'`).
 - **Backup & Restore Manual (JSON)**: Menu pengaturan untuk mengekspor database lokal menjadi satu file cadangan `.json` (diunduh langsung di Web; dibagikan via sharing panel di Mobile) dan mengimpornya kembali dengan validasi format dan transaksi aman. (`backup_service.dart`, `file_helper.dart`, `settings_screen.dart`)
 - **Sinkronisasi Cloud Firebase (Modul Sync)**: Real-time bi-directional sync antara perangkat perawat & dokter via Firestore. (`services/sync_service.dart`, `settings_screen.dart`)
-- **Age engine** (Modul 2): usia kronologis + **usia koreksi prematur** otomatis (berhenti di 24 bulan; aterm >=37 mgg tak dikoreksi). (`core/age_calculator.dart`)
+- **Age engine** (Modul 2): usia kronologis + **usia koreksi prematur** otomatis (berhenti di 24 bulan; aterm >=37 mgg tak dikoreksi). (`core/age_calculator.dart`) Getter `AgeResult.foodAgeMonths` = usia koreksi selama koreksi berlaku, selain itu kronologis — dipakai semua panduan makanan sesuai arahan dokter (audit no. 8).
 - **Pemeriksaan/kunjungan** (Modul 14 dasar): hub per kunjungan (`examination_screen.dart`), riwayat di `patient_detail_screen.dart`.
 - **Identitas Dokter & Tanda Tangan Digital (Auto QR Code Barcode)**: Menu pengaturan identitas dokter (Nama & No. SIP) dengan format pengesahan QR Code verifikasi digital otomatis atau upload gambar tanda tangan basah custom. (`settings_screen.dart`, `reports/pdf_report_service.dart`)
 
@@ -57,6 +57,7 @@ Dokumen ini ringkasan lengkap proyek agar sesi chat baru langsung punya konteks 
 - **Kebutuhan Nutrisi Target**: Energi & Protein harian ($\text{RDA} \times W_{ideal}$) mengacu pada **Permenkes RI No. 28/2019 (AKG)**. Status BB/TB diselaraskan secara konsisten dengan standar WHO/Kemenkes RI.
 - **Kebutuhan Cairan Harian**: Perhitungan otomatis dengan rumus **Holliday-Segar** ($100\text{ ml/kg}$ 10 kg pertama, $+50\text{ ml/kg}$ 10 kg kedua, $+20\text{ ml/kg}$ sisanya).
 - **Edukasi Pemberian Makan & MPASI**: Panduan tekstur, frekuensi, dan porsi per usia serta **Contoh Ide Resep MPASI Kaya Protein Hewani (Buku Resep Lokal Kemenkes RI 2023)** dan **Basic Feeding Rules IDAI** (10 aturan dasar makan).
+- **Usia makanan = usia koreksi (arahan dokter, audit no. 8)**: Untuk bayi prematur <24 bulan, tekstur/porsi/resep/menu mengikuti **usia koreksi** (`AgeResult.foodAgeMonths`) di layar Nutrisi & Meal Plan (`nutrition_module_screen.dart`, slider awal + label "Usia koreksi"), sub-modul nutrisi `growth_screen.dart`, laporan pemeriksaan (`report_builder.dart` → `ReportNutrition.foodAgeMonths/foodAgeCorrected`, ditampilkan di `pdf_report_service.dart`), dan PDF meal plan 7 hari (`weekly_meal_plan_pdf_builder.dart` mencetak usia kronologis + koreksi + "Usia untuk menu"). Target kalori/protein tetap berbasis usia tinggi (height age), jadi yang berubah adalah panduan makannya. Slider tetap bisa digeser manual untuk simulasi. Test: `test/premature_food_age_test.dart`, `test/age_calculator_test.dart`.
 - **Rekomendasi Suplementasi**: Dosis otomatis **Zat Besi (Fe)** (2 mg/kgBB/hari) & **Vitamin D** (400–600 IU/hari) sesuai acuan IDAI.
 - **Alert Intervensi Gizi**: Panduan penanganan medis/rujukan untuk kondisi Gizi Kurang atau Gizi Buruk (Waterlow/WHO).
 - **Integrasi UI & PDF**: Kartu ringkasan di `growth_screen.dart`, layar detail `nutrition_screen.dart`, dan cetakan Laporan PDF (`pdf_report_service.dart`).
@@ -77,7 +78,7 @@ Dokumen ini ringkasan lengkap proyek agar sesi chat baru langsung punya konteks 
 - **KMME** (mental emosional, 12 item) — `data/kmme_data.dart`
 - **TDD** (tes daya dengar, per kelompok usia) — `data/tdd_data.dart`
 - **M-CHAT-R** (autisme, 20 item, item 2/5/12 terbalik) — `data/mchat_data.dart`
-- **M-CHAT-R/F Follow-Up (Wawancara Tahap 2)**: Alur wawancara interaktif 20 panduan pertanyaan resmi Indonesia (`mchat_followup_data.dart`, `mchat_followup_screen.dart`).
+- **M-CHAT-R/F Follow-Up (Wawancara Tahap 2)**: Alur wawancara interaktif 20 panduan pertanyaan resmi Indonesia (`mchat_followup_data.dart`, `mchat_followup_screen.dart`). Skor Tahap 1 disimpan di JSON (`initialScore`) dan ditampilkan bersama skor Tahap 2 di kartu hasil (`examination_screen.dart`) dan laporan PDF (`report_builder.dart`, `pdf_report_service.dart`) via field `ReportScreening.mchatStage1Score`.
 - **GPPH** (Abbreviated Conners, 10 item skala 0–3, ambang >=13) — `data/gpph_data.dart`
 - **SPPAHI** (35 item skala 0–3, cut-off per penilai: Dokter >=22 / Ortu >=30 / Guru >=29) — `data/sppahi_data.dart`
 
@@ -113,11 +114,16 @@ Dokumen ini ringkasan lengkap proyek agar sesi chat baru langsung punya konteks 
 - **Cetak PDF**: Gambar kurva CDC 2000 + plotting ganda + arsir TPG trajektori penuh + riwayat anak otomatis ter-render di PDF.
 
 ### Laporan & tren
-- **Laporan PDF** (Modul 16): identitas, usia, antropometri+Z-score, KPSP, skrining (KMME/M-CHAT/GPPH/SPPAHI), TDL, CARS, Denver II, **Fenton 2013**, **CDC 2000 & TPG**, **Asuhan Nutrisi Pediatrik (Resep MPASI Kemenkes 2023)**, kesimpulan red-flag, program stimulasi, **Tanda Tangan Digital (QR Code / Custom Image)**. (`reports/report_builder.dart`, `reports/pdf_report_service.dart`)
+- **Laporan PDF** (Modul 16): identitas, usia, antropometri+Z-score, KPSP, skrining (KMME/M-CHAT/GPPH/SPPAHI — **M-CHAT-R/F Tahap 1 + Tahap 2 ditampilkan berdampingan**), TDL, CARS, Denver II, **Fenton 2013**, **CDC 2000 & TPG**, **Asuhan Nutrisi Pediatrik (Resep MPASI Kemenkes 2023)**, kesimpulan red-flag, program stimulasi, **Tanda Tangan Digital (QR Code / Custom Image)**. (`reports/report_builder.dart`, `reports/pdf_report_service.dart`)
 - **Anti-Orphan Container**: Mencegah blok tanda tangan terpisah sendirian di halaman kedua PDF.
 
-## Skema DB (drift, v7) — `data/database.dart`
-Patients (`fatherHeightCm`, `motherHeightCm`), Examinations, GrowthMeasurements, KpspResults, ScreeningResults, VisionResults, CarsResults, DenverResults. Migrasi additive v1→v7 (aman).
+## Skema DB (drift, v9) — `data/database.dart`
+Patients (`fatherHeightCm`, `motherHeightCm`, `deletedAt`), Examinations (`deletedAt`), GrowthMeasurements, KpspResults, ScreeningResults, VisionResults, CarsResults, DenverResults (`behaviorNotes`, `fearNotes`, `environmentResponseNotes`). Migrasi additive v1→v9 (aman).
+
+## Catatan Pembersihan Kode (Audit no. 10)
+- `lib/reports/meal_plan_pdf_builder.dart` (444 baris) dihapus — tidak direferensikan; PDF meal plan menggunakan `weekly_meal_plan_pdf_builder.dart`.
+- `lib/modules/nutrition/nutrition_data.dart`: duplikat kelas `AkgEntry`/`MpasiGuidance` dan tabel `akgTable`/`akgTableGirls`/`mpasiGuidelines` + fungsi `findAkg`/`findMpasiGuidance` dihapus (tidak terpakai produksi). Dipertahankan: `WhoGuidelinePrinciple`/`whoComplementaryFeedingPrinciples`, `FeedingRule`/`feedingRules`, dan `SupplementGuidance`/`ironSupplement`/`vitaminDSupplement`.
+- Duplikat `AkgEntry`/`MpasiGuidance` yang aktif tetap di `nutrition_calculator.dart` (digunakan oleh `NutritionCalculationResult.akgEntry` / `.mpasiGuidance`).
 
 ---
 

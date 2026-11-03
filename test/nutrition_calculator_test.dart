@@ -107,7 +107,24 @@ void main() {
       expect(resMalnourished.needsCatchUp, isTrue);
       // Catch-up energy > normal energy
       expect(resMalnourished.catchUpEnergyKcal, greaterThanOrEqualTo(resMalnourished.eerKcal));
-      expect(resMalnourished.catchUpProteinGrams, closeTo(7.0 * 1.8, 0.1));
+      // Protein catch-up tidak boleh di bawah standar: 1,8 x 7 kg = 12,6 g
+      // lebih rendah dari RDA x BBI (1,5 x 9,15 = 13,7 g) -> lantai standar.
+      expect(resMalnourished.catchUpProteinGrams, closeTo(9.15 * 1.5, 0.1));
+      expect(resMalnourished.targetProteinGram,
+          greaterThanOrEqualTo(resMalnourished.proteinGrams));
+    });
+
+    test('Catch-Up Protein uses 1.8 g/kg when above standard floor', () {
+      // BB dekat BBI: 1,8 x 9 kg = 16,2 g > standar 1,5 x 9,15 = 13,7 g.
+      final res = PediatricNutritionCalculator.calculate(
+        weightKg: 9.0,
+        heightCm: 75.0,
+        ageMonths: 17.0,
+        sex: 'P',
+        idealWeightKg: 9.15,
+        isMalnourished: true,
+      );
+      expect(res.catchUpProteinGrams, closeTo(9.0 * 1.8, 0.1));
     });
 
     test('Holliday-Segar fluid calculation', () {

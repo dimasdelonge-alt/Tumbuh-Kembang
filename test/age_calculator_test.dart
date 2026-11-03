@@ -45,6 +45,36 @@ void main() {
       expect(r.correctedDays, r.chronologicalDays);
     });
 
+    test('foodAgeMonths: prematur mengikuti usia koreksi untuk makanan', () {
+      // Lahir 32 minggu (koreksi 2 bulan): kronologis 10 bln -> koreksi 8 bln.
+      final r = AgeCalculator.calculate(
+        birthDate: DateTime(2024, 1, 1),
+        examDate: DateTime(2024, 11, 1),
+        gestationalWeeks: 32,
+      );
+      expect(r.chronologicalMonths, 10);
+      expect(r.correctionApplied, true);
+      expect(r.foodAgeMonths, r.correctedMonths);
+      expect(r.foodAgeMonths, 8);
+    });
+
+    test('foodAgeMonths: aterm dan >24 bulan mengikuti usia kronologis', () {
+      final aterm = AgeCalculator.calculate(
+        birthDate: DateTime(2024, 1, 1),
+        examDate: DateTime(2024, 11, 1),
+        gestationalWeeks: 38,
+      );
+      expect(aterm.foodAgeMonths, aterm.chronologicalMonths);
+
+      final lewatCutoff = AgeCalculator.calculate(
+        birthDate: DateTime(2022, 1, 1),
+        examDate: DateTime(2024, 6, 1),
+        gestationalWeeks: 30,
+      );
+      expect(lewatCutoff.correctionApplied, false);
+      expect(lewatCutoff.foodAgeMonths, lewatCutoff.chronologicalMonths);
+    });
+
     test('aterm (>=37 minggu) tidak dikoreksi', () {
       final r = AgeCalculator.calculate(
         birthDate: DateTime(2024, 1, 1),

@@ -264,15 +264,19 @@ class _ScreeningScreenState extends State<ScreeningScreen> {
     // Untuk instrumen ber-rater, simpan penilai di variantLabel; selain itu
     // simpan varian instrumen (mis. band usia TDD).
     final variant = _needsRater ? _rater : inst.variantLabel;
-    await repo.upsertScreening(ScreeningResultsCompanion.insert(
-      examinationId: widget.examinationId,
-      instrumentId: inst.id,
-      score: interp.score,
-      totalItems: interp.total,
-      riskLevel: interp.level.severity,
-      answersJson: jsonEncode(answersMap),
-      variantLabel: Value(variant),
-    ));
+    await repo.upsertScreening(
+      ScreeningResultsCompanion.insert(
+        examinationId: widget.examinationId,
+        instrumentId: inst.id,
+        score: interp.score,
+        totalItems: interp.total,
+        riskLevel: interp.level.severity,
+        answersJson: jsonEncode(answersMap),
+        variantLabel: Value(variant),
+      ),
+      // Instrumen ber-penilai (SPPAHI): hasil tiap penilai disimpan terpisah.
+      keyByVariant: _needsRater,
+    );
     if (!mounted) return;
     await showDialog(
       context: context,

@@ -10,6 +10,16 @@ Future<void> setStringImpl(String key, String value) async {
   await prefs.setString(key, value);
 }
 
+Future<List<String>?> getStringListImpl(String key) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getStringList(key);
+}
+
+Future<void> setStringListImpl(String key, List<String> value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setStringList(key, value);
+}
+
 Future<void> removeImpl(String key) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.remove(key);

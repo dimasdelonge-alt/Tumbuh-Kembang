@@ -86,6 +86,11 @@ class ReportScreening {
   /// Teks item yang menonjol (mis. GPPH nilai >= 2). Kosong bila tidak relevan.
   final List<String> flaggedItemTexts;
 
+  /// Skor M-CHAT-R Tahap 1 sebelum wawancara follow-up. Tahap 2 menyimpan
+  /// skor Tahap 1 di JSON (`initialScore`) karena baris Tahap 1 digantikan.
+  /// Null bila bukan M-CHAT-R atau skor Tahap 1 tidak tersimpan.
+  final int? mchatStage1Score;
+
   ReportScreening({
     required this.instrumentId,
     required this.name,
@@ -96,7 +101,35 @@ class ReportScreening {
     required this.interpretation,
     required this.recommendation,
     this.flaggedItemTexts = const [],
+    this.mchatStage1Score,
   });
+
+  /// Apakah ini hasil M-CHAT-R/F Tahap 2 (wawancara follow-up).
+  bool get isMchatFollowUp =>
+      instrumentId == 'mchat_r' && name.contains('Follow-Up');
+
+  /// Ringkasan skor yang dipakai kartu hasil dan PDF. Untuk M-CHAT-R/F
+  /// Tahap 2, skor Tahap 1 dan Tahap 2 ditampilkan berdampingan agar hasil
+  /// akhir tidak kehilangan konteks skrining awal.
+  String get scoreSummary {
+    if (instrumentId != 'mchat_r') return '$score/$total';
+    if (isMchatFollowUp) {
+      final stage1 = mchatStage1Score?.toString() ?? '-';
+      return 'Tahap 1: $stage1/$total  •  '
+          'Tahap 2 (Follow-Up): $score/$total';
+    }
+    return 'Tahap 1: $score/$total';
+  }
+}
+
+/// Skor Tahap 1 disimpan di kunci initialScore pada JSON hasil follow-up
+/// (karena baris Tahap 1 digantikan oleh baris Tahap 2 saat upsert).
+int? _parseMchatStage1Score(Map<String, dynamic> ansMap) {
+  if (!ansMap.containsKey('initialScore')) return null;
+  final v = ansMap['initialScore'];
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  return null;
 }
 
 /// Ringkasan hasil TDL (tes daya lihat) untuk laporan.
@@ -258,6 +291,13 @@ class ReportNutrition {
   final String vitDDose;
   final String ironNotes;
   final String vitDNotes;
+
+  /// Usia (bulan) yang menjadi dasar panduan makan (MPASI). Sesuai arahan
+  /// dokter, memakai usia koreksi selama koreksi prematur berlaku.
+  final int foodAgeMonths;
+
+  /// True bila [foodAgeMonths] adalah usia koreksi prematur.
+  final bool foodAgeCorrected;
   /// Basic Feeding Rules IDAI (nomor, kategori, judul, deskripsi).
   final List<({int number, String category, String title, String description})> feedingRules;
 
@@ -281,6 +321,8 @@ class ReportNutrition {
     this.ironNotes = '',
     this.vitDNotes = '',
     this.feedingRules = const [],
+    required this.foodAgeMonths,
+    required this.foodAgeCorrected,
   });
 }
 
@@ -455,6 +497,7 @@ class ReportBuilder {
           : '${inst.name} — ${s.variantLabel}';
 
       final flaggedTexts = <String>[];
+      int? stage1Score;
       if (inst.responseType == ResponseType.likert4) {
         Map<String, dynamic> ans;
         try {
@@ -504,6 +547,7 @@ class ReportBuilder {
             }
           });
         }
+        stage1Score = _parseMchatStage1Score(ansMap);
       }
 
       screenings.add(ReportScreening(
@@ -516,6 +560,7 @@ class ReportBuilder {
         interpretation: band.interpretation,
         recommendation: band.recommendation,
         flaggedItemTexts: flaggedTexts,
+        mchatStage1Score: stage1Score,
       ));
     }
 
@@ -925,21 +970,13 @@ class ReportBuilder {
           .map((r) => r.z.median)
           .firstOrNull ?? assessment.waterlow?.idealWeightKg;
 
-      final isMalnourished = whoStatus == NutritionStatus.wasting ||
-          whoStatus == NutritionStatus.severeWasting ||
-          assessment.results.any((r) =>
-              r.indicator == GrowthIndicator.weightForAge &&
-              (r.status == NutritionStatus.underweight ||
-                  r.status == NutritionStatus.severeUnderweight)) ||
-          assessment.results.any((r) =>
-              r.indicator == GrowthIndicator.lengthHeightForAge &&
-              (r.status == NutritionStatus.stunting ||
-                  r.status == NutritionStatus.severeStunting));
+      final isMalnourished = assessment.indicatesMalnutrition;
 
       final nr = NutritionCalculator.calculate(
         weightKg: g.weightKg!,
         heightCm: g.heightCm!,
-        ageMonths: age.chronologicalMonths,
+        // Panduan makanan mengikuti usia koreksi (arahan dokter).
+        ageMonths: age.foodAgeMonths,
         sex: patient.sex,
         idealWeightKg: idealWeight,
         isMalnourished: isMalnourished,
@@ -964,6 +1001,8 @@ class ReportBuilder {
           vitDDose: nr.vitDSupp.dose,
           ironNotes: nr.ironSupp.notes,
           vitDNotes: nr.vitDSupp.notes,
+          foodAgeMonths: age.foodAgeMonths,
+          foodAgeCorrected: age.correctionApplied,
           feedingRules: nutrition_data.feedingRules
               .map((r) => (
                     number: r.number,

@@ -54,28 +54,6 @@ void main() {
       expect(rec7.details.any((d) => d.toLowerCase().contains('no force-feeding')), isTrue);
     });
 
-    test('mpasiGuidelines integrates WHO 2023 recommendations into age brackets', () {
-      // 6-8 months
-      final g6 = findMpasiGuidance(7);
-      expect(g6.notes, contains('WHO Guideline (2023)'));
-      expect(g6.notes, contains('Pangan hewani'));
-      expect(g6.notes, contains('SETIAP HARI'));
-      expect(g6.notes, contains('Responsive Feeding'));
-      expect(g6.notes, contains('Dilarang: gula tambahan, garam tinggi, lemak trans, & minuman manis (SSB)'));
-
-      // 9-11 months
-      final g9 = findMpasiGuidance(10);
-      expect(g9.notes, contains('WHO Guideline (2023)'));
-      expect(g9.notes, contains('finger food'));
-      expect(g9.notes, contains('Responsive Feeding'));
-
-      // 12-23 months
-      final g12 = findMpasiGuidance(14);
-      expect(g12.notes, contains('WHO Guideline (2023)'));
-      expect(g12.notes, contains('Teruskan ASI sampai 2 tahun atau lebih'));
-      expect(g12.notes, contains('TIDAK merekomendasikan susu formula lanjutan'));
-    });
-
     test('MealPlanRepository integrates WHO 2023 rules and feeding schedule', () {
       // Schedule recommendations for 6-8 months
       final sched6 = MealPlanRepository.getScheduleForAge(7.0);

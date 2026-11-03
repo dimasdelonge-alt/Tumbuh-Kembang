@@ -56,6 +56,23 @@ class GrowthAssessment {
     return null;
   }
 
+  /// true bila ada indikasi gizi kurang/buruk atau stunting:
+  /// BB/TB wasting, BB/U underweight, atau TB/U stunting (termasuk severe).
+  /// Satu-satunya definisi yang dipakai layar Pertumbuhan, Meal Plan, dan
+  /// laporan PDF agar indikasi catch-up growth konsisten antar tempat.
+  bool get indicatesMalnutrition => indicatesMalnutritionIn(results);
+
+  static bool indicatesMalnutritionIn(List<GrowthIndicatorResult> results) {
+    bool has(GrowthIndicator ind, Set<NutritionStatus> statuses) =>
+        results.any((r) => r.indicator == ind && statuses.contains(r.status));
+    return has(GrowthIndicator.weightForLengthHeight,
+            {NutritionStatus.wasting, NutritionStatus.severeWasting}) ||
+        has(GrowthIndicator.weightForAge,
+            {NutritionStatus.underweight, NutritionStatus.severeUnderweight}) ||
+        has(GrowthIndicator.lengthHeightForAge,
+            {NutritionStatus.stunting, NutritionStatus.severeStunting});
+  }
+
   /// Usia (hari) yang dipakai untuk Z-score: koreksi bila berlaku.
   static double ageDaysFor(AgeResult age) =>
       (age.correctionApplied ? age.correctedDays : age.chronologicalDays)

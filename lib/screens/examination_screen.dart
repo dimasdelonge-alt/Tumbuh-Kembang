@@ -71,6 +71,16 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   Future<String> _ensureExam() async {
     if (_examId != null) return _examId!;
     final repo = context.read<AppRepository>();
+    // Cegah pemeriksaan ganda pada tanggal yang sama: bila pemeriksa keluar
+    // lalu masuk lagi lewat "Pemeriksaan Baru" dan memilih tanggal yang
+    // sama, lanjutkan pemeriksaan yang sudah ada di tanggal tersebut
+    // (bukan membuat baris baru yang hasil skriningnya tampak dobel).
+    final sameDay =
+        await repo.findExaminationOnDate(widget.patient.id, _examDate);
+    if (sameDay != null) {
+      setState(() => _examId = sameDay.id);
+      return sameDay.id;
+    }
     final id = await repo.insertExamination(
       ExaminationsCompanion.insert(
         patientId: widget.patient.id,
@@ -1133,7 +1143,7 @@ class _ExamResultsTabState extends State<_ExamResultsTab> {
                     Text(s.name,
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                     const SizedBox(height: 8),
-                    _kvRow('Skor', '${s.score} / ${s.total}'),
+                    _kvRow('Skor', s.scoreSummary),
                     _kvRow('Hasil', s.levelLabel, valueColor: color, bold: true),
                     if (s.interpretation.isNotEmpty) ...[
                       const Divider(),

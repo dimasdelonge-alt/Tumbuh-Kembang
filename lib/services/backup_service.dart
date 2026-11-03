@@ -17,6 +17,7 @@ class BackupService {
     final screeningList = await db.select(db.screeningResults).get();
     final visionList = await db.select(db.visionResults).get();
     final carsList = await db.select(db.carsResults).get();
+    final denverList = await db.select(db.denverResults).get();
 
     final backupMap = {
       'metadata': {
@@ -31,6 +32,7 @@ class BackupService {
       'screeningResults': screeningList.map((e) => e.toJson()).toList(),
       'visionResults': visionList.map((e) => e.toJson()).toList(),
       'carsResults': carsList.map((e) => e.toJson()).toList(),
+      'denverResults': denverList.map((e) => e.toJson()).toList(),
     };
 
     return const JsonEncoder.withIndent('  ').convert(backupMap);
@@ -50,6 +52,7 @@ class BackupService {
     await db.transaction(() async {
       if (overwrite) {
         // Hapus data lama dengan urutan yang aman (terkait Foreign Keys)
+        await db.delete(db.denverResults).go();
         await db.delete(db.carsResults).go();
         await db.delete(db.visionResults).go();
         await db.delete(db.screeningResults).go();
@@ -120,6 +123,15 @@ class BackupService {
             .toList();
         for (final item in list) {
           await db.into(db.carsResults).insertOnConflictUpdate(item);
+        }
+      }
+
+      if (data['denverResults'] != null) {
+        final list = (data['denverResults'] as List)
+            .map((e) => DenverResult.fromJson(e as Map<String, dynamic>))
+            .toList();
+        for (final item in list) {
+          await db.into(db.denverResults).insertOnConflictUpdate(item);
         }
       }
     });

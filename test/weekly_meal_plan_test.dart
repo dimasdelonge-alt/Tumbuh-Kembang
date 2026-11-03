@@ -168,5 +168,102 @@ void main() {
       expect(plan[0].theme, contains('${nutResultCatchUp.targetEnergyKcal.round()} kcal'));
       expect(plan[0].sessions[0].description, contains('kejar tumbuh'));
     });
+
+    test('Menu contoh dihitung dari target kalori (regresi defisit Milana: 10 bln, target ±1092)', () {
+      // Kasus dokter: 10 bulan, BB 8,05 kg, TB 75 cm, target tertulis 1.092 kkal
+      // tetapi menu lama hanya terealisasi ±480-680 kkal/hari.
+      final nut = PediatricNutritionCalculator.calculate(
+        weightKg: 8.05,
+        heightCm: 75.0,
+        ageMonths: 10.0,
+        sex: 'P',
+        isMalnourished: true,
+      );
+      final plan = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 10.0,
+        nutResult: nut,
+      );
+      final target = nut.targetEnergyKcal;
+      for (final day in plan) {
+        // Makanan padat terhitung harus mendekati porsi energi MPASI terhadap
+        // target (9-11 bln ±45%), bukan jauh di bawahnya; sisa dari ASI.
+        expect(day.totalKcal, greaterThan(target * 0.35),
+            reason: '${day.dayName} total ${day.totalKcal} terlalu defisit dari target $target');
+        expect(day.totalKcal, lessThan(target * 0.65));
+        // Rasio makro harus terhitung dan konsisten 100%.
+        final m = day.macroEnergyPct;
+        expect(m.carb + m.protein + m.fat, closeTo(100, 2));
+        expect(day.totalProteinG, greaterThan(8));
+      }
+      // Takaran tampil dalam gram + setara satuan penukar/URT.
+      expect(plan[0].sessions[0].portionUrt, contains('g (±'));
+      expect(plan[0].sessions[0].kcal, greaterThan(0));
+    });
+
+    test('Total menu anak >=24 bulan mendekati target kalori penuh', () {
+      final nut = PediatricNutritionCalculator.calculate(
+        weightKg: 12.0,
+        heightCm: 88.0,
+        ageMonths: 30.0,
+        sex: 'L',
+      );
+      final plan = WeeklyMealPlanGenerator.generate7DayPlan(ageMonths: 30.0, nutResult: nut);
+      final target = nut.targetEnergyKcal;
+      for (final day in plan) {
+        expect(day.totalKcal, closeTo(target, target * 0.20),
+            reason: '${day.dayName}: ${day.totalKcal} vs target $target');
+      }
+      // Susu malam terhitung sebagai komponen wajib dengan pilihan dokter.
+      final milk = plan[0].sessions.last;
+      expect(milk.kcal, greaterThan(0));
+      expect(milk.description, contains('PKMK'));
+      expect(milk.description, contains('UHT'));
+    });
+
+    test('Rotasi protein hewani berbeda antar sesi dalam satu hari', () {
+      final nut = PediatricNutritionCalculator.calculate(
+        weightKg: 9.0, heightCm: 78.0, ageMonths: 14.0, sex: 'L');
+      final plan = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 14.0,
+        nutResult: nut,
+        selectedAnimalProteins: [
+          FoodExchangeRepository.animalProteinLowFat.firstWhere((i) => i.name.contains('Ayam')),
+          FoodExchangeRepository.animalProteinMedFat.firstWhere((i) => i.name == 'Telur Ayam'),
+          FoodExchangeRepository.animalProteinLowFat.firstWhere((i) => i.name.contains('Ikan')),
+        ],
+      );
+      final senin = plan[0];
+      final mains = [senin.sessions[0], senin.sessions[2], senin.sessions[4]];
+      final names = mains.map((s) => s.menuName).join('|');
+      expect(names, contains('Ayam'));
+      expect(names, contains('Telur'));
+      expect(names, contains('Ikan'));
+    });
+
+    test('Bahan olahan (Sosis/Biskuit) tidak masuk menu bayi <24 bulan', () {
+      final sosis = FoodExchangeRepository.animalProteinHighFat.firstWhere((i) => i.name == 'Sosis');
+      final biskuit = FoodExchangeRepository.carbsList.firstWhere((i) => i.name == 'Biskuit');
+      final plan = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 7.0,
+        selectedCarbs: [biskuit],
+        selectedAnimalProteins: [sosis],
+      );
+      final allText = plan
+          .map((d) => '${d.theme} ${d.sessions.map((s) => '${s.menuName} ${s.description} ${s.portionUrt}').join(' ')}')
+          .join(' ');
+      expect(allText.contains('Sosis'), isFalse);
+      expect(allText.contains('Biskuit'), isFalse);
+    });
+
+    test('Pilihan tekstur manual mengganti profil usia', () {
+      final nut = PediatricNutritionCalculator.calculate(
+        weightKg: 9.0, heightCm: 78.0, ageMonths: 14.0, sex: 'L');
+      final plan = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 14.0,
+        nutResult: nut,
+        textureOverride: 'saring',
+      );
+      expect(plan[0].sessions[0].description, contains('Saring'));
+    });
   });
 }

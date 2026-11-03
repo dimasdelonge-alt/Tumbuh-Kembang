@@ -62,7 +62,7 @@ class FoodExchangeRepository {
 
   // GOLONGAN II-B: PROTEIN HEWANI SEDANG LEMAK (1 Satuan = 75 Kal, 7g Protein, 5g Lemak)
   static const List<FoodExchangeItem> animalProteinMedFat = [
-    FoodExchangeItem(name: 'Telur Ayam', group: 'Protein Hewani Sedang Lemak', grams: 25, urt: '1 butir', calories: 75, protein: 7, fat: 5, carbs: 0),
+    FoodExchangeItem(name: 'Telur Ayam', group: 'Protein Hewani Sedang Lemak', grams: 55, urt: '1 butir', calories: 75, protein: 7, fat: 5, carbs: 0),
     FoodExchangeItem(name: 'Hati Ayam', group: 'Protein Hewani Sedang Lemak', grams: 75, urt: '1 ptg sedang', calories: 75, protein: 7, fat: 5, carbs: 0, notes: 'Pr+'),
     FoodExchangeItem(name: 'Daging Sapi', group: 'Protein Hewani Sedang Lemak', grams: 60, urt: '1 ptg sedang', calories: 75, protein: 7, fat: 5, carbs: 0, notes: 'Ko+'),
     FoodExchangeItem(name: 'Telur Puyuh', group: 'Protein Hewani Sedang Lemak', grams: 30, urt: '5 butir', calories: 75, protein: 7, fat: 5, carbs: 0),

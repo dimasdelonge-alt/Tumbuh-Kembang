@@ -33,6 +33,10 @@ Future<void> main() async {
   // Auto-clean: hapus permanen item di tempat sampah yang > 30 hari
   await repo.autoCleanTrash();
 
+  // Bersihkan duplikat semantik hasil pemeriksaan warisan sinkronisasi
+  // (mis. GPPH ganda dalam satu pemeriksaan) agar laporan tidak dobel.
+  await repo.cleanupDuplicateResults();
+
   runApp(TumbangApp(repo: repo, syncService: syncService));
 }
 

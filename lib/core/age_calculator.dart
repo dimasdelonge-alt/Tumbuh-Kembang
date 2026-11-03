@@ -50,6 +50,13 @@ class AgeResult {
   /// Usia koreksi dalam tahun desimal.
   double get correctedYears => correctedDays / 365.25;
 
+  /// Usia (bulan) yang dipakai untuk panduan makanan/MPASI: tekstur,
+  /// porsi, frekuensi, resep, dan menu. Sesuai arahan dokter, makanan
+  /// mengikuti usia koreksi selama koreksi prematur berlaku (<24 bulan);
+  /// di luar itu sama dengan usia kronologis.
+  int get foodAgeMonths =>
+      correctionApplied ? correctedMonths : chronologicalMonths;
+
   /// Format ringkas usia kronologis, mis. "2 tahun 3 bulan 5 hari".
   String get chronologicalLabel => _formatYMD(years, months, days);
 
