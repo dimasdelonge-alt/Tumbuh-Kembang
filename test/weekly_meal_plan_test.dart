@@ -169,9 +169,9 @@ void main() {
       expect(plan[0].sessions[0].description, contains('kejar tumbuh'));
     });
 
-    test('Menu contoh dihitung dari target kalori (regresi defisit Milana: 10 bln, target ±1092)', () {
-      // Kasus dokter: 10 bulan, BB 8,05 kg, TB 75 cm, target tertulis 1.092 kkal
-      // tetapi menu lama hanya terealisasi ±480-680 kkal/hari.
+    test('Menu contoh dihitung dari target kalori tanpa kalori gap (regresi Milana: 10 bln, target ±1092)', () {
+      // Kasus dokter: 10 bulan, BB 8,05 kg, TB 75 cm, target tertulis 1.092 kkal.
+      // Total kalori harian (makanan padat + ASI/susu terhitung) harus mendekati target.
       final nut = PediatricNutritionCalculator.calculate(
         weightKg: 8.05,
         heightCm: 75.0,
@@ -185,19 +185,56 @@ void main() {
       );
       final target = nut.targetEnergyKcal;
       for (final day in plan) {
-        // Makanan padat terhitung harus mendekati porsi energi MPASI terhadap
-        // target (9-11 bln ±45%), bukan jauh di bawahnya; sisa dari ASI.
-        expect(day.totalKcal, greaterThan(target * 0.35),
-            reason: '${day.dayName} total ${day.totalKcal} terlalu defisit dari target $target');
-        expect(day.totalKcal, lessThan(target * 0.65));
+        expect(day.totalKcal, closeTo(target, target * 0.05),
+            reason: '${day.dayName} total ${day.totalKcal} masih gap dari target $target');
+        // Porsi makanan padat (pagi+siang+malam) tetap realistis untuk 9-11 bln.
+        final mainKcal = day.sessions[0].kcal + day.sessions[2].kcal + day.sessions[4].kcal;
+        expect(mainKcal, greaterThan(target * 0.40));
+        expect(mainKcal, lessThan(target * 0.65));
         // Rasio makro harus terhitung dan konsisten 100%.
         final m = day.macroEnergyPct;
         expect(m.carb + m.protein + m.fat, closeTo(100, 2));
-        expect(day.totalProteinG, greaterThan(8));
+        expect(day.totalProteinG, greaterThan(12));
       }
       // Takaran tampil dalam gram + setara satuan penukar/URT.
       expect(plan[0].sessions[0].portionUrt, contains('g (±'));
       expect(plan[0].sessions[0].kcal, greaterThan(0));
+      // Theme tidak boleh bocor "Instance of" karena salah interpolasi string.
+      expect(plan[0].theme, isNot(contains('Instance of')));
+    });
+
+    test('Total menu harian mendekati target kalori untuk semua kelompok usia', () {
+      final cases = [
+        (age: 3.0, w: 5.8, h: 60.0, mal: false),
+        (age: 7.0, w: 7.5, h: 68.0, mal: false),
+        (age: 10.0, w: 8.05, h: 75.0, mal: true),
+        (age: 14.0, w: 8.5, h: 78.0, mal: true),
+        (age: 30.0, w: 12.0, h: 88.0, mal: false),
+        (age: 48.0, w: 15.0, h: 100.0, mal: false),
+      ];
+      for (final c in cases) {
+        final nut = PediatricNutritionCalculator.calculate(
+          weightKg: c.w,
+          heightCm: c.h,
+          ageMonths: c.age,
+          sex: 'L',
+          isMalnourished: c.mal,
+        );
+        final plan = WeeklyMealPlanGenerator.generate7DayPlan(
+          ageMonths: c.age,
+          nutResult: nut,
+          selectedCarbs: FoodExchangeRepository.carbsList,
+          selectedAnimalProteins: FoodExchangeRepository.allAnimalProtein,
+          selectedPlantProteins: FoodExchangeRepository.plantProteinList,
+          selectedVeggies: FoodExchangeRepository.veggiesList,
+          selectedFruits: FoodExchangeRepository.fruitsList,
+        );
+        final target = nut.targetEnergyKcal;
+        for (final day in plan) {
+          expect(day.totalKcal, closeTo(target, target * 0.06),
+              reason: 'Usia ${c.age} bln (${day.dayName}): total ${day.totalKcal} vs target $target');
+        }
+      }
     });
 
     test('Total menu anak >=24 bulan mendekati target kalori penuh', () {
@@ -210,7 +247,7 @@ void main() {
       final plan = WeeklyMealPlanGenerator.generate7DayPlan(ageMonths: 30.0, nutResult: nut);
       final target = nut.targetEnergyKcal;
       for (final day in plan) {
-        expect(day.totalKcal, closeTo(target, target * 0.20),
+        expect(day.totalKcal, closeTo(target, target * 0.05),
             reason: '${day.dayName}: ${day.totalKcal} vs target $target');
       }
       // Susu malam terhitung sebagai komponen wajib dengan pilihan dokter.

@@ -178,7 +178,7 @@ class WeeklyMealPlanPdfBuilder {
                           pw.Text(_clean('Berat: ${nutResult.weightKg} kg  |  Tinggi: ${nutResult.heightCm} cm'), style: const pw.TextStyle(fontSize: 8.5)),
                           pw.Text(_clean('BB Ideal (BBI): ${nutResult.idealWeightLabel}  |  Usia Tinggi: ${nutResult.heightAgeLabel}'), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800)),
                           if (weeklyPlan.isNotEmpty && weeklyPlan.first.totalKcal > 0)
-                            pw.Text(_clean('Estimasi menu contoh: ±${weeklyPlan.first.totalKcal.round()} kkal/hari terhitung | Rasio ${weeklyPlan.first.macroSummary}'), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800)),
+                            pw.Text(_clean('Estimasi menu: ±${weeklyPlan.first.totalKcal.round()} kkal/hari (target ${nutResult.targetEnergyKcal.round()} kkal) | ${weeklyPlan.first.macroSummary}'), style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey800)),
                         ],
                       ),
                     ),
@@ -222,9 +222,6 @@ class WeeklyMealPlanPdfBuilder {
                   ],
                 ),
               ),
-              pw.SizedBox(height: 6),
-
-              miniHeader(),
               pw.SizedBox(height: 6),
 
               pw.Text(
@@ -296,7 +293,7 @@ class WeeklyMealPlanPdfBuilder {
               pw.SizedBox(height: 4),
 
               // MINGGU (1 hari)
-              _buildDayPlanTable(weeklyPlan.last),
+              if (weeklyPlan.length > 6) _buildDayPlanTable(weeklyPlan[6]),
 
               pw.SizedBox(height: 10),
 

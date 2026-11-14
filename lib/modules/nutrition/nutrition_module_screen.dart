@@ -692,7 +692,7 @@ class _NutritionModuleScreenState extends State<NutritionModuleScreen> with Sing
                       if (weeklyPlan.isNotEmpty && weeklyPlan.first.totalKcal > 0) ...[
                         const SizedBox(height: 2),
                         Text(
-                          'Estimasi menu contoh: ±${weeklyPlan.first.totalKcal.round()} kkal/hari terhitung (makanan padat + susu terhitung) | ${weeklyPlan.first.macroSummary}. Kekurangan dari target dipenuhi ASI/susu on demand.',
+                          'Estimasi menu harian: ±${weeklyPlan.first.totalKcal.round()} kkal/hari (makanan padat + ASI/susu terhitung, target ${nutResult.targetEnergyKcal.round()} kkal) | ${weeklyPlan.first.macroSummary}.',
                           style: TextStyle(fontSize: 10.5, color: Colors.grey.shade700),
                         ),
                       ],
