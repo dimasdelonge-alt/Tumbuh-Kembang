@@ -302,5 +302,40 @@ void main() {
       );
       expect(plan[0].sessions[0].description, contains('Saring'));
     });
+
+    test('Kasus Hana (13 bln, BB 7.9 kg, TB 73 cm, P, malnourished): 7 hari & kalori mendekati target ~1003', () {
+      final nut = PediatricNutritionCalculator.calculate(
+        weightKg: 7.9,
+        heightCm: 73.0,
+        ageMonths: 13.0,
+        sex: 'P',
+        isMalnourished: true,
+      );
+      final plan = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 13.0,
+        nutResult: nut,
+      );
+
+      expect(plan.length, equals(7));
+      expect(
+        plan.map((d) => d.dayName).toList(),
+        equals(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']),
+      );
+
+      final target = nut.targetEnergyKcal;
+      for (final day in plan) {
+        expect(
+          day.totalKcal,
+          closeTo(target, target * 0.05),
+          reason: '${day.dayName}: total ${day.totalKcal} vs target $target',
+        );
+        expect(day.theme, isNot(contains('Instance of')));
+        for (final s in day.sessions) {
+          expect(s.menuName, isNot(contains('Instance of')));
+          expect(s.description, isNot(contains('Instance of')));
+          expect(s.portionUrt, isNot(contains('Instance of')));
+        }
+      }
+    });
   });
 }
