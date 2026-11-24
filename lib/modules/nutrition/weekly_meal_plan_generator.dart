@@ -125,6 +125,22 @@ class WeeklyMealPlanGenerator {
     );
   }
 
+  static ({double kcal, double carbsG, double proteinG, double fatG}) _olderMilkMacros(
+    FoodExchangeItem milkItem,
+    int ml,
+  ) {
+    if (ml <= 0 || milkItem.grams <= 0) {
+      return (kcal: 0, carbsG: 0, proteinG: 0, fatG: 0);
+    }
+    final factor = ml / milkItem.grams;
+    return (
+      kcal: milkItem.calories * factor,
+      carbsG: milkItem.carbs * factor,
+      proteinG: milkItem.protein * factor,
+      fatG: milkItem.fat * factor,
+    );
+  }
+
   /// Membikin Rencana Makan 7 Hari (Senin - Minggu) berbasis Usia & Bahan Penukar Pilihan.
   ///
   /// Bila [nutResult] diberikan, takaran dihitung dari target kalori harian
@@ -234,32 +250,53 @@ class WeeklyMealPlanGenerator {
 
     final profile = _profileFor(ageMonths, textureOverride);
 
-    // Porsi energi makanan padat vs ASI/Susu agar total kalori harian
-    // (makanan padat + ASI/Susu terhitung) mendekati target kalori yang dihitung:
-    // - 6-8 bln: MPASI ~40% target, sisa ~60% ASI/Formula/PKMK terhitung
-    // - 9-11 bln: MPASI ~55% target, sisa ~45% ASI/Formula/PKMK terhitung
-    // - 12-23 bln: Susu 2x200 mL (400 mL = 250 kkal, atau 1x200 mL bila target <900), sisa penuh dari makanan padat
-    // - >=24 bln: Susu 1-2x200 mL (200 mL bila target <1400, 400 mL bila >=1400), sisa penuh dari makanan padat
+    // Proporsi energi ASI/SF/Susu : Makanan Padat sesuai arahan klinis (IDAI / WHO):
+    // - 6-8 bln:  70% ASI/SF : 30% MPASI
+    // - 9-11 bln: 50% ASI/SF : 50% MPASI
+    // - 12-23 bln: 30% ASI/Susu : 70% MPASI
+    // - >=24 bln: Susu 1-2 gelas (200 mL jika target <1400, 400 mL jika >=1400), sisa penuh dari makanan keluarga
+    // Target rasio makro harian: KH 40-60%, Protein ~15%, Lemak 35-50%.
     final milkItem = FoodExchangeRepository.milkList.first;
-    final int milkGlassesForOlder;
-    if (ageMonths < 12.0) {
-      milkGlassesForOlder = 0;
-    } else if (ageMonths < 24.0) {
-      milkGlassesForOlder = (hasTarget && targetKcal < 900) ? 1 : 2;
-    } else {
-      milkGlassesForOlder = (hasTarget && targetKcal >= 1400) ? 2 : 1;
-    }
-    final double plannedOlderMilkKcal = milkGlassesForOlder * milkItem.calories;
+    final double olderMilkKcalPerMl =
+        milkItem.grams > 0 ? milkItem.calories / milkItem.grams : 0.625;
 
+    final int plannedMilkMl;
+    final ({double kcal, double carbsG, double proteinG, double fatG}) plannedMilk;
     final double targetSolidsKcal;
+    final double targetCarbPct;
+    final double targetProPct;
+
     if (!hasTarget) {
+      plannedMilkMl = 0;
+      plannedMilk = (kcal: 0, carbsG: 0, proteinG: 0, fatG: 0);
       targetSolidsKcal = 0.0;
+      targetCarbPct = 0.45;
+      targetProPct = 0.15;
     } else if (ageMonths < 9.0) {
-      targetSolidsKcal = (targetKcal * 0.40).clamp(150.0, targetKcal * 0.55);
+      plannedMilkMl = ((targetKcal * 0.70 / _infantMilkKcalPerMl) / 10).round() * 10;
+      plannedMilk = _infantMilkMacros(plannedMilkMl);
+      targetSolidsKcal = targetKcal * 0.30;
+      targetCarbPct = 0.43;
+      targetProPct = 0.13; // Sisa energi (~44%) dialokasikan ke lemak
     } else if (ageMonths < 12.0) {
-      targetSolidsKcal = (targetKcal * 0.55).clamp(220.0, targetKcal * 0.65);
+      plannedMilkMl = ((targetKcal * 0.50 / _infantMilkKcalPerMl) / 10).round() * 10;
+      plannedMilk = _infantMilkMacros(plannedMilkMl);
+      targetSolidsKcal = targetKcal * 0.50;
+      targetCarbPct = 0.43;
+      targetProPct = 0.15; // Sisa energi (~42%) dialokasikan ke lemak
+    } else if (ageMonths < 24.0) {
+      plannedMilkMl = ((targetKcal * 0.30 / olderMilkKcalPerMl) / 10).round() * 10;
+      plannedMilk = _olderMilkMacros(milkItem, plannedMilkMl);
+      targetSolidsKcal = targetKcal * 0.70;
+      targetCarbPct = 0.44;
+      targetProPct = 0.15; // Sisa energi (~41%) dialokasikan ke lemak
     } else {
-      targetSolidsKcal = (targetKcal - plannedOlderMilkKcal).clamp(200.0, targetKcal);
+      final milkGlasses = targetKcal >= 1400 ? 2 : 1;
+      plannedMilkMl = milkGlasses * milkItem.grams.round();
+      plannedMilk = _olderMilkMacros(milkItem, plannedMilkMl);
+      targetSolidsKcal = (targetKcal - plannedMilk.kcal).clamp(200.0, targetKcal);
+      targetCarbPct = 0.45;
+      targetProPct = 0.15; // Sisa energi (~40%) dialokasikan ke lemak
     }
 
     return List.generate(7, (index) {
@@ -284,22 +321,70 @@ class WeeklyMealPlanGenerator {
           ? ' Menu padat energi untuk kejar tumbuh: tambahkan lemak sehat di tiap makan utama.'
           : '';
 
-      // Pelacak sisa anggaran energi makanan padat agar error pembulatan
-      // per sesi tidak menumpuk menjauhi target.
-      var remainingSolidsBudget = targetSolidsKcal;
-      var remainingSolidsShare = 1.0;
+      // Takaran bawaan (dipakai bila target kalori tidak tersedia).
+      final legacy = _legacyPortions(ageMonths, currentCarb, animalPagi, currentVeg, currentFruit);
 
-      double claimSessionBudget(double share, {bool isLastSolid = false}) {
-        if (!hasTarget) return 0.0;
-        if (isLastSolid || remainingSolidsShare <= share + 1e-6) {
-          final b = remainingSolidsBudget.clamp(40.0, targetSolidsKcal);
-          remainingSolidsShare = 0.0;
-          return b;
+      // Hitung 2 selingan buah terlebih dahulu (masing-masing ~5% energi padat)
+      // agar sisa kebutuhan energi, KH, & protein untuk 3 makan utama dapat
+      // dipecahkan tepat mencapai KH 40-60%, Protein ~15%, Lemak 35-50%.
+      DailyMealSession buildFruitSnackBase({
+        required String time,
+        required String sessionName,
+        required String menuName,
+        required String description,
+      }) {
+        if (!hasTarget) {
+          return DailyMealSession(
+            time: time,
+            sessionName: sessionName,
+            menuName: menuName,
+            description: description,
+            portionUrt: legacy.snack,
+          );
         }
-        final allocated = (remainingSolidsBudget * (share / remainingSolidsShare)).clamp(20.0, targetSolidsKcal);
-        remainingSolidsShare -= share;
-        return allocated;
+        final fruit = _component(currentFruit, targetSolidsKcal * 0.05, 5);
+        return DailyMealSession(
+          time: time,
+          sessionName: sessionName,
+          menuName: menuName,
+          description: description,
+          portionUrt: _portionText(fruit),
+          kcal: fruit.kcal,
+          carbsG: fruit.carbsG,
+          proteinG: fruit.proteinG,
+          fatG: fruit.fatG,
+        );
       }
+
+      final selinganPagiBase = buildFruitSnackBase(
+        time: '09:30',
+        sessionName: 'Selingan Pagi',
+        menuName: ageMonths < 9.0 ? 'Puree Buah ${currentFruit.name}' : 'Snack Pagi: Buah ${currentFruit.name}',
+        description: 'Buah segar ${currentFruit.name} kaya vitamin & serat alami.',
+      );
+      final selinganSoreBase = buildFruitSnackBase(
+        time: '15:30',
+        sessionName: 'Selingan Sore',
+        menuName: 'Snack Sore: Buah ${currentFruit.name}',
+        description: ageMonths < 24.0
+            ? 'Potongan buah ${currentFruit.name} atau ASI / Susu segar.'
+            : 'Potongan buah segar ${currentFruit.name} atau Susu UHT / Pasteurisasi plain.',
+      );
+
+      final snacksKcal = selinganPagiBase.kcal + selinganSoreBase.kcal;
+      final snacksCarbG = selinganPagiBase.carbsG + selinganSoreBase.carbsG;
+      final snacksProG = selinganPagiBase.proteinG + selinganSoreBase.proteinG;
+
+      final mainsTotalKcal = hasTarget
+          ? (targetSolidsKcal - snacksKcal).clamp(90.0, targetSolidsKcal)
+          : 0.0;
+      final dailyTargetCarbG = hasTarget ? (targetKcal * targetCarbPct) / 4.0 : 0.0;
+      final dailyTargetProG = hasTarget ? (targetKcal * targetProPct) / 4.0 : 0.0;
+
+      var remainingMainsKcal = mainsTotalKcal;
+      var remainingMainsCarbG = (dailyTargetCarbG - plannedMilk.carbsG - snacksCarbG).clamp(0.0, dailyTargetCarbG);
+      var remainingMainsProG = (dailyTargetProG - plannedMilk.proteinG - snacksProG).clamp(0.0, dailyTargetProG);
+      var remainingMainsShare = 1.0;
 
       DailyMealSession mainSession({
         required String time,
@@ -308,8 +393,7 @@ class WeeklyMealPlanGenerator {
         required String description,
         required FoodExchangeItem animal,
         required FoodExchangeItem plant,
-        required double kcalShareOfSolids,
-        required String legacyPortion,
+        required double shareOfMains,
         bool isLastSolid = false,
       }) {
         if (!hasTarget) {
@@ -318,34 +402,60 @@ class WeeklyMealPlanGenerator {
             sessionName: sessionName,
             menuName: menuName,
             description: description,
-            portionUrt: legacyPortion,
+            portionUrt: legacy.main,
           );
         }
-        final sessionKcal = claimSessionBudget(kcalShareOfSolids, isLastSolid: isLastSolid);
-        // Komposisi sesi utama dari penukar: karbo 45%, hewani 27%,
-        // nabati 10%, sayur 5%, lemak tambahan ~13% (menyesuaikan sisa
-        // pembulatan gramasi agar energi sesi mendekati sessionKcal).
-        var carb = _component(currentCarb, sessionKcal * 0.45, 5);
-        final hewani = _component(animal, sessionKcal * 0.27, 5);
-        final nabati = _component(plant, sessionKcal * 0.10, 5);
-        final sayur = _component(currentVeg, sessionKcal * 0.05, 10);
 
-        final foodKcalBeforeOil = carb.kcal + hewani.kcal + nabati.kcal + sayur.kcal;
-        final desiredOilKcal = (sessionKcal - foodKcalBeforeOil).clamp(0.0, sessionKcal * 0.25);
-        final maxOilSdt = ((sessionKcal * 0.22) / _oilKcalPerSdt * 2).ceil() / 2;
-        final upperOilSdt = maxOilSdt < 1.0 ? 1.0 : (maxOilSdt > 2.5 ? 2.5 : maxOilSdt);
+        final double mealKcal;
+        final double mealCarbG;
+        final double mealProG;
+        if (isLastSolid || remainingMainsShare <= shareOfMains + 1e-6) {
+          mealKcal = remainingMainsKcal.clamp(30.0, mainsTotalKcal);
+          mealCarbG = remainingMainsCarbG.clamp(0.0, dailyTargetCarbG);
+          mealProG = remainingMainsProG.clamp(0.0, dailyTargetProG);
+          remainingMainsShare = 0.0;
+        } else {
+          final ratio = shareOfMains / remainingMainsShare;
+          mealKcal = (remainingMainsKcal * ratio).clamp(30.0, mainsTotalKcal);
+          mealCarbG = (remainingMainsCarbG * ratio).clamp(0.0, dailyTargetCarbG);
+          mealProG = (remainingMainsProG * ratio).clamp(0.0, dailyTargetProG);
+          remainingMainsShare -= shareOfMains;
+        }
+
+        final sayur = _component(currentVeg, mealKcal * 0.05, 10);
+        final nabati = _component(plant, mealKcal * 0.07, 5);
+
+        final remCarbG = (mealCarbG - sayur.carbsG - nabati.carbsG).clamp(0.0, mealCarbG);
+        final rawCarbKcal = currentCarb.carbs > 0
+            ? remCarbG * currentCarb.calories / currentCarb.carbs
+            : mealKcal * 0.42;
+        final carbKcal = rawCarbKcal.clamp(mealKcal * 0.22, mealKcal * 0.55);
+        var carb = _component(currentCarb, carbKcal, 5);
+
+        final remProG = (mealProG - carb.proteinG - nabati.proteinG - sayur.proteinG).clamp(0.0, mealProG);
+        final rawAnimalKcal = animal.protein > 0
+            ? remProG * animal.calories / animal.protein
+            : mealKcal * 0.18;
+        final maxAnimalShare = ageMonths < 12.0 ? 0.42 : 0.35;
+        final animalKcal = rawAnimalKcal.clamp(mealKcal * 0.10, mealKcal * maxAnimalShare);
+        final hewani = _component(animal, animalKcal, 5);
+
+        var foodKcalBeforeOil = carb.kcal + hewani.kcal + nabati.kcal + sayur.kcal;
+        final desiredOilKcal = (mealKcal - foodKcalBeforeOil).clamp(0.0, mealKcal * 0.45);
+        final double upperOilSdt = ageMonths < 24.0 ? 2.5 : 3.5;
         var oilSdt = ((desiredOilKcal / _oilKcalPerSdt) * 2).round() / 2;
         if (oilSdt < 0.5) oilSdt = 0.5;
         if (oilSdt > upperOilSdt) oilSdt = upperOilSdt;
 
-        // Pada sesi padat terakhir untuk >=12 bln (susu tetap per gelas),
-        // sesuaikan gramasi karbohidrat jika masih ada selisih >12 kkal.
-        if (isLastSolid && ageMonths >= 12.0 && currentCarb.calories > 0 && currentCarb.grams > 0) {
-          final residual = sessionKcal - (foodKcalBeforeOil + oilSdt * _oilKcalPerSdt);
-          if (residual.abs() > 12.0) {
+        // Untuk >=24 bln (susu tetap 1-2 gelas), sesuaikan gramasi karbohidrat
+        // pada makan malam bila masih ada selisih >15 kkal terhadap target harian.
+        if (isLastSolid && ageMonths >= 24.0 && currentCarb.calories > 0 && currentCarb.grams > 0) {
+          final residual = mealKcal - (foodKcalBeforeOil + oilSdt * _oilKcalPerSdt);
+          if (residual.abs() > 15.0) {
             final kcalPerGramCarb = currentCarb.calories / currentCarb.grams;
             final deltaGrams = ((residual / kcalPerGramCarb) / 5).round() * 5.0;
-            final adjustedGrams = (carb.grams + deltaGrams).clamp(10.0, carb.grams * 2.0);
+            final maxCarbGrams = (carb.grams * 1.8) > 10.0 ? carb.grams * 1.8 : 10.0;
+            final adjustedGrams = (carb.grams + deltaGrams).clamp(10.0, maxCarbGrams);
             final r = adjustedGrams / currentCarb.grams;
             carb = _Component(
               currentCarb,
@@ -355,13 +465,19 @@ class WeeklyMealPlanGenerator {
               currentCarb.protein * r,
               currentCarb.fat * r,
             );
+            foodKcalBeforeOil = carb.kcal + hewani.kcal + nabati.kcal + sayur.kcal;
           }
         }
 
         final oilKcal = oilSdt * _oilKcalPerSdt;
         final oilFat = oilSdt * 5.0;
-        final actualSessionKcal = carb.kcal + hewani.kcal + nabati.kcal + sayur.kcal + oilKcal;
-        remainingSolidsBudget -= actualSessionKcal;
+        final actualSessionKcal = foodKcalBeforeOil + oilKcal;
+        final actualCarbG = carb.carbsG + hewani.carbsG + nabati.carbsG + sayur.carbsG;
+        final actualProG = carb.proteinG + hewani.proteinG + nabati.proteinG + sayur.proteinG;
+
+        remainingMainsKcal -= actualSessionKcal;
+        remainingMainsCarbG = (remainingMainsCarbG - actualCarbG).clamp(0.0, dailyTargetCarbG);
+        remainingMainsProG = (remainingMainsProG - actualProG).clamp(0.0, dailyTargetProG);
 
         final portion = '${profile.bowlLabel}: '
             '${_portionText(carb)}, ${_portionText(hewani)}, ${_portionText(nabati)}, '
@@ -374,78 +490,12 @@ class WeeklyMealPlanGenerator {
           description: description,
           portionUrt: portion,
           kcal: actualSessionKcal,
-          carbsG: carb.carbsG + hewani.carbsG + nabati.carbsG + sayur.carbsG,
-          proteinG: carb.proteinG + hewani.proteinG + nabati.proteinG + sayur.proteinG,
+          carbsG: actualCarbG,
+          proteinG: actualProG,
           fatG: carb.fatG + hewani.fatG + nabati.fatG + sayur.fatG + oilFat,
         );
       }
 
-      DailyMealSession snackFruitSession({
-        required String time,
-        required String sessionName,
-        required String menuName,
-        required String description,
-        required String legacyPortion,
-        int extraInfantMilkMl = 0,
-        bool includeOneGlassOlderMilk = false,
-      }) {
-        if (!hasTarget) {
-          return DailyMealSession(
-            time: time,
-            sessionName: sessionName,
-            menuName: menuName,
-            description: description,
-            portionUrt: legacyPortion,
-          );
-        }
-        final snackBudget = claimSessionBudget(0.05);
-        final fruit = _component(currentFruit, snackBudget, 5);
-        remainingSolidsBudget -= fruit.kcal;
-
-        var totalKcal = fruit.kcal;
-        var totalCarbs = fruit.carbsG;
-        var totalPro = fruit.proteinG;
-        var totalFat = fruit.fatG;
-        var portionText = _portionText(fruit);
-        var finalMenu = menuName;
-        var finalDesc = description;
-
-        if (extraInfantMilkMl > 0) {
-          final m = _infantMilkMacros(extraInfantMilkMl);
-          totalKcal += m.kcal;
-          totalCarbs += m.carbsG;
-          totalPro += m.proteinG;
-          totalFat += m.fatG;
-          portionText = '$portionText + ASI/Susu $extraInfantMilkMl mL';
-          finalMenu = '$menuName + ASI/Susu';
-        } else if (includeOneGlassOlderMilk) {
-          totalKcal += milkItem.calories;
-          totalCarbs += milkItem.carbs;
-          totalPro += milkItem.protein;
-          totalFat += milkItem.fat;
-          portionText = '$portionText + Susu 200 mL (1 gelas)';
-          finalMenu = '$menuName + Susu Sore';
-          finalDesc = '$description Ditambah 1 gelas (200 mL) susu UHT/pasteurisasi plain atau ASI.';
-        }
-
-        return DailyMealSession(
-          time: time,
-          sessionName: sessionName,
-          menuName: finalMenu,
-          description: finalDesc,
-          portionUrt: portionText,
-          kcal: totalKcal,
-          carbsG: totalCarbs,
-          proteinG: totalPro,
-          fatG: totalFat,
-        );
-      }
-
-      // Takaran bawaan (dipakai bila target kalori tidak tersedia).
-      final legacy = _legacyPortions(ageMonths, currentCarb, animalPagi, currentVeg, currentFruit);
-
-      // Susun 5 sesi makanan padat terlebih dahulu agar sisa energi untuk
-      // ASI/Susu bayi (<12 bln) dapat dihitung tepat menutup target harian.
       final pagi = mainSession(
         time: '07:00',
         sessionName: 'Makan Pagi',
@@ -455,20 +505,7 @@ class WeeklyMealPlanGenerator {
         description: '${profile.guide}. ${currentCarb.name} dimasak bersama ${animalPagi.name}, ${currentPlant.name}, & Sayur ${currentVeg.name}.$fatTip',
         animal: animalPagi,
         plant: currentPlant,
-        kcalShareOfSolids: 0.30,
-        legacyPortion: legacy.main,
-      );
-
-      // Untuk <12 bln dengan target kalori, kita hitung sisa kebutuhan susu
-      // setelah seluruh sesi padat terhitung. Karena Selingan Pagi & Sore
-      // juga membawa komponen buah, hitung buahnya dulu lewat snackFruitSession
-      // lalu tambahkan alokasi susu jika <12 bln!
-      final selinganPagiBase = snackFruitSession(
-        time: '09:30',
-        sessionName: 'Selingan Pagi',
-        menuName: ageMonths < 9.0 ? 'Puree Buah ${currentFruit.name}' : 'Snack Pagi: Buah ${currentFruit.name}',
-        description: 'Buah segar ${currentFruit.name} kaya vitamin & serat alami.',
-        legacyPortion: legacy.snack,
+        shareOfMains: 30.0 / 90.0,
       );
 
       final siang = mainSession(
@@ -478,19 +515,7 @@ class WeeklyMealPlanGenerator {
         description: '${profile.guide}. ${currentCarb.name} dengan ${animalSiang.name} ${style.$2}, ${plantSiang.name}, & Sayur ${currentVeg.name}.$fatTip',
         animal: animalSiang,
         plant: plantSiang,
-        kcalShareOfSolids: 0.35,
-        legacyPortion: legacy.main,
-      );
-
-      final selinganSoreBase = snackFruitSession(
-        time: '15:30',
-        sessionName: 'Selingan Sore',
-        menuName: 'Snack Sore: Buah ${currentFruit.name}',
-        description: ageMonths < 24.0
-            ? 'Potongan buah ${currentFruit.name} atau ASI / Susu segar.'
-            : 'Potongan buah segar ${currentFruit.name} atau Susu UHT / Pasteurisasi plain.',
-        legacyPortion: legacy.snack,
-        includeOneGlassOlderMilk: hasTarget && ageMonths >= 12.0 && milkGlassesForOlder >= 2,
+        shareOfMains: 35.0 / 90.0,
       );
 
       final malam = mainSession(
@@ -500,8 +525,7 @@ class WeeklyMealPlanGenerator {
         description: '${profile.guide}. ${currentCarb.name} dengan ${animalMalam.name} empuk, ${currentPlant.name}, & Sayur ${currentVeg.name}.$fatTip',
         animal: animalMalam,
         plant: currentPlant,
-        kcalShareOfSolids: 0.25,
-        legacyPortion: legacy.main,
+        shareOfMains: 25.0 / 90.0,
         isLastSolid: true,
       );
 
@@ -509,23 +533,28 @@ class WeeklyMealPlanGenerator {
       DailyMealSession selinganSore = selinganSoreBase;
       final DailyMealSession susuMalam;
 
-      if (ageMonths >= 12.0) {
-        susuMalam = DailyMealSession(
-          time: '20:30',
-          sessionName: 'Sebelum Tidur',
-          menuName: 'Susu Malam',
-          description: ageMonths < 24.0
-              ? 'Susu Sapi Pasteurisasi / UHT plain. Pilihan susu: PKMK, PDK, atau UHT plain sesuai advis dokter (WHO: tanpa formula lanjutan). ASI tetap dapat diteruskan.'
-              : 'Susu UHT / Pasteurisasi plain. Pilihan susu: PKMK, PDK, atau UHT sesuai advis dokter.',
-          portionUrt: 'Susu 200 mL (1 gelas)',
-          kcal: hasTarget ? milkItem.calories : 0,
-          carbsG: hasTarget ? milkItem.carbs : 0,
-          proteinG: hasTarget ? milkItem.protein : 0,
-          fatG: hasTarget ? milkItem.fat : 0,
-        );
-      } else if (hasTarget) {
-        // 6-11 bln: hitung porsi ASI/Formula/PKMK untuk menutup selisih target
-        // agar total energi harian di menu mendekati target kalori terhitung.
+      if (!hasTarget) {
+        if (ageMonths >= 12.0) {
+          susuMalam = DailyMealSession(
+            time: '20:30',
+            sessionName: 'Sebelum Tidur',
+            menuName: 'Susu Malam',
+            description: ageMonths < 24.0
+                ? 'Susu Sapi Pasteurisasi / UHT plain. Pilihan susu: PKMK, PDK, atau UHT plain sesuai advis dokter (WHO: tanpa formula lanjutan). ASI tetap dapat diteruskan.'
+                : 'Susu UHT / Pasteurisasi plain. Pilihan susu: PKMK, PDK, atau UHT sesuai advis dokter.',
+            portionUrt: 'Susu 200 mL (1 gelas)',
+          );
+        } else {
+          susuMalam = const DailyMealSession(
+            time: '20:30',
+            sessionName: 'Sebelum Tidur',
+            menuName: 'ASI / Susu Malam',
+            description: 'Menyusu ASI on demand sebelum tidur. Bila non-ASI, susu formula/PKMK sesuai advis dokter (±200 mL, tidak dihitung dalam total tabel).',
+            portionUrt: 'Sesuai kehendak bayi (on demand)',
+          );
+        }
+      } else if (ageMonths < 12.0) {
+        // 6-8 bln (~70% ASI/SF : 30% MPASI) dan 9-11 bln (~50% ASI/SF : 50% MPASI)
         final solidsActual = pagi.kcal + selinganPagiBase.kcal + siang.kcal + selinganSoreBase.kcal + malam.kcal;
         final milkGapKcal = (targetKcal - solidsActual).clamp(0.0, targetKcal);
         final totalMilkMl = ((milkGapKcal / _infantMilkKcalPerMl) / 10).round() * 10;
@@ -552,25 +581,93 @@ class WeeklyMealPlanGenerator {
         selinganPagi = attachInfantMilk(selinganPagiBase, mlPagi);
         selinganSore = attachInfantMilk(selinganSoreBase, mlSore);
 
+        final milkPctLabel = ageMonths < 9.0 ? '~70%' : '~50%';
         final mMalam = _infantMilkMacros(mlMalam);
         susuMalam = DailyMealSession(
           time: '20:30',
           sessionName: 'Sebelum Tidur',
           menuName: 'ASI / Susu Malam & Dini Hari',
-          description: 'ASI on demand (ekuivalen total harian ±$totalMilkMl mL; malam & dini hari ±$mlMalam mL). Bila non-ASI/PKMK, sesuaikan volume & densitas energi advis dokter.',
+          description: 'ASI on demand (porsi susu $milkPctLabel target harian, ekuivalen total ±$totalMilkMl mL/hari; malam & dini hari ±$mlMalam mL). Bila non-ASI/PKMK, sesuaikan volume & densitas energi advis dokter.',
           portionUrt: mlMalam > 0 ? 'ASI on demand (ekuivalen ±$mlMalam mL)' : 'Sesuai kehendak bayi (on demand)',
           kcal: mMalam.kcal,
           carbsG: mMalam.carbsG,
           proteinG: mMalam.proteinG,
           fatG: mMalam.fatG,
         );
-      } else {
-        susuMalam = const DailyMealSession(
+      } else if (ageMonths < 24.0) {
+        // 12-23 bln: ~30% ASI/Susu : ~70% MPASI
+        final solidsActual = pagi.kcal + selinganPagiBase.kcal + siang.kcal + selinganSoreBase.kcal + malam.kcal;
+        final milkGapKcal = (targetKcal - solidsActual).clamp(targetKcal * 0.22, targetKcal * 0.38);
+        var totalMilkMl = ((milkGapKcal / olderMilkKcalPerMl) / 10).round() * 10;
+        if (totalMilkMl < 200) totalMilkMl = 200;
+
+        DailyMealSession attachOlderMilk(DailyMealSession base, int ml) {
+          if (ml <= 0) return base;
+          final m = _olderMilkMacros(milkItem, ml);
+          return DailyMealSession(
+            time: base.time,
+            sessionName: base.sessionName,
+            menuName: '${base.menuName} + Susu/ASI',
+            description: '${base.description} Ditambah Susu Sapi Pasteurisasi / UHT plain ±$ml mL atau ASI.',
+            portionUrt: '${base.portionUrt} + Susu/ASI $ml mL',
+            kcal: base.kcal + m.kcal,
+            carbsG: base.carbsG + m.carbsG,
+            proteinG: base.proteinG + m.proteinG,
+            fatG: base.fatG + m.fatG,
+          );
+        }
+
+        final int mlMalam;
+        if (totalMilkMl <= 500) {
+          final mlSore = ((totalMilkMl * 0.50) / 10).round() * 10;
+          mlMalam = (totalMilkMl - mlSore).clamp(0, totalMilkMl);
+          selinganSore = attachOlderMilk(selinganSoreBase, mlSore);
+        } else {
+          final mlPagi = ((totalMilkMl * 0.30) / 10).round() * 10;
+          final mlSore = ((totalMilkMl * 0.35) / 10).round() * 10;
+          mlMalam = (totalMilkMl - mlPagi - mlSore).clamp(0, totalMilkMl);
+          selinganPagi = attachOlderMilk(selinganPagiBase, mlPagi);
+          selinganSore = attachOlderMilk(selinganSoreBase, mlSore);
+        }
+
+        final mMalam = _olderMilkMacros(milkItem, mlMalam);
+        susuMalam = DailyMealSession(
           time: '20:30',
           sessionName: 'Sebelum Tidur',
-          menuName: 'ASI / Susu Malam',
-          description: 'Menyusu ASI on demand sebelum tidur. Bila non-ASI, susu formula/PKMK sesuai advis dokter (±200 mL, tidak dihitung dalam total tabel).',
-          portionUrt: 'Sesuai kehendak bayi (on demand)',
+          menuName: 'Susu Malam',
+          description: 'Susu Sapi Pasteurisasi / UHT plain (±$totalMilkMl mL/hari, ~30% energi harian). Pilihan susu: PKMK, PDK, atau UHT plain sesuai advis dokter (WHO: tanpa formula lanjutan). ASI tetap dapat diteruskan.',
+          portionUrt: mlMalam == 200 ? 'Susu 200 mL (1 gelas)' : 'Susu $mlMalam mL',
+          kcal: mMalam.kcal,
+          carbsG: mMalam.carbsG,
+          proteinG: mMalam.proteinG,
+          fatG: mMalam.fatG,
+        );
+      } else {
+        // >=24 bln: 1 gelas (200 mL) atau 2 gelas (400 mL: sore + malam)
+        if (plannedMilkMl >= 400) {
+          final mSore = _olderMilkMacros(milkItem, 200);
+          selinganSore = DailyMealSession(
+            time: selinganSoreBase.time,
+            sessionName: selinganSoreBase.sessionName,
+            menuName: '${selinganSoreBase.menuName} + Susu Sore',
+            description: '${selinganSoreBase.description} Ditambah 1 gelas (200 mL) susu UHT/pasteurisasi plain atau ASI.',
+            portionUrt: '${selinganSoreBase.portionUrt} + Susu 200 mL (1 gelas)',
+            kcal: selinganSoreBase.kcal + mSore.kcal,
+            carbsG: selinganSoreBase.carbsG + mSore.carbsG,
+            proteinG: selinganSoreBase.proteinG + mSore.proteinG,
+            fatG: selinganSoreBase.fatG + mSore.fatG,
+          );
+        }
+        susuMalam = DailyMealSession(
+          time: '20:30',
+          sessionName: 'Sebelum Tidur',
+          menuName: 'Susu Malam',
+          description: 'Susu UHT / Pasteurisasi plain. Pilihan susu: PKMK, PDK, atau UHT sesuai advis dokter.',
+          portionUrt: 'Susu 200 mL (1 gelas)',
+          kcal: milkItem.calories,
+          carbsG: milkItem.carbs,
+          proteinG: milkItem.protein,
+          fatG: milkItem.fat,
         );
       }
 

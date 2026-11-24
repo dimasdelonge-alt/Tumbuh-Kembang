@@ -187,14 +187,16 @@ void main() {
       for (final day in plan) {
         expect(day.totalKcal, closeTo(target, target * 0.05),
             reason: '${day.dayName} total ${day.totalKcal} masih gap dari target $target');
-        // Porsi makanan padat (pagi+siang+malam) tetap realistis untuk 9-11 bln.
+        // 9-11 bln: proporsi 50% ASI/SF : 50% MPASI (makanan utama 45% + 2 selingan buah 5%).
         final mainKcal = day.sessions[0].kcal + day.sessions[2].kcal + day.sessions[4].kcal;
         expect(mainKcal, greaterThan(target * 0.40));
-        expect(mainKcal, lessThan(target * 0.65));
-        // Rasio makro harus terhitung dan konsisten 100%.
+        expect(mainKcal, lessThan(target * 0.55));
+        // Rasio makro harus terhitung, konsisten 100%, dan memenuhi KH 40-60%, Pro ~15%, Lemak 35-50%.
         final m = day.macroEnergyPct;
         expect(m.carb + m.protein + m.fat, closeTo(100, 2));
-        expect(day.totalProteinG, greaterThan(12));
+        expect(m.carb, inInclusiveRange(40, 60));
+        expect(m.protein, inInclusiveRange(12, 18));
+        expect(m.fat, inInclusiveRange(35, 50));
       }
       // Takaran tampil dalam gram + setara satuan penukar/URT.
       expect(plan[0].sessions[0].portionUrt, contains('g (±'));
@@ -303,7 +305,7 @@ void main() {
       expect(plan[0].sessions[0].description, contains('Saring'));
     });
 
-    test('Kasus Hana (13 bln, BB 7.9 kg, TB 73 cm, P, malnourished): 7 hari & kalori mendekati target ~1003', () {
+    test('Kasus Hana (13 bln, BB 7.9 kg, TB 73 cm, P, malnourished): 7 hari, kalori ~1003, proporsi 30:70 & makro 40-60 / 15 / 35-50', () {
       final nut = PediatricNutritionCalculator.calculate(
         weightKg: 7.9,
         heightCm: 73.0,
@@ -311,9 +313,14 @@ void main() {
         sex: 'P',
         isMalnourished: true,
       );
+      final ayamTanpaKulit = FoodExchangeRepository.animalProteinLowFat.firstWhere((i) => i.name.contains('Ayam tanpa Kulit'));
+      final ikan = FoodExchangeRepository.animalProteinLowFat.firstWhere((i) => i.name.contains('Ikan Segar'));
+      final telur = FoodExchangeRepository.animalProteinMedFat.firstWhere((i) => i.name == 'Telur Ayam');
+
       final plan = WeeklyMealPlanGenerator.generate7DayPlan(
         ageMonths: 13.0,
         nutResult: nut,
+        selectedAnimalProteins: [ayamTanpaKulit, ikan, telur],
       );
 
       expect(plan.length, equals(7));
@@ -329,12 +336,89 @@ void main() {
           closeTo(target, target * 0.05),
           reason: '${day.dayName}: total ${day.totalKcal} vs target $target',
         );
+        final m = day.macroEnergyPct;
+        expect(m.carb, inInclusiveRange(40, 60), reason: '${day.dayName} KH ${m.carb}%');
+        expect(m.protein, inInclusiveRange(13, 18), reason: '${day.dayName} Pro ${m.protein}%');
+        expect(m.fat, inInclusiveRange(35, 50), reason: '${day.dayName} Lemak ${m.fat}%');
+
+        // 12-23 bln: makanan padat ~70% (pagi + siang + malam + porsi buah di snack).
+        final mainMealsKcal = day.sessions[0].kcal + day.sessions[2].kcal + day.sessions[4].kcal;
+        expect(mainMealsKcal / day.totalKcal, inInclusiveRange(0.55, 0.72),
+            reason: '${day.dayName} makan utama $mainMealsKcal dari ${day.totalKcal}');
+
         expect(day.theme, isNot(contains('Instance of')));
         for (final s in day.sessions) {
           expect(s.menuName, isNot(contains('Instance of')));
           expect(s.description, isNot(contains('Instance of')));
           expect(s.portionUrt, isNot(contains('Instance of')));
         }
+      }
+    });
+
+    test('Proporsi ASI/SF vs MPASI (70:30, 50:50, 30:70) & rasio makro lintas usia dan jenis lemak lauk', () {
+      // 6-8 bln: 70% ASI/SF : 30% MPASI
+      final nut7 = PediatricNutritionCalculator.calculate(
+        weightKg: 7.5, heightCm: 68.0, ageMonths: 7.0, sex: 'L');
+      final plan7 = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 7.0,
+        nutResult: nut7,
+        selectedAnimalProteins: FoodExchangeRepository.allAnimalProtein,
+      );
+      for (final day in plan7) {
+        final mpasiPct = (day.sessions[0].kcal + day.sessions[2].kcal + day.sessions[4].kcal) / day.totalKcal * 100;
+        expect(mpasiPct, inInclusiveRange(20, 38), reason: '7 bln ${day.dayName} makan utama $mpasiPct%');
+        final m = day.macroEnergyPct;
+        expect(m.carb, inInclusiveRange(38, 60), reason: '7 bln ${day.dayName} KH ${m.carb}%');
+        expect(m.fat, inInclusiveRange(35, 52), reason: '7 bln ${day.dayName} Lemak ${m.fat}%');
+      }
+
+      // 9-11 bln: 50% ASI/SF : 50% MPASI
+      final nut10 = PediatricNutritionCalculator.calculate(
+        weightKg: 8.5, heightCm: 73.0, ageMonths: 10.0, sex: 'P');
+      final plan10 = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 10.0,
+        nutResult: nut10,
+        selectedAnimalProteins: FoodExchangeRepository.allAnimalProtein,
+      );
+      for (final day in plan10) {
+        final mainPct = (day.sessions[0].kcal + day.sessions[2].kcal + day.sessions[4].kcal) / day.totalKcal * 100;
+        expect(mainPct, inInclusiveRange(38, 55), reason: '10 bln ${day.dayName} makan utama $mainPct%');
+        final m = day.macroEnergyPct;
+        expect(m.carb, inInclusiveRange(40, 60), reason: '10 bln ${day.dayName} KH ${m.carb}%');
+        expect(m.protein, inInclusiveRange(12, 18), reason: '10 bln ${day.dayName} Pro ${m.protein}%');
+        expect(m.fat, inInclusiveRange(35, 50), reason: '10 bln ${day.dayName} Lemak ${m.fat}%');
+      }
+
+      // 12-23 bln: 30% ASI/Susu : 70% MPASI (uji lauk rendah lemak maupun campuran)
+      final nut18 = PediatricNutritionCalculator.calculate(
+        weightKg: 10.2, heightCm: 81.0, ageMonths: 18.0, sex: 'L');
+      final plan18 = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 18.0,
+        nutResult: nut18,
+        selectedAnimalProteins: FoodExchangeRepository.allAnimalProtein,
+      );
+      for (final day in plan18) {
+        expect(day.totalKcal, closeTo(nut18.targetEnergyKcal, nut18.targetEnergyKcal * 0.05));
+        final m = day.macroEnergyPct;
+        expect(m.carb, inInclusiveRange(40, 60), reason: '18 bln ${day.dayName} KH ${m.carb}%');
+        expect(m.protein, inInclusiveRange(13, 18), reason: '18 bln ${day.dayName} Pro ${m.protein}%');
+        expect(m.fat, inInclusiveRange(35, 50), reason: '18 bln ${day.dayName} Lemak ${m.fat}%');
+      }
+
+      // >=24 bln: makanan keluarga + 1-2 gelas susu
+      final nut36 = PediatricNutritionCalculator.calculate(
+        weightKg: 14.0, heightCm: 95.0, ageMonths: 36.0, sex: 'L');
+      final plan36 = WeeklyMealPlanGenerator.generate7DayPlan(
+        ageMonths: 36.0,
+        nutResult: nut36,
+        selectedAnimalProteins: FoodExchangeRepository.allAnimalProtein,
+      );
+      for (final day in plan36) {
+        expect(day.totalKcal, closeTo(nut36.targetEnergyKcal, nut36.targetEnergyKcal * 0.05));
+        final m = day.macroEnergyPct;
+        expect(m.carb, inInclusiveRange(40, 60), reason: '36 bln ${day.dayName} KH ${m.carb}%');
+        expect(m.protein, inInclusiveRange(13, 18), reason: '36 bln ${day.dayName} Pro ${m.protein}%');
+        expect(m.fat, inInclusiveRange(35, 50), reason: '36 bln ${day.dayName} Lemak ${m.fat}%');
       }
     });
   });
